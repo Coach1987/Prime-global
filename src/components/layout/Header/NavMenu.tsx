@@ -34,7 +34,7 @@ export function NavMenu() {
   }
 
   return (
-    <nav aria-label="Primary" className="hidden md:flex items-center gap-1">
+    <nav aria-label="Primary" className="hidden md:flex items-center gap-2">
       {NAV_ITEMS.map((item) => {
         const active = isActive(item.href);
         return (
@@ -44,14 +44,14 @@ export function NavMenu() {
             onClick={(e) => handleClick(e, item.href)}
             aria-current={active ? "page" : undefined}
             className={cn(
-              "group relative px-4 py-2 text-[13px] font-medium uppercase tracking-[0.08em] transition-colors duration-200",
+              "group relative px-4 py-2 text-[13px] font-medium uppercase tracking-[0.1em] transition-colors duration-200",
               active ? "text-text-primary" : "text-text-secondary hover:text-text-primary"
             )}
           >
             {t(item.labelKey)}
             <span
               className={cn(
-                "absolute left-4 right-4 -bottom-0.5 h-[1.5px] origin-center bg-accent-primary transition-transform duration-[250ms] ease-premium-out",
+                "absolute inset-x-4 -bottom-0.5 h-px origin-center bg-gold transition-transform duration-300 ease-premium-out",
                 active ? "scale-x-100" : "scale-x-0 group-hover:scale-x-100"
               )}
             />

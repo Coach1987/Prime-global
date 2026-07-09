@@ -103,7 +103,7 @@ export function MobileMenu({ open, onClose }: MobileMenuProps) {
           initial="hidden"
           animate="visible"
           exit="exit"
-          className="fixed inset-0 z-40 flex flex-col bg-bg-primary/98 backdrop-blur-xl md:hidden"
+          className="fixed inset-0 z-40 flex flex-col border-t border-gold/[0.15] bg-bg-primary/98 backdrop-blur-xl md:hidden"
           role="dialog"
           aria-modal="true"
           aria-label={t("openMenu")}
@@ -121,7 +121,7 @@ export function MobileMenu({ open, onClose }: MobileMenuProps) {
                     href={item.href}
                     onClick={(e) => handleClick(e, item.href)}
                     className={cn(
-                      "block px-4 py-4 font-heading text-2xl text-text-primary",
+                      "block px-4 py-4 font-heading text-2xl text-text-primary transition-colors duration-200 active:text-gold",
                       "min-h-[56px] flex items-center justify-center"
                     )}
                   >
@@ -131,7 +131,13 @@ export function MobileMenu({ open, onClose }: MobileMenuProps) {
               ))}
             </motion.ul>
 
-            <motion.div variants={itemVariants} initial="hidden" animate="visible" className="mt-8">
+            <motion.div
+              variants={itemVariants}
+              initial="hidden"
+              animate="visible"
+              className="mt-10 flex flex-col items-center gap-6"
+            >
+              <span className="h-px w-10 bg-gold/30" aria-hidden="true" />
               <LanguageSwitcher />
             </motion.div>
           </div>

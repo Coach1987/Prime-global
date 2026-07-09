@@ -48,7 +48,7 @@ export function Header() {
         className={cn(
           "fixed inset-x-0 top-0 z-50 transition-all duration-300 ease-premium-out",
           scrolled
-            ? "h-16 border-b border-white/[0.06] bg-bg-primary/92 shadow-[0_4px_24px_rgba(0,0,0,0.3)] backdrop-blur-header"
+            ? "h-16 border-b border-gold/[0.12] bg-bg-primary/95 shadow-[0_4px_28px_rgba(0,0,0,0.35)] backdrop-blur-header"
             : "h-[88px] bg-transparent"
         )}
       >
@@ -57,7 +57,7 @@ export function Header() {
 
           <NavMenu />
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-4">
             <div className="hidden md:block">
               <LanguageSwitcher />
             </div>
@@ -66,9 +66,9 @@ export function Header() {
               href={isHome ? "#contact" : "/contact"}
               onClick={handleCtaClick}
               className={cn(
-                "hidden md:inline-flex items-center rounded-[10px] bg-gradient-to-br from-accent-primary to-gold-muted px-6 py-[10px]",
-                "text-[14px] font-semibold text-charcoal shadow-[0_4px_20px_rgba(201,162,75,0.35)]",
-                "transition-all duration-200 ease-out hover:brightness-110 hover:shadow-[0_6px_28px_rgba(201,162,75,0.5)] hover:-translate-y-0.5 active:scale-[0.98]"
+                "hidden md:inline-flex items-center rounded-[10px] border border-gold/40 bg-accent-primary px-6 py-[10px]",
+                "text-[13px] font-semibold uppercase tracking-[0.06em] text-charcoal",
+                "transition-all duration-200 ease-out hover:bg-gold-bright hover:border-gold-bright hover:-translate-y-0.5 active:scale-[0.98]"
               )}
             >
               {t("cta")}

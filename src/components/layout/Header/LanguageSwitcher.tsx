@@ -22,7 +22,7 @@ export function LanguageSwitcher() {
     <div
       role="group"
       aria-label={t("language")}
-      className="flex items-center rounded-full border border-white/10 bg-white/5 p-0.5 text-[13px] font-medium"
+      className="flex items-center rounded-full border border-white/[0.08] bg-white/[0.03] p-0.5 text-[13px] font-medium"
     >
       {LOCALES.map((loc) => (
         <button
@@ -31,9 +31,9 @@ export function LanguageSwitcher() {
           onClick={() => switchTo(loc)}
           aria-pressed={locale === loc}
           className={cn(
-            "rounded-full px-3 py-1.5 uppercase tracking-wide transition-colors duration-200",
+            "rounded-full px-3.5 py-[7px] uppercase tracking-wide transition-colors duration-200",
             locale === loc
-              ? "bg-accent-primary text-white"
+              ? "bg-accent-primary text-charcoal"
               : "text-text-secondary hover:text-text-primary"
           )}
         >
