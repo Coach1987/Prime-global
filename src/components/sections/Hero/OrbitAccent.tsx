@@ -24,8 +24,10 @@ export function OrbitAccent() {
   const ringGradId = `orbitAccentRing-${uid}`;
   const glowGradId = `orbitAccentGlow-${uid}`;
   const pathId = `orbitAccentPath-${uid}`;
+  const outerPathId = `orbitAccentOuterPath-${uid}`;
 
   const lightRef = useRef<SVGCircleElement>(null);
+  const outerLightRef = useRef<SVGCircleElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -35,31 +37,47 @@ export function OrbitAccent() {
 
     if (prefersReducedMotion || !lightRef.current) return;
 
-    const tween = gsap.to(lightRef.current, {
-      duration: 14,
-      repeat: -1,
-      ease: "none",
-      motionPath: {
-        path: `#${pathId}`,
-        align: `#${pathId}`,
-        alignOrigin: [0.5, 0.5],
-      },
-    });
+    const tweens = [
+      gsap.to(lightRef.current, {
+        duration: 14,
+        repeat: -1,
+        ease: "none",
+        motionPath: {
+          path: `#${pathId}`,
+          align: `#${pathId}`,
+          alignOrigin: [0.5, 0.5],
+        },
+      }),
+    ];
+
+    if (outerLightRef.current) {
+      tweens.push(
+        gsap.to(outerLightRef.current, {
+          duration: 26,
+          repeat: -1,
+          ease: "none",
+          motionPath: {
+            path: `#${outerPathId}`,
+            align: `#${outerPathId}`,
+            alignOrigin: [0.5, 0.5],
+          },
+        })
+      );
+    }
 
     const observer = new IntersectionObserver(
       ([entry]) => {
-        if (entry.isIntersecting) tween.play();
-        else tween.pause();
+        tweens.forEach((tw) => (entry.isIntersecting ? tw.play() : tw.pause()));
       },
       { threshold: 0.1 }
     );
     if (containerRef.current) observer.observe(containerRef.current);
 
     return () => {
-      tween.kill();
+      tweens.forEach((tw) => tw.kill());
       observer.disconnect();
     };
-  }, [pathId]);
+  }, [pathId, outerPathId]);
 
   return (
     <div
@@ -67,6 +85,34 @@ export function OrbitAccent() {
       className="absolute inset-[-6%] z-0"
       aria-hidden="true"
     >
+      {/* Outer grand orbit — larger, slower, quieter ring that reads as
+          "large premium globe" scale without competing with the logo.
+          The traveling light lives in the SAME svg/coordinate space as
+          its path so the GSAP MotionPath alignment is exact. */}
+      <div className="absolute inset-[-14%] animate-spin-slow [animation-duration:110s]">
+        <svg viewBox="0 0 200 200" className="h-full w-full overflow-visible">
+          <ellipse
+            id={outerPathId}
+            cx="100"
+            cy="100"
+            rx="99"
+            ry="60"
+            fill="none"
+            stroke="#E0C179"
+            strokeOpacity="0.12"
+            strokeWidth="1"
+            transform="rotate(12 100 100)"
+          />
+          <circle
+            ref={outerLightRef}
+            r="2.5"
+            fill={`url(#${glowGradId})`}
+            opacity="0.8"
+            className="drop-shadow-[0_0_6px_rgba(224,193,121,0.7)]"
+          />
+        </svg>
+      </div>
+
       {/* Faint guide ring, slow counter-rotation, sits behind the logo */}
       <div className="absolute inset-0 animate-spin-slow-reverse">
         <svg viewBox="0 0 200 200" className="h-full w-full overflow-visible">

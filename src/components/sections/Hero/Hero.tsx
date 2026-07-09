@@ -16,7 +16,7 @@ export function Hero() {
     >
       <HeroBackground />
 
-      <div className="relative z-10 mx-auto grid w-full max-w-[1280px] grid-cols-1 items-center gap-16 px-5 py-16 md:grid-cols-[1.1fr_0.9fr] md:gap-8 md:px-8 md:py-0">
+      <div className="relative z-10 mx-auto grid w-full max-w-[1280px] grid-cols-1 items-center gap-20 px-5 py-20 md:grid-cols-[1.1fr_0.9fr] md:gap-14 md:px-8 md:py-0 lg:gap-20">
         <div className="order-2 flex flex-col items-center text-center md:order-1 md:items-start md:text-start">
           <HeroContent />
           <HeroStats />

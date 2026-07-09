@@ -18,17 +18,44 @@ import { OrbitAccent } from "./OrbitAccent";
 export function HeroLogoLockup() {
   return (
     <div className="relative mx-auto flex flex-col items-center">
-      <div className="relative aspect-square w-[240px] sm:w-[300px] md:w-[380px]">
+      <div className="relative aspect-square w-[235px] sm:w-[320px] md:w-[390px] lg:w-[4306px]">
+        {/* Cinematic glow — the true focal anchor. Large, soft, and warm,
+            it reads as the "globe's" ambient light from a distance, so
+            the eye lands on the glowing sphere of light first and the
+            (now smaller) logo mark second. */}
+        <div
+          aria-hidden="true"
+          className="absolute inset-[-28%] animate-glow-pulse rounded-full opacity-90 [animation-duration:7s]"
+          style={{
+            background:
+              "radial-gradient(circle at 50% 50%, rgba(224,193,121,0.28) 0%, rgba(201,162,75,0.14) 35%, rgba(10,14,20,0) 70%)",
+            filter: "blur(30px)",
+          }}
+        />
+
+        {/* Glass backdrop disc — frosted panel the globe/logo sits inside,
+            giving the mark physical depth against the hero atmosphere */}
+        <div
+          aria-hidden="true"
+          className="absolute inset-[6%] rounded-full border border-white/[0.08] bg-white/[0.03] backdrop-blur-2xl shadow-[inset_0_1px_0_rgba(255,255,255,0.06),0_30px_80px_-20px_rgba(0,0,0,0.6)]"
+        />
+
         <OrbitAccent />
 
-        <Image
-          src="/images/logo/prime-global-logo.png"
-          alt="Prime Global"
-          fill
-          priority
-          sizes="(min-width: 768px) 380px, (min-width: 640px) 300px, 240px"
-          className="relative z-10 object-contain drop-shadow-[0_0_40px_rgba(201,162,75,0.35)]"
-        />
+        {/* Logo mark — inset 15% on every side (≈30% smaller than the
+            glow/ring stage around it), so the orbiting light + glow read
+            as the dominant "globe" and the logo sits inside it, smaller
+            and quieter, rather than dominating the composition. */}
+        <div className="absolute inset-[20%] z-10">
+          <Image
+            src="/images/logo/prime-global-logo.png"
+            alt="Prime Global"
+            fill
+            priority
+            sizes="(min-width: 1024px) 340px, (min-width: 768px) 310px, (min-width: 640px) 270px, 205px"
+            className="object-contain drop-shadow-[0_0_36px_rgba(201,162,75,0.4)]"
+          />
+        </div>
       </div>
     </div>
   );
