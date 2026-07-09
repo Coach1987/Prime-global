@@ -25,11 +25,11 @@ export function HeroLogoLockup() {
             (now smaller) logo mark second. */}
         <div
           aria-hidden="true"
-          className="absolute inset-[-28%] animate-glow-pulse rounded-full opacity-90 [animation-duration:7s]"
+          className="absolute inset-[-18%] animate-glow-pulse rounded-full opacity-90 [animation-duration:7s]"
           style={{
             background:
               "radial-gradient(circle at 50% 50%, rgba(224,193,121,0.28) 0%, rgba(201,162,75,0.14) 35%, rgba(10,14,20,0) 70%)",
-            filter: "blur(30px)",
+            filter: "blur(18px)",
           }}
         />
 
@@ -46,7 +46,7 @@ export function HeroLogoLockup() {
             glow/ring stage around it), so the orbiting light + glow read
             as the dominant "globe" and the logo sits inside it, smaller
             and quieter, rather than dominating the composition. */}
-        <div className="absolute inset-[20%] z-10">
+        <div className="absolute inset-[18%] z-10">
           <Image
             src="/images/logo/prime-global-logo.png"
             alt="Prime Global"
