@@ -1,0 +1,26 @@
+/**
+ * Styling for Swiper's dynamically-injected pagination bullets.
+ * These can't be styled via Tailwind className props because Swiper
+ * creates these DOM nodes itself at runtime (see bulletClass/
+ * bulletActiveClass in TestimonialsSection.tsx). Import this file once,
+ * e.g. from the root layout, alongside the Swiper core CSS.
+ */
+
+.testimonials-bullet {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background-color: rgba(255, 255, 255, 0.15);
+  display: inline-block;
+  cursor: pointer;
+  transition: all 200ms ease;
+}
+
+.testimonials-bullet:hover {
+  background-color: rgba(255, 255, 255, 0.3);
+}
+
+.testimonials-bullet-active {
+  background-color: #C9A24B;
+  width: 22px;
+}

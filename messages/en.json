@@ -1,0 +1,185 @@
+{
+  "nav": {
+    "home": "Home",
+    "homeLabel": "Prime Global — Home",
+    "services": "Services",
+    "about": "About",
+    "contact": "Contact",
+    "cta": "Get Started",
+    "openMenu": "Open menu",
+    "closeMenu": "Close menu",
+    "language": "Language"
+  },
+  "hero": {
+    "eyebrow": "Tunisian Company · Global Standards",
+    "headlineLine1": "Tunisian",
+    "headlineLine2": "Global",
+    "headlineLine3": "Expertise",
+    "subtext": "A Tunisian company specialized in delivering integrated business support solutions with efficiency and professionalism.",
+    "ctaPrimary": "Explore Services",
+    "ctaSecondary": "Contact Us",
+    "stats": {
+      "experience": { "value": "10+", "label": "Years of Experience" },
+      "clients": { "value": "150+", "label": "Clients Served" },
+      "industries": { "value": "8+", "label": "Industries Covered" },
+      "satisfaction": { "value": "98%", "label": "Client Satisfaction" }
+    }
+  },
+  "services": {
+    "eyebrow": "Our Services",
+    "title": "Integrated Solutions for Every Need",
+    "description": "We provide comprehensive business support solutions designed to help your company operate with efficiency and professionalism.",
+    "learnMore": "Learn more",
+    "items": {
+      "businessAdmin": {
+        "title": "Business Administration",
+        "description": "We provide integrated administrative solutions that help businesses run smoothly and efficiently."
+      },
+      "logistics": {
+        "title": "Logistics Support",
+        "description": "Professional logistics services ensuring fast, safe, and reliable delivery."
+      },
+      "recruitment": {
+        "title": "Recruitment & Talent Acquisition",
+        "description": "We help you find the right talent to grow your team and achieve your goals."
+      },
+      "operations": {
+        "title": "Operational Optimization",
+        "description": "Enhancing operational performance and reducing costs through smart and effective solutions."
+      }
+    }
+  },
+  "whyUs": {
+    "eyebrow": "Why Choose Us",
+    "title": "Built on Trust, Delivered with Excellence",
+    "description": "What sets us apart is a combination of deep expertise, speed, and solutions built around you.",
+    "items": {
+      "expertise": {
+        "title": "High Expertise",
+        "description": "A team with deep experience and proven skills."
+      },
+      "execution": {
+        "title": "Fast Execution",
+        "description": "Commitment to speed and quality in every project."
+      },
+      "tailored": {
+        "title": "Tailored Solutions",
+        "description": "Custom solutions designed to fit your business."
+      }
+    }
+  },
+  "testimonials": {
+    "eyebrow": "Client Feedback",
+    "title": "What Our Clients Say",
+    "description": "Placeholder testimonials — replace with real client quotes before launch.",
+    "a11y": {
+      "prevSlide": "Previous testimonial",
+      "nextSlide": "Next testimonial",
+      "ratingLabel": "{rating} out of 5 stars"
+    },
+    "items": {
+      "client1": {
+        "quote": "Placeholder quote. Replace with a real client testimonial about working with Prime Global.",
+        "name": "Placeholder Name",
+        "role": "Placeholder Role, Company"
+      },
+      "client2": {
+        "quote": "Placeholder quote. Replace with a real client testimonial about working with Prime Global.",
+        "name": "Placeholder Name",
+        "role": "Placeholder Role, Company"
+      },
+      "client3": {
+        "quote": "Placeholder quote. Replace with a real client testimonial about working with Prime Global.",
+        "name": "Placeholder Name",
+        "role": "Placeholder Role, Company"
+      },
+      "client4": {
+        "quote": "Placeholder quote. Replace with a real client testimonial about working with Prime Global.",
+        "name": "Placeholder Name",
+        "role": "Placeholder Role, Company"
+      }
+    }
+  },
+  "faq": {
+    "eyebrow": "FAQ",
+    "title": "Frequently Asked Questions",
+    "description": "Answers to common questions about who we are and how we work.",
+    "stillHaveQuestions": "Still have questions?",
+    "contactUs": "Contact us",
+    "items": {
+      "whoWeAre": {
+        "question": "Who is Prime Global?",
+        "answer": "Prime Global is a Tunisian company based in Sousse, specialized in delivering integrated business support solutions with efficiency and professionalism."
+      },
+      "servicesOffered": {
+        "question": "What services does Prime Global offer?",
+        "answer": "We offer four core services: business administration, logistics support, recruitment and talent acquisition, and operational optimization."
+      },
+      "location": {
+        "question": "Where is Prime Global located?",
+        "answer": "We are based in Sousse, Tunisia."
+      },
+      "getStarted": {
+        "question": "How do I get started with Prime Global?",
+        "answer": "Reach out via WhatsApp, email, or the contact form on this site, and our team will follow up to understand your needs and how we can help."
+      },
+      "industriesServed": {
+        "question": "Does Prime Global work with businesses outside Tunisia?",
+        "answer": "We combine Tunisian expertise with a global standard of service. Get in touch to discuss your specific location and requirements."
+      },
+      "contactMethods": {
+        "question": "How can I contact Prime Global?",
+        "answer": "You can reach us by WhatsApp, email at info@primeglobal.tn, or through our website, primeglobal.tn."
+      }
+    }
+  },
+  "contact": {
+    "eyebrow": "Contact Us",
+    "title": "Let's Start a Conversation",
+    "description": "Reach out via WhatsApp, email, or the form below — our team will get back to you shortly.",
+    "info": {
+      "title": "Contact Information",
+      "whatsapp": "WhatsApp",
+      "email": "Email",
+      "website": "Website",
+      "location": "Location"
+    },
+    "form": {
+      "title": "Send Us a Message",
+      "name": "Full Name",
+      "namePlaceholder": "Your name",
+      "email": "Email Address",
+      "emailPlaceholder": "you@example.com",
+      "service": "Service of Interest",
+      "servicePlaceholder": "Select a service",
+      "serviceOther": "Other / Not sure",
+      "message": "Message",
+      "messagePlaceholder": "Tell us about your needs...",
+      "send": "Send Message",
+      "sending": "Sending...",
+      "successMessage": "Thank you — your message has been sent. We'll be in touch soon.",
+      "errorMessage": "Something went wrong. Please try again or reach us on WhatsApp.",
+      "errors": {
+        "nameMin": "Name must be at least 2 characters.",
+        "nameMax": "Name is too long.",
+        "emailRequired": "Email is required.",
+        "emailInvalid": "Please enter a valid email address.",
+        "serviceRequired": "Please select a service.",
+        "messageMin": "Message must be at least 10 characters.",
+        "messageMax": "Message is too long."
+      }
+    },
+    "map": {
+      "title": "Prime Global location map",
+      "approximateNotice": "Approximate location — Sousse, Tunisia"
+    }
+  },
+  "footer": {
+    "tagline": "Tunisian expertise, delivered to a global standard.",
+    "quickLinks": "Quick Links",
+    "contact": "Contact",
+    "copyright": "© {year} Prime Global. All rights reserved.",
+    "privacyPolicy": "Privacy Policy",
+    "terms": "Terms of Service"
+  }
+}

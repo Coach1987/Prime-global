@@ -1,0 +1,36 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  /* No `scroll-behavior: smooth` here — Lenis (via SmoothScrollProvider)
+     now owns smooth-scroll physics site-wide with custom easing/duration.
+     Leaving the native CSS behavior on as well would have both systems
+     fighting over scroll position on every anchor-link jump. The
+     reduced-motion block below still forces `scroll-behavior: auto` as a
+     safety net for when Lenis intentionally disables itself. */
+
+  body {
+    @apply bg-bg-primary text-text-primary antialiased;
+  }
+
+  /* Respect reduced-motion preference at the document level as a baseline
+     safety net, in addition to the per-component JS checks already in
+     place throughout Hero/Services/WhyUs/FAQ/Footer. */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+
+  /* Visible focus ring for keyboard navigation, site-wide */
+  :focus-visible {
+    outline: 2px solid #C9A24B;
+    outline-offset: 2px;
+  }
+}
