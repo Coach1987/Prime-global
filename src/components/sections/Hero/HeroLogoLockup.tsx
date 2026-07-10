@@ -18,7 +18,7 @@ import { OrbitAccent } from "./OrbitAccent";
 export function HeroLogoLockup() {
   return (
     <div className="relative mx-auto flex flex-col items-center">
-      <div className="relative aspect-square w-[235px] sm:w-[320px] md:w-[390px] lg:w-[4306px]">
+      <div className="relative aspect-square w-[235px] sm:w-[320px] md:w-[390px] lg:w-[430px]">
         {/* Cinematic glow — the true focal anchor. Large, soft, and warm,
             it reads as the "globe's" ambient light from a distance, so
             the eye lands on the glowing sphere of light first and the
@@ -33,11 +33,7 @@ export function HeroLogoLockup() {
           }}
         />
 
-        {/* Glass backdrop disc — frosted panel the globe/logo sits inside,
-            giving the mark physical depth against the hero atmosphere */}
-        <div
-          aria-hidden="true"
-  
+        
 
         <OrbitAccent />
 
