@@ -3,53 +3,56 @@
 import Image from "next/image";
 import { OrbitAccent } from "./OrbitAccent";
 
-/**
- * The hero's centered focal point: Prime Global's actual logo artwork
- * (globe + ring + arrow + "PRIME GLOBAL" wordmark, all baked into one
- * image) — used exactly as provided, not recreated or redesigned.
- *
- * Since the arrow is fused into the static logo image itself, it can't
- * be independently animated without altering the artwork. Instead, an
- * `OrbitAccent` layer renders BEHIND the logo: a separate, subtle
- * rotating ring + traveling light that orbits around the static mark,
- * giving continuous motion without touching a single pixel of the
- * original logo.
- */
 export function HeroLogoLockup() {
   return (
-    <div className="relative mx-auto flex flex-col items-center">
-      <div className="relative aspect-square w-[235px] sm:w-[320px] md:w-[390px] lg:w-[430px]">
-        {/* Cinematic glow — the true focal anchor. Large, soft, and warm,
-            it reads as the "globe's" ambient light from a distance, so
-            the eye lands on the glowing sphere of light first and the
-            (now smaller) logo mark second. */}
+    <div className="relative mx-auto flex w-full flex-col items-center justify-center">
+      {/* Globe and silver arrow */}
+      <div className="relative aspect-square w-[300px] sm:w-[360px] md:w-[420px] lg:w-[470px]">
+        {/* Soft blue light */}
         <div
           aria-hidden="true"
-          className="absolute inset-[-18%] animate-glow-pulse rounded-full opacity-90 [animation-duration:7s]"
+          className="absolute inset-[3%] rounded-full"
           style={{
             background:
-              "radial-gradient(circle at 50% 50%, rgba(224,193,121,0.28) 0%, rgba(201,162,75,0.14) 35%, rgba(10,14,20,0) 70%)",
-            filter: "blur(18px)",
+              "radial-gradient(circle at 50% 48%, rgba(37,140,255,0.24) 0%, rgba(0,102,255,0.12) 35%, rgba(2,10,25,0) 70%)",
+            filter: "blur(24px)",
           }}
         />
 
-        
+        {/* Animated orbital lines behind the globe */}
+        <div className="absolute inset-[1%] z-0">
+          <OrbitAccent />
+        </div>
 
-        <OrbitAccent />
-
-        {/* Logo mark — inset 15% on every side (≈30% smaller than the
-            glow/ring stage around it), so the orbiting light + glow read
-            as the dominant "globe" and the logo sits inside it, smaller
-            and quieter, rather than dominating the composition. */}
-        <div className="absolute inset-[18%] z-10">
+        {/* Separate globe and arrow image */}
+        <div className="absolute inset-[8%] z-10">
           <Image
-            src="/images/logo/prime-global-logo.png"
-            alt="Prime Global"
+            src="/images/logo/prime-global-mark.png"
+            alt="Prime Global globe and arrow"
             fill
             priority
-            sizes="(min-width: 1024px) 340px, (min-width: 768px) 310px, (min-width: 640px) 270px, 205px"
-            className="object-contain drop-shadow-[0_0_36px_rgba(201,162,75,0.4)]"
+            sizes="(min-width: 1024px) 430px, (min-width: 768px) 390px, 300px"
+            className="object-contain drop-shadow-[0_0_28px_rgba(0,119,255,0.38)]"
           />
+        </div>
+      </div>
+
+      {/* Separate silver and blue wordmark */}
+      <div className="-mt-10 flex flex-col items-center text-center sm:-mt-12">
+        <span
+          className="bg-gradient-to-b from-white via-slate-200 to-slate-500 bg-clip-text font-serif text-[64px] font-semibold leading-[0.9] tracking-[0.08em] text-transparent drop-shadow-[0_6px_12px_rgba(0,0,0,0.7)] sm:text-[78px] md:text-[92px]"
+        >
+          PRIME
+        </span>
+
+        <div className="mt-3 flex items-center gap-3">
+          <span className="h-px w-10 bg-gradient-to-r from-transparent to-blue-400" />
+
+          <span className="bg-gradient-to-b from-blue-200 via-blue-400 to-blue-700 bg-clip-text text-[21px] font-semibold tracking-[0.42em] text-transparent sm:text-[25px]">
+            GLOBAL
+          </span>
+
+          <span className="h-px w-10 bg-gradient-to-l from-transparent to-blue-400" />
         </div>
       </div>
     </div>
