@@ -6,15 +6,15 @@ import { OrbitAccent } from "./OrbitAccent";
 export function HeroLogoLockup() {
   return (
     <div className="relative mx-auto flex w-full items-center justify-center">
-      <div className="relative aspect-square w-[370px] sm:w-[440px] md:w-[500px] lg:w-[550px]">
+      <div className="relative aspect-square w-[420px] sm:w-[480px] md:w-[550px] lg:w-[610px]">
 
         {/* Subtle orbital lines only — no blue glow */}
-        <div className="absolute inset-[5%] z-0 opacity-45">
+        <div className="absolute inset-[12%] z-0 opacity-45">
           <OrbitAccent />
         </div>
 
         {/* Original globe + arrow + PRIME GLOBAL typography */}
-        <div className="absolute inset-[6%] z-10">
+        <div className="absolute inset-[1%] z-10">
           <Image
             src="/images/logo/prime-global-logo-clean.png"
             alt="Prime Global"
