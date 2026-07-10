@@ -16,7 +16,7 @@ export function HeroLogoLockup() {
         {/* Original globe + arrow + PRIME GLOBAL typography */}
         <div className="absolute inset-[6%] z-10">
           <Image
-            src="/images/logo/prime-global-logo.png"
+            src="/images/logo/prime-global-logo-clean.png"
             alt="Prime Global"
             fill
             priority
