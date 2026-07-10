@@ -8,85 +8,126 @@ export function HeroContent() {
   const t = useTranslations("hero");
 
   return (
-    <div className="max-w-xl text-center md:text-start">
+    <div className="w-full max-w-2xl text-center md:text-start">
       {/* Eyebrow */}
       <div
-        className="mb-6 inline-flex animate-fade-up items-center gap-2 text-[13px] font-semibold uppercase tracking-[0.14em] text-gold opacity-0"
+        className="mb-5 inline-flex animate-fade-up items-center gap-3 opacity-0"
         style={{ animationDelay: "0.1s" }}
       >
-        <span className="h-1 w-1 rounded-full bg-gold" />
-        {t("eyebrow")}
+        <span
+          aria-hidden="true"
+          className="h-px w-8 bg-gradient-to-r from-transparent to-blue-400/90 md:from-blue-400/90 md:to-transparent"
+        />
+
+        <span className="text-[12px] font-semibold uppercase tracking-[0.2em] text-blue-300 sm:text-[13px]">
+          {t("eyebrow")}
+        </span>
+
+        <span
+          aria-hidden="true"
+          className="h-px w-8 bg-gradient-to-l from-transparent to-blue-400/90 md:hidden"
+        />
       </div>
 
-      {/* Headline — plain warm-cream serif, per reference; gold is reserved
-          for the eyebrow, rule, and CTAs so it reads as a rare accent
-          rather than a competing focal point. */}
+      {/* Main headline */}
       <h1
-        className="animate-fade-up font-heading text-[38px] leading-[1.12] tracking-[-0.01em] text-text-primary opacity-0 sm:text-5xl md:text-[62px]"
+        className="animate-fade-up font-heading text-[40px] leading-[1.05] tracking-[-0.025em] text-white opacity-0 sm:text-[52px] md:text-[62px] lg:text-[72px]"
         style={{ animationDelay: "0.2s" }}
       >
-        {t("headlineLine1")} {t("headlineLine2")}
-        <br className="hidden sm:block" /> {t("headlineLine3")}
+        <span className="block">
+          {t("headlineLine1")} {t("headlineLine2")}
+        </span>
+
+        <span className="mt-1 block bg-gradient-to-r from-white via-slate-200 to-blue-300 bg-clip-text text-transparent">
+          {t("headlineLine3")}
+        </span>
       </h1>
 
-      {/* Thin gold rule beneath the headline — quiet, cinematic divider */}
+      {/* Accent line */}
       <div
-        className="mx-auto mt-7 h-px w-16 animate-fade-up bg-gradient-to-r from-gold/80 to-transparent opacity-0 md:mx-0"
-        style={{ animationDelay: "0.25s" }}
+        className="mx-auto mt-7 h-px w-24 animate-fade-up bg-gradient-to-r from-transparent via-blue-400/80 to-transparent opacity-0 md:mx-0 md:bg-gradient-to-r md:from-blue-400/90 md:via-blue-300/40 md:to-transparent"
+        style={{ animationDelay: "0.26s" }}
       />
 
-      {/* Subtext — more breathing room above/below for calmer vertical rhythm */}
+      {/* Supporting copy */}
       <p
-        className="mx-auto mt-8 max-w-md animate-fade-up text-base leading-[1.7] text-text-secondary opacity-0 md:mx-0 md:text-lg"
-        style={{ animationDelay: "0.3s" }}
+        className="mx-auto mt-7 max-w-xl animate-fade-up text-[15px] leading-7 text-slate-300/85 opacity-0 sm:text-base md:mx-0 md:text-[17px] md:leading-8"
+        style={{ animationDelay: "0.32s" }}
       >
         {t("subtext")}
       </p>
 
       {/* CTA buttons */}
       <div
-        className="mt-11 flex animate-fade-up flex-col items-center gap-4 opacity-0 sm:flex-row md:items-start"
-        style={{ animationDelay: "0.4s" }}
+        className="mt-9 flex animate-fade-up flex-col items-center gap-3 opacity-0 sm:flex-row sm:justify-center md:justify-start"
+        style={{ animationDelay: "0.42s" }}
       >
         <Link
           href="/services"
-          className="group relative inline-flex w-full items-center justify-center gap-2 overflow-hidden rounded-[10px] bg-gradient-to-br from-accent-primary to-gold-muted px-8 py-[15px] text-[15px] font-semibold tracking-[0.01em] text-charcoal shadow-[0_4px_20px_rgba(201,162,75,0.35)] transition-all duration-300 ease-out hover:-translate-y-[3px] hover:shadow-[0_10px_36px_rgba(201,162,75,0.55)] active:scale-[0.98] active:translate-y-0 sm:w-auto"
+          className="group relative inline-flex min-h-[52px] w-full items-center justify-center gap-3 overflow-hidden rounded-xl border border-blue-300/40 bg-gradient-to-r from-blue-600 via-blue-500 to-cyan-400 px-8 py-3.5 text-[15px] font-semibold text-white shadow-[0_12px_36px_rgba(30,120,255,0.28)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_18px_46px_rgba(30,120,255,0.42)] active:translate-y-0 active:scale-[0.98] sm:w-auto"
         >
-          {/* Light-sweep on hover — premium, understated shine rather than a color change */}
           <span
             aria-hidden="true"
-            className="pointer-events-none absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/40 to-transparent transition-transform duration-700 ease-out group-hover:translate-x-full"
+            className="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/35 to-transparent transition-transform duration-700 group-hover:translate-x-full"
           />
-          <span className="relative">{t("ctaPrimary")}</span>
+
+          <span className="relative z-10">{t("ctaPrimary")}</span>
+
           <svg
-            width="14"
-            height="14"
-            viewBox="0 0 14 14"
+            width="16"
+            height="16"
+            viewBox="0 0 16 16"
             fill="none"
-            className="relative rtl:rotate-180 transition-transform duration-300 ease-out group-hover:translate-x-1 rtl:group-hover:-translate-x-1"
+            className="relative z-10 transition-transform duration-300 group-hover:translate-x-1 rtl:rotate-180 rtl:group-hover:-translate-x-1"
             aria-hidden="true"
           >
-            <path d="M2 7h10M8 3l4 4-4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+            <path
+              d="M2.5 8h11M9 3.5 13.5 8 9 12.5"
+              stroke="currentColor"
+              strokeWidth="1.6"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
           </svg>
         </Link>
 
         <button
           type="button"
           onClick={() => smoothScrollTo("contact")}
-          className="group inline-flex w-full items-center justify-center gap-2 rounded-[10px] border-[1.5px] border-white/20 bg-white/[0.02] px-8 py-[15px] text-[15px] font-semibold tracking-[0.01em] text-text-primary backdrop-blur-sm transition-all duration-300 ease-out hover:-translate-y-[3px] hover:border-gold hover:bg-gold/[0.08] hover:shadow-[0_10px_28px_rgba(201,162,75,0.18)] active:scale-[0.98] active:translate-y-0 sm:w-auto"
+          className="group inline-flex min-h-[52px] w-full items-center justify-center gap-3 rounded-xl border border-white/15 bg-white/[0.035] px-8 py-3.5 text-[15px] font-semibold text-slate-100 backdrop-blur-xl transition-all duration-300 hover:-translate-y-1 hover:border-blue-300/50 hover:bg-blue-400/[0.07] hover:shadow-[0_14px_36px_rgba(20,90,180,0.18)] active:translate-y-0 active:scale-[0.98] sm:w-auto"
         >
-          {t("ctaSecondary")}
+          <span>{t("ctaSecondary")}</span>
+
           <svg
-            width="14"
-            height="14"
-            viewBox="0 0 14 14"
+            width="16"
+            height="16"
+            viewBox="0 0 16 16"
             fill="none"
-            className="rtl:rotate-180 opacity-0 -translate-x-1 transition-all duration-300 ease-out group-hover:translate-x-0 group-hover:opacity-100 rtl:group-hover:rotate-180"
+            className="opacity-50 transition-all duration-300 group-hover:translate-x-1 group-hover:opacity-100 rtl:rotate-180 rtl:group-hover:-translate-x-1"
             aria-hidden="true"
           >
-            <path d="M2 7h10M8 3l4 4-4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+            <path
+              d="M2.5 8h11M9 3.5 13.5 8 9 12.5"
+              stroke="currentColor"
+              strokeWidth="1.6"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
           </svg>
         </button>
+      </div>
+
+      {/* Trust note */}
+      <div
+        className="mt-6 flex animate-fade-up items-center justify-center gap-2 text-xs text-slate-400 opacity-0 md:justify-start"
+        style={{ animationDelay: "0.5s" }}
+      >
+        <span
+          aria-hidden="true"
+          className="h-1.5 w-1.5 rounded-full bg-blue-400 shadow-[0_0_10px_rgba(96,165,250,0.9)]"
+        />
+
+        <span>Prime Global · Development · Logistics · Recruitment</span>
       </div>
     </div>
   );
