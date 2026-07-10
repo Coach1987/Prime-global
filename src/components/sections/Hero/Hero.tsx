@@ -4,10 +4,6 @@ import { HeroContent } from "./HeroContent";
 import { HeroStats } from "./HeroStats";
 import { ScrollIndicator } from "./ScrollIndicator";
 
-// Two-column layout per spec section 9: left-aligned premium messaging,
-// cinematic globe on the right. Uses logical start/end ordering (not
-// hardcoded left/right) so this mirrors correctly in Arabic (RTL) —
-// content leads in both reading directions, logo sits on the far side.
 export function Hero() {
   return (
     <section
@@ -16,13 +12,13 @@ export function Hero() {
     >
       <HeroBackground />
 
-      <div className="relative z-10 mx-auto grid w-full max-w-[1280px] grid-cols-1 items-center gap-20 px-5 py-20 md:grid-cols-[1.1fr_0.9fr] md:gap-14 md:px-8 md:py-0 lg:gap-20">
-        <div className="order-2 flex flex-col items-center text-center md:order-1 md:items-start md:text-start">
+      <div className="relative z-10 mx-auto grid w-full max-w-[1280px] grid-cols-1 items-center gap-8 px-5 py-10 md:grid-cols-[1.08fr_0.92fr] md:gap-10 md:px-8 md:py-0 lg:gap-12">
+        <div className="order-2 -mt-16 flex flex-col items-center text-center md:order-1 md:mt-0 md:items-start md:text-start">
           <HeroContent />
           <HeroStats />
         </div>
 
-        <div className="order-1 md:order-2">
+        <div className="order-1 flex items-center justify-center md:order-2">
           <HeroLogoLockup />
         </div>
       </div>
