@@ -5,45 +5,60 @@ export function OrbitAccent() {
       className="pointer-events-none absolute inset-0"
     >
       <svg
-        viewBox="0 0 500 500"
+        viewBox="0 0 600 600"
         className="h-full w-full overflow-visible"
         fill="none"
       >
-        <g className="origin-center animate-[spin_28s_linear_infinite]">
+        {/* First orbit */}
+        <g className="origin-center animate-[spin_42s_linear_infinite]">
           <ellipse
-            cx="250"
-            cy="250"
-            rx="220"
-            ry="118"
-            transform="rotate(-18 250 250)"
-            stroke="rgba(55,150,255,0.22)"
-            strokeWidth="1.2"
+            cx="300"
+            cy="300"
+            rx="255"
+            ry="128"
+            transform="rotate(-18 300 300)"
+            stroke="rgba(115,185,255,0.12)"
+            strokeWidth="0.8"
           />
 
           <circle
-            cx="458"
-            cy="185"
-            r="3"
-            fill="rgba(95,180,255,0.75)"
+            cx="552"
+            cy="230"
+            r="2"
+            fill="#8CC8FF"
           />
         </g>
 
-        <g className="origin-center animate-[spin_36s_linear_infinite_reverse]">
+        {/* Second orbit */}
+        <g className="origin-center animate-[spin_58s_linear_infinite_reverse]">
           <ellipse
-            cx="250"
-            cy="250"
-            rx="205"
-            ry="104"
-            transform="rotate(38 250 250)"
-            stroke="rgba(115,190,255,0.14)"
-            strokeWidth="1"
+            cx="300"
+            cy="300"
+            rx="235"
+            ry="115"
+            transform="rotate(32 300 300)"
+            stroke="rgba(170,215,255,0.08)"
+            strokeWidth="0.8"
           />
 
           <circle
-            cx="104"
-            cy="370"
-            r="2.5"
-            fill="rgba(125,200,255,0.55)"
+            cx="105"
+            cy="395"
+            r="1.8"
+            fill="#B8DDFF"
+          />
+        </g>
+
+        {/* Third orbit */}
+        <g className="origin-center animate-[spin_70s_linear_infinite]">
+          <ellipse
+            cx="300"
+            cy="300"
+            rx="214"
+            ry="100"
+            transform="rotate(-63 300 300)"
+            stroke="rgba(120,190,255,0.05)"
+            strokeWidth="0.7"
           />
         </g>
       </svg>
