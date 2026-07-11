@@ -74,6 +74,39 @@ export function Footer() {
 
   const year = new Date().getFullYear();
 
+  const contactItems = [
+    {
+      href: WHATSAPP_LINK,
+      label: CONTACT_INFO.whatsappNumber,
+      icon: (
+        <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" aria-hidden="true">
+          <path d="M6.6 19.4 5 21l1.6-1.6A9.6 9.6 0 1 0 5.1 6.3l1.3 1.3a7.3 7.3 0 1 1 1.4 10.7l-.2.1Z" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      ),
+    },
+    {
+      href: EMAIL_LINK,
+      label: CONTACT_INFO.email,
+      icon: (
+        <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" aria-hidden="true">
+          <path d="M4 6h16v12H4z" stroke="currentColor" strokeWidth="1.6" />
+          <path d="m5 7 7 6 7-6" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      ),
+    },
+    {
+      href: WEBSITE_LINK,
+      label: CONTACT_INFO.website,
+      icon: (
+        <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" aria-hidden="true">
+          <circle cx="12" cy="12" r="8" stroke="currentColor" strokeWidth="1.6" />
+          <path d="M5 10.5h14M5 13.5h14" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+          <path d="M12 4.2c2.2 2.4 3.4 4.5 3.4 7.8 0 3.3-1.2 5.4-3.4 7.8-2.2-2.4-3.4-4.5-3.4-7.8 0-3.3 1.2-5.4 3.4-7.8Z" stroke="currentColor" strokeWidth="1.6" />
+        </svg>
+      ),
+    },
+  ];
+
   return (
     <footer
       ref={footerRef}
@@ -96,7 +129,6 @@ export function Footer() {
       </div>
 
       <div className="relative mx-auto w-full max-w-[1380px] px-5 py-16 sm:px-6 md:px-10 md:py-20 lg:py-24">
-        {/* Top identity line */}
         <div className="mb-14 flex items-center gap-4">
           <span className="h-px flex-1 bg-gradient-to-r from-transparent to-blue-400/25" />
           <span className="h-1.5 w-1.5 rounded-full bg-blue-300 shadow-[0_0_12px_rgba(125,211,252,0.8)]" />
@@ -104,7 +136,6 @@ export function Footer() {
         </div>
 
         <div className="grid grid-cols-1 gap-12 sm:grid-cols-2 lg:grid-cols-[1.35fr_0.8fr_1fr_1.15fr] lg:gap-10">
-          {/* Brand */}
           <div data-footer-col>
             <Logo scrolled={false} />
 
@@ -183,67 +214,43 @@ export function Footer() {
             </div>
           </div>
 
-          {/* Quick links */}
           <div data-footer-col>
             <FooterColumn title={t("quickLinks")} links={quickLinks} />
           </div>
 
-          {/* Services */}
           <div data-footer-col>
-            <FooterColumn
-              title={tNav("services")}
-              links={serviceLinks}
-            />
+            <FooterColumn title={tNav("services")} links={serviceLinks} />
           </div>
 
-          {/* Contact */}
           <div data-footer-col>
             <h3 className="text-[12px] font-semibold uppercase tracking-[0.2em] text-blue-200/80">
               {t("contact")}
             </h3>
 
             <ul className="mt-6 space-y-5 text-[14px] text-slate-400">
-              <li>
-                <span className="mb-1 block text-[11px] uppercase tracking-[0.14em] text-slate-600">
-                  WhatsApp
-                </span>
-                <a
-                  href={WHATSAPP_LINK}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  dir="ltr"
-                  className="transition-colors duration-300 hover:text-blue-200"
-                >
-                  {CONTACT_INFO.whatsappNumber}
-                </a>
-              </li>
-
-              <li>
-                <span className="mb-1 block text-[11px] uppercase tracking-[0.14em] text-slate-600">
-                  Email
-                </span>
-                <a
-                  href={EMAIL_LINK}
-                  dir="ltr"
-                  className="break-all transition-colors duration-300 hover:text-blue-200"
-                >
-                  {CONTACT_INFO.email}
-                </a>
-              </li>
-
-              <li>
-                <span className="mb-1 block text-[11px] uppercase tracking-[0.14em] text-slate-600">
-                  Location
-                </span>
-                <span dir={locale === "ar" ? "rtl" : "ltr"}>
-                  {CONTACT_INFO.location}
-                </span>
+              {contactItems.map((item) => (
+                <li key={item.href}>
+                  <a
+                    href={item.href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="group inline-flex items-center gap-2 transition-colors duration-200 hover:text-blue-200"
+                    dir="ltr"
+                  >
+                    <span className="flex h-8 w-8 items-center justify-center rounded-full border border-white/[0.08] bg-white/[0.03] text-blue-200 transition-colors duration-200 group-hover:border-blue-300/40 group-hover:bg-blue-400/[0.08]">
+                      {item.icon}
+                    </span>
+                    <span className="break-all">{item.label}</span>
+                  </a>
+                </li>
+              ))}
+              <li dir={locale === "ar" ? "rtl" : "ltr"} className="pt-1 text-slate-400">
+                {CONTACT_INFO.location}
               </li>
             </ul>
           </div>
         </div>
 
-        {/* Bottom bar */}
         <div className="mt-16 flex flex-col items-center gap-5 border-t border-white/10 pt-8 text-center text-[13px] text-slate-500 sm:flex-row sm:justify-between sm:text-start">
           <p>{t("copyright", { year })}</p>
 

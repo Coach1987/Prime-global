@@ -25,6 +25,29 @@
       "satisfaction": { "value": "98%", "label": "Client Satisfaction" }
     }
   },
+  "about": {
+    "eyebrow": "About Prime Global",
+    "title": "Trusted support for ambitious business growth",
+    "description": "We combine local insight with global standards to support organizations with precision, discretion, and dependable execution.",
+    "capabilities": {
+      "recruitment": {
+        "title": "Recruitment",
+        "description": "Connecting ambitious teams with carefully matched talent for lasting impact."
+      },
+      "logistics": {
+        "title": "Logistics",
+        "description": "Coordinating reliable operational support with an emphasis on speed and clarity."
+      },
+      "businessDevelopment": {
+        "title": "Business Development",
+        "description": "Strengthening partnerships and growth opportunities with strategic, measured execution."
+      },
+      "consulting": {
+        "title": "Consulting",
+        "description": "Providing thoughtful guidance that helps clients navigate complex decisions with confidence."
+      }
+    }
+  },
   "services": {
     "eyebrow": "Our Services",
     "title": "Integrated Solutions for Every Need",

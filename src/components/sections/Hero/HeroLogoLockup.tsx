@@ -7,13 +7,10 @@ export function HeroLogoLockup() {
   return (
     <div className="relative mx-auto flex w-full items-center justify-center">
       <div className="relative aspect-square w-[560px] max-w-[94vw] sm:w-[620px] md:w-[700px] lg:w-[760px]">
-
-        {/* Orbit behind the globe */}
         <div className="absolute inset-[16%] z-0 opacity-20">
           <OrbitAccent />
         </div>
 
-        {/* Main Logo */}
         <div className="absolute inset-[-5%] z-10">
           <Image
             src="/images/logo/prime-global-logo-clean.png"

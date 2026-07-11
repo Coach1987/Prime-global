@@ -9,7 +9,6 @@ export function HeroContent() {
 
   return (
     <div className="w-full max-w-2xl text-center md:text-start">
-      {/* Eyebrow */}
       <div
         className="mb-5 inline-flex animate-fade-up items-center gap-3 opacity-0"
         style={{ animationDelay: "0.1s" }}
@@ -29,7 +28,6 @@ export function HeroContent() {
         />
       </div>
 
-      {/* Main headline */}
       <h1
         className="animate-fade-up font-heading text-[40px] leading-[1.05] tracking-[-0.025em] text-white opacity-0 sm:text-[52px] md:text-[62px] lg:text-[72px]"
         style={{ animationDelay: "0.2s" }}
@@ -43,13 +41,11 @@ export function HeroContent() {
         </span>
       </h1>
 
-      {/* Accent line */}
       <div
         className="mx-auto mt-7 h-px w-24 animate-fade-up bg-gradient-to-r from-transparent via-blue-400/80 to-transparent opacity-0 md:mx-0 md:bg-gradient-to-r md:from-blue-400/90 md:via-blue-300/40 md:to-transparent"
         style={{ animationDelay: "0.26s" }}
       />
 
-      {/* Supporting copy */}
       <p
         className="mx-auto mt-7 max-w-xl animate-fade-up text-[15px] leading-7 text-slate-300/85 opacity-0 sm:text-base md:mx-0 md:text-[17px] md:leading-8"
         style={{ animationDelay: "0.32s" }}
@@ -57,7 +53,6 @@ export function HeroContent() {
         {t("subtext")}
       </p>
 
-      {/* CTA buttons */}
       <div
         className="mt-9 flex animate-fade-up flex-col items-center gap-3 opacity-0 sm:flex-row sm:justify-center md:justify-start"
         style={{ animationDelay: "0.42s" }}
@@ -117,7 +112,6 @@ export function HeroContent() {
         </button>
       </div>
 
-      {/* Trust note */}
       <div
         className="mt-6 flex animate-fade-up items-center justify-center gap-2 text-xs text-slate-400 opacity-0 md:justify-start"
         style={{ animationDelay: "0.5s" }}
