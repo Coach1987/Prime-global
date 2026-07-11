@@ -1,15 +1,19 @@
 "use client";
 
 import { useTranslations } from "next-intl";
+import {
+  CONTACT_INFO,
+  WHATSAPP_LINK,
+  EMAIL_LINK,
+  WEBSITE_LINK,
+} from "@/lib/constants/contact";
 import { IconBadge } from "@/components/ui/IconBadge";
-import { CONTACT_INFO, WHATSAPP_LINK, EMAIL_LINK, WEBSITE_LINK } from "@/lib/constants/contact";
 
 export function ContactInfoCard() {
   const t = useTranslations("contact.info");
 
   const rows = [
     {
-      key: "whatsapp",
       icon: "whatsapp" as const,
       label: t("whatsapp"),
       value: CONTACT_INFO.whatsappNumber,
@@ -17,7 +21,6 @@ export function ContactInfoCard() {
       external: true,
     },
     {
-      key: "email",
       icon: "mail" as const,
       label: t("email"),
       value: CONTACT_INFO.email,
@@ -25,7 +28,6 @@ export function ContactInfoCard() {
       external: false,
     },
     {
-      key: "website",
       icon: "globe" as const,
       label: t("website"),
       value: CONTACT_INFO.website,
@@ -33,27 +35,57 @@ export function ContactInfoCard() {
       external: true,
     },
     {
-      key: "location",
       icon: "pin" as const,
       label: t("location"),
       value: CONTACT_INFO.location,
-      href: null as string | null,
+      href: null,
       external: false,
     },
   ];
 
   return (
-    <div className="rounded-[20px] border border-white/[0.08] bg-white/[0.03] p-8 backdrop-blur-md md:p-10">
-      <h2 className="font-heading text-2xl text-text-primary">{t("title")}</h2>
+    <div
+      className="
+      relative
+      overflow-hidden
+      rounded-[30px]
+      border
+      border-white/10
+      bg-gradient-to-b
+      from-white/[0.05]
+      to-white/[0.02]
+      p-8
+      backdrop-blur-2xl
+      shadow-[0_24px_70px_rgba(0,0,0,.35)]
+      md:p-10
+    "
+    >
+      <div
+        aria-hidden
+        className="absolute -right-24 -top-24 h-56 w-56 rounded-full bg-blue-500/10 blur-[120px]"
+      />
 
-      <div className="mt-8 flex flex-col gap-6">
+      <h2 className="relative font-heading text-3xl text-white">
+        {t("title")}
+      </h2>
+
+      <div className="mt-3 h-px w-16 bg-gradient-to-r from-blue-300 to-transparent" />
+
+      <div className="mt-10 space-y-6">
         {rows.map((row) => {
           const content = (
-            <div className="flex items-center gap-4">
-              <IconBadge icon={row.icon} size="sm" />
-              <div className="text-start">
-                <p className="text-[13px] text-text-tertiary">{row.label}</p>
-                <p className="mt-0.5 text-[15px] font-medium text-text-primary" dir="ltr">
+            <div className="flex items-center gap-5">
+              <IconBadge icon={row.icon} size="md" />
+
+              <div>
+                <p className="text-xs uppercase tracking-[0.15em] text-slate-400">
+                  {row.label}
+                </p>
+
+                <p
+                  dir="ltr"
+                  className="mt-1 text-[15px] font-medium text-white"
+                >
                   {row.value}
                 </p>
               </div>
@@ -61,13 +93,25 @@ export function ContactInfoCard() {
           );
 
           return (
-            <div key={row.key} className="border-b border-white/[0.08] pb-6 last:border-0 last:pb-0">
+            <div
+              key={row.label}
+              className="
+              rounded-2xl
+              border
+              border-white/6
+              bg-white/[0.02]
+              p-5
+              transition-all
+              duration-300
+              hover:border-blue-300/35
+              hover:bg-blue-500/[0.04]
+            "
+            >
               {row.href ? (
                 <a
                   href={row.href}
                   target={row.external ? "_blank" : undefined}
                   rel={row.external ? "noopener noreferrer" : undefined}
-                  className="group -m-2 flex items-center rounded-xl p-2 transition-colors duration-200 hover:bg-white/[0.04]"
                 >
                   {content}
                 </a>
