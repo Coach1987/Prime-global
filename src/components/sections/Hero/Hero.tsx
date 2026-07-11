@@ -12,11 +12,11 @@ export function Hero() {
       <HeroBackground />
 
       <div className="relative z-10 mx-auto flex w-full max-w-[1160px] flex-1 flex-col items-center px-4 pb-12 pt-1 sm:px-6 sm:pb-14 sm:pt-3 md:px-8 md:pt-5">
-        <div className="mt-6 flex w-full justify-center sm:mt-5 md:mt-3">
+        <div className="mt-4 flex w-full justify-center sm:mt-5 md:mt-3">
           <HeroLogoLockup />
         </div>
 
-        <div className="mt-8 flex w-full justify-center sm:mt-9 md:mt-10">
+        <div className="mt-6 flex w-full justify-center sm:mt-7 md:mt-8">
           <HeroContent />
         </div>
       </div>
