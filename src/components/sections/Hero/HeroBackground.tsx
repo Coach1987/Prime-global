@@ -35,9 +35,9 @@ export function HeroBackground() {
     };
   }, []);
 
-  const mapTransform = `translate3d(${offset.x * 0.5}px, ${offset.y * 0.5}px, 0)`;
-  const networkTransform = `translate3d(${offset.x * 0.75}px, ${offset.y * 0.75}px, 0)`;
-  const glowTransform = `translate3d(${offset.x}px, ${offset.y}px, 0)`;
+  const mapTransform = `translate3d(${offset.x * 0.4}px, ${offset.y * 0.4}px, 0)`;
+  const networkTransform = `translate3d(${offset.x * 0.6}px, ${offset.y * 0.6}px, 0)`;
+  const glowTransform = `translate3d(${offset.x * 0.8}px, ${offset.y * 0.8}px, 0)`;
 
   return (
     <div
@@ -92,25 +92,45 @@ export function HeroBackground() {
               <stop offset="50%" stopColor="rgba(125,211,252,0.9)" />
               <stop offset="100%" stopColor="rgba(255,255,255,0.08)" />
             </linearGradient>
+            <linearGradient id="routeGlow" x1="0%" y1="0%" x2="100%" y2="0%">
+              <stop offset="0%" stopColor="rgba(255,255,255,0)" />
+              <stop offset="50%" stopColor="rgba(140,200,255,0.95)" />
+              <stop offset="100%" stopColor="rgba(255,255,255,0)" />
+            </linearGradient>
           </defs>
-          <g opacity="0.7" stroke="url(#networkLine)" strokeWidth="1" fill="none" strokeLinecap="round">
-            <path d="M158 160 C240 130, 322 120, 390 168" />
-            <path d="M390 168 C470 220, 522 228, 596 188" />
-            <path d="M596 188 C700 140, 810 148, 910 190" />
-            <path d="M390 168 C390 234, 372 320, 320 380" />
-            <path d="M320 380 C302 420, 292 470, 312 546" />
-            <path d="M596 188 C624 280, 612 356, 560 450" />
-            <path d="M560 450 C540 492, 514 520, 472 546" />
+          <g opacity="0.72" stroke="url(#networkLine)" strokeWidth="1" fill="none" strokeLinecap="round">
+            <path d="M166 176 C242 146, 320 140, 392 182" />
+            <path d="M392 182 C482 226, 532 232, 604 190" />
+            <path d="M604 190 C708 142, 820 148, 930 196" />
+            <path d="M392 182 C392 246, 372 324, 322 382" />
+            <path d="M322 382 C304 420, 296 468, 314 548" />
+            <path d="M604 190 C632 282, 620 356, 568 450" />
+            <path d="M568 450 C548 492, 520 520, 476 548" />
+          </g>
+          <g opacity="0.9" stroke="url(#routeGlow)" strokeWidth="1.6" fill="none" strokeLinecap="round" className="animate-[glow-pulse_12s_ease-in-out_infinite]">
+            <path d="M166 176 C242 146, 320 140, 392 182" />
+            <path d="M392 182 C482 226, 532 232, 604 190" />
+            <path d="M604 190 C708 142, 820 148, 930 196" />
+            <path d="M392 182 C392 246, 372 324, 322 382" />
+            <path d="M322 382 C304 420, 296 468, 314 548" />
+            <path d="M604 190 C632 282, 620 356, 568 450" />
+            <path d="M568 450 C548 492, 520 520, 476 548" />
           </g>
           <g className="animate-[glow-pulse_9s_ease-in-out_infinite]">
-            <circle cx="158" cy="160" r="2.8" fill="#F8FAFC" />
-            <circle cx="390" cy="168" r="3.1" fill="#8CC8FF" />
-            <circle cx="596" cy="188" r="3.1" fill="#F8FAFC" />
-            <circle cx="910" cy="190" r="2.8" fill="#8CC8FF" />
-            <circle cx="320" cy="380" r="2.8" fill="#F8FAFC" />
-            <circle cx="312" cy="546" r="2.8" fill="#8CC8FF" />
-            <circle cx="560" cy="450" r="2.8" fill="#F8FAFC" />
-            <circle cx="472" cy="546" r="2.8" fill="#8CC8FF" />
+            <circle cx="166" cy="176" r="3.2" fill="#F8FAFC" />
+            <circle cx="392" cy="182" r="3.4" fill="#8CC8FF" />
+            <circle cx="604" cy="190" r="3.4" fill="#F8FAFC" />
+            <circle cx="930" cy="196" r="3.2" fill="#8CC8FF" />
+            <circle cx="322" cy="382" r="3.2" fill="#F8FAFC" />
+            <circle cx="314" cy="548" r="3.2" fill="#8CC8FF" />
+            <circle cx="568" cy="450" r="3.2" fill="#F8FAFC" />
+            <circle cx="476" cy="548" r="3.2" fill="#8CC8FF" />
+          </g>
+          <g className="animate-[glow-pulse_8s_ease-in-out_infinite]">
+            <circle cx="166" cy="176" r="10" fill="rgba(140,200,255,0.12)" />
+            <circle cx="930" cy="196" r="10" fill="rgba(140,200,255,0.1)" />
+            <circle cx="314" cy="548" r="10" fill="rgba(140,200,255,0.1)" />
+            <circle cx="476" cy="548" r="10" fill="rgba(140,200,255,0.1)" />
           </g>
         </svg>
       </div>
