@@ -140,7 +140,6 @@ if (!routing.locales.includes(locale as "en" | "ar")) {
           {/* JSON-LD structured data for search engines */}
           <script
             type="application/ld+json"
-            // eslint-disable-next-line react/no-danger
             dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationJsonLd) }}
           />
 
