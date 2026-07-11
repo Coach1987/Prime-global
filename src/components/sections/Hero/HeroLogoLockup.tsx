@@ -7,7 +7,7 @@ export function HeroLogoLockup() {
   return (
     <div className="relative mx-auto flex w-full items-center justify-center px-0">
       <div className="relative aspect-[1.26/1] w-[min(102vw,760px)] max-w-[760px] sm:w-[min(90vw,720px)] sm:max-w-[720px] lg:w-[min(76vw,780px)] lg:max-w-[780px]">
-        <div className="absolute inset-[-7%] rounded-full bg-[radial-gradient(circle_at_50%_40%,rgba(69,172,255,0.46),transparent_54%),radial-gradient(circle_at_50%_44%,rgba(112,198,255,0.22),transparent_38%)] blur-[38px]" />
+        <div className="absolute inset-[-7%] rounded-full bg-[radial-gradient(circle_at_50%_40%,rgba(69,172,255,0.52),transparent_56%),radial-gradient(circle_at_50%_44%,rgba(112,198,255,0.24),transparent_40%)] blur-[40px]" />
         <div className="absolute inset-[0.5%] opacity-95">
           <OrbitAccent />
         </div>
