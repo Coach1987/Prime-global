@@ -17,12 +17,10 @@
  * NEXT_PUBLIC_-prefixed variables are statically inlined into the client
  * bundle by Next.js at build time.
  *
- * Set NEXT_PUBLIC_SITE_URL=https://www.primeglobal.tn in the Vercel
- * project's Production environment variables once the real domain is
- * live. See README.md for the full deployment checklist.
+ * Set NEXT_PUBLIC_SITE_URL in Vercel Production to your canonical
+ * domain. If omitted, we fall back to the stable production alias for
+ * this project to avoid indexing ephemeral deployment URLs.
  */
 export const SITE_URL =
   process.env.NEXT_PUBLIC_SITE_URL ??
-  (process.env.NEXT_PUBLIC_VERCEL_URL
-    ? `https://${process.env.NEXT_PUBLIC_VERCEL_URL}`
-    : "https://www.primeglobal.tn");
+  "https://prime-global-ten.vercel.app";
