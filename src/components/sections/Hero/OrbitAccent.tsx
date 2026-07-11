@@ -18,41 +18,41 @@ export function OrbitAccent() {
 
         <ellipse
           cx="500"
-          cy="312"
-          rx="444"
-          ry="198"
-          transform="rotate(-16 500 320)"
-          stroke="rgba(120,186,255,0.42)"
+          cy="316"
+          rx="432"
+          ry="192"
+          transform="rotate(-14 500 316)"
+          stroke="rgba(120,186,255,0.46)"
           strokeWidth="1.9"
         />
         <ellipse
           cx="500"
-          cy="312"
-          rx="444"
-          ry="198"
-          transform="rotate(-16 500 320)"
-          stroke="rgba(95,167,255,0.12)"
+          cy="316"
+          rx="432"
+          ry="192"
+          transform="rotate(-14 500 316)"
+          stroke="rgba(100,176,255,0.16)"
           strokeWidth="3.8"
           strokeLinecap="round"
         />
 
-        <circle cx="126" cy="430" r="18" fill="url(#heroOrbitPoint)" opacity="0.9" />
-        <circle cx="840" cy="162" r="16" fill="url(#heroOrbitPoint)" opacity="0.88" />
-        <circle cx="750" cy="520" r="14" fill="url(#heroOrbitPoint)" opacity="0.72" />
+        <circle cx="144" cy="454" r="18" fill="url(#heroOrbitPoint)" opacity="0.9" />
+        <circle cx="846" cy="176" r="16" fill="url(#heroOrbitPoint)" opacity="0.88" />
+        <circle cx="744" cy="516" r="13" fill="url(#heroOrbitPoint)" opacity="0.7" />
 
-        <circle cx="126" cy="430" r="3.6" fill="rgba(150,220,255,0.95)" />
-        <circle cx="840" cy="162" r="3.4" fill="rgba(150,220,255,0.95)" />
-        <circle cx="750" cy="520" r="3" fill="rgba(150,220,255,0.9)" />
+        <circle cx="144" cy="454" r="3.6" fill="rgba(150,220,255,0.95)" />
+        <circle cx="846" cy="176" r="3.4" fill="rgba(150,220,255,0.95)" />
+        <circle cx="744" cy="516" r="3" fill="rgba(150,220,255,0.9)" />
 
         <ellipse
           cx="500"
-          cy="312"
-          rx="444"
-          ry="198"
-          transform="rotate(-16 500 320)"
-          stroke="rgba(132,196,255,0.14)"
+          cy="316"
+          rx="432"
+          ry="192"
+          transform="rotate(-14 500 316)"
+          stroke="rgba(132,196,255,0.18)"
           strokeWidth="0.9"
-          strokeDasharray="1.4 10"
+          strokeDasharray="1.4 9"
         />
       </svg>
     </div>

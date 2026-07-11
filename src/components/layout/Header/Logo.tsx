@@ -15,24 +15,24 @@ export function Logo({ scrolled }: LogoProps) {
     <Link
       href="/"
       aria-label={t("homeLabel")}
-      className="group relative flex shrink-0 items-center"
+      className="group relative flex shrink-0 items-center -translate-y-[1px] md:-translate-y-[2px]"
     >
-      <span className="relative h-[38px] w-[56px] sm:h-[42px] sm:w-[62px] md:hidden">
+      <span className="relative h-[42px] w-[62px] sm:h-[46px] sm:w-[68px] md:hidden">
         <Image
           src="/images/logo/prime-global-mark.png"
           alt="Prime Global"
           fill
           priority
-          sizes="62px"
-          className="object-contain drop-shadow-[0_0_16px_rgba(89,166,255,0.26)] transition-transform duration-500 group-hover:scale-[1.02]"
+          sizes="68px"
+          className="object-contain object-left-center drop-shadow-[0_0_18px_rgba(89,166,255,0.28)] transition-transform duration-500 group-hover:scale-[1.02]"
         />
       </span>
 
       <span
         className={
           scrolled
-            ? "relative hidden h-[48px] w-[194px] md:block md:h-[50px] md:w-[204px]"
-            : "relative hidden h-[54px] w-[218px] md:block md:h-[58px] md:w-[232px]"
+            ? "relative hidden h-[52px] w-[214px] md:block md:h-[54px] md:w-[222px]"
+            : "relative hidden h-[58px] w-[236px] md:block md:h-[62px] md:w-[248px]"
         }
       >
         <Image
@@ -40,8 +40,8 @@ export function Logo({ scrolled }: LogoProps) {
           alt="Prime Global"
           fill
           priority
-          sizes="(max-width: 430px) 194px, 232px"
-          className="object-contain drop-shadow-[0_0_16px_rgba(89,166,255,0.26)] transition-transform duration-500 group-hover:scale-[1.02]"
+          sizes="(max-width: 430px) 214px, 248px"
+          className="object-contain object-left-center drop-shadow-[0_0_18px_rgba(89,166,255,0.28)] transition-transform duration-500 group-hover:scale-[1.02]"
         />
       </span>
     </Link>
