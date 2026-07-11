@@ -1,0 +1,58 @@
+
+> prime-global@1.0.0 build
+> next build
+
+   ▲ Next.js 15.1.12
+
+   Creating an optimized production build ...
+ ✓ Compiled successfully
+   Linting and checking validity of types ...
+
+./src/app/[locale]/layout.tsx
+143:13  Warning: Unused eslint-disable directive (no problems were reported from 'react/no-danger').
+
+info  - Need to disable some ESLint rules? Learn more here: https://nextjs.org/docs/app/api-reference/config/eslint#disabling-rules
+   Collecting page data ...
+   Generating static pages (0/18) ...
+   Generating static pages (4/18) 
+   Generating static pages (8/18) 
+   Generating static pages (13/18) 
+ ✓ Generating static pages (18/18)
+   Finalizing page optimization ...
+   Collecting build traces ...
+
+Route (app)                              Size     First Load JS
+┌ ○ /_not-found                          978 B           111 kB
+├ ● /[locale]                            40.9 kB         293 kB
+├   ├ /en
+├   └ /ar
+├ ● /[locale]/about                      181 B           110 kB
+├   ├ /en/about
+├   └ /ar/about
+├ ● /[locale]/contact                    3.85 kB         158 kB
+├   ├ /en/contact
+├   └ /ar/contact
+├ ƒ /[locale]/opengraph-image            0 B                0 B
+├ ● /[locale]/privacy-policy             181 B           110 kB
+├   ├ /en/privacy-policy
+├   └ /ar/privacy-policy
+├ ● /[locale]/services                   3.87 kB         193 kB
+├   ├ /en/services
+├   └ /ar/services
+├ ● /[locale]/terms                      181 B           110 kB
+├   ├ /en/terms
+├   └ /ar/terms
+├ ○ /robots.txt                          0 B                0 B
+└ ○ /sitemap.xml                         0 B                0 B
++ First Load JS shared by all            110 kB
+  ├ chunks/4bd1b696-b83f0c1b0dc5f4df.js  52.9 kB
+  ├ chunks/653-c50d372a74b83a07.js       54.9 kB
+  └ other shared chunks (total)          1.93 kB
+
+
+ƒ Middleware                             87.5 kB
+
+○  (Static)   prerendered as static content
+●  (SSG)      prerendered as static HTML (uses generateStaticParams)
+ƒ  (Dynamic)  server-rendered on demand
+
