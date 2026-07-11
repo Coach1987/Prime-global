@@ -9,51 +9,51 @@ interface LogoProps {
   scrolled: boolean;
 }
 
-/**
- * Header logo. Uses the real Prime Global logo artwork (cropped to just
- * the globe/ring/arrow mark, from the same source file as the Hero's
- * full lockup) — not a recreation. At header scale (~32-36px) the full
- * square lockup's wordmark would be illegibly small, so the mark image
- * is paired with a plain text wordmark beside it, matching standard
- * practice for compact header logos (icon + text, full lockup reserved
- * for larger placements like the Hero).
- */
 export function Logo({ scrolled }: LogoProps) {
   const t = useTranslations("nav");
 
   return (
     <Link
       href="/"
-      className="group flex items-center gap-2.5 shrink-0"
       aria-label={t("homeLabel")}
+      className="group flex shrink-0 items-center gap-3"
     >
-      {/* Real logo mark artwork */}
+      {/* Prime Global mark */}
       <span
         className={cn(
-          "relative shrink-0 transition-all duration-300 ease-premium-out",
-          scrolled ? "h-9 w-9" : "h-10 w-10"
+          "relative shrink-0 transition-all duration-500",
+          scrolled ? "h-10 w-10" : "h-12 w-12"
         )}
       >
+        <span
+          aria-hidden="true"
+          className="absolute inset-0 rounded-full bg-blue-400/10 blur-xl transition-all duration-500 group-hover:bg-blue-300/20"
+        />
+
         <Image
           src="/images/logo/prime-global-mark.png"
           alt=""
           fill
-          sizes="40px"
-          className="object-contain drop-shadow-[0_0_10px_rgba(201,162,75,0.4)]"
+          priority
+          sizes="48px"
+          className="relative object-contain drop-shadow-[0_0_14px_rgba(75,160,255,0.32)] transition-transform duration-500 group-hover:scale-105"
         />
       </span>
 
       {/* Wordmark */}
       <span
         className={cn(
-          "font-heading tracking-tight transition-all duration-300 ease-premium-out",
-          scrolled ? "text-[15px]" : "text-[17px]"
+          "flex items-baseline gap-1 font-heading transition-all duration-500",
+          scrolled ? "text-[16px]" : "text-[18px]"
         )}
       >
-        <span className="bg-gradient-to-b from-metallic-1 to-metallic-2 bg-clip-text text-transparent">
+        <span className="bg-gradient-to-b from-white via-slate-200 to-slate-500 bg-clip-text font-semibold tracking-[0.02em] text-transparent">
           PRIME
-        </span>{" "}
-        <span className="text-accent-primary">GLOBAL</span>
+        </span>
+
+        <span className="bg-gradient-to-b from-blue-200 via-blue-400 to-blue-600 bg-clip-text font-semibold tracking-[0.08em] text-transparent">
+          GLOBAL
+        </span>
       </span>
     </Link>
   );
