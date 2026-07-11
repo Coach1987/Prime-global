@@ -49,6 +49,51 @@
       }
     }
   },
+  "industries": {
+    "eyebrow": "Industries We Serve",
+    "title": "Precision support across sectors with global discipline",
+    "description": "Our work is tailored to organizations that value execution, discretion, and performance at scale.",
+    "items": {
+      "operations": { "title": "Operations", "description": "Structured support for high-complexity commercial and administrative environments." },
+      "talent": { "title": "Talent", "description": "Strategic hiring support for ambitious teams and critical roles." },
+      "logistics": { "title": "Logistics", "description": "Reliable coordination and delivery oversight for demanding operations." },
+      "strategy": { "title": "Strategy", "description": "Practical advisory support for growth, transformation, and resilience." }
+    }
+  },
+  "process": {
+    "eyebrow": "Our Process",
+    "title": "A measured path from ambition to execution",
+    "description": "Every engagement follows a disciplined framework designed for clarity, momentum, and measurable outcomes.",
+    "steps": {
+      "discover": { "phase": "01 • Discover", "title": "Understand the context", "description": "We begin by identifying priorities, constraints, and the outcome that matters most." },
+      "plan": { "phase": "02 • Plan", "title": "Design the approach", "description": "We shape a clear, practical framework aligned to business realities and timeline." },
+      "execute": { "phase": "03 • Execute", "title": "Deliver with rigor", "description": "Our team coordinates each detail with professionalism and operational discipline." },
+      "deliver": { "phase": "04 • Deliver", "title": "Sustain momentum", "description": "We remain engaged through implementation, refinement, and long-term support." }
+    }
+  },
+  "statsSection": {
+    "eyebrow": "Performance at a Glance",
+    "title": "Measured impact, trusted delivery",
+    "description": "The numbers reflect a commitment to dependability, responsiveness, and long-term value."
+  },
+  "partners": {
+    "eyebrow": "Trusted Partners",
+    "title": "A network built on trust, quality, and consistency",
+    "description": "Our reputation is strengthened through strong relationships and a standard of execution that clients can rely on.",
+    "items": {
+      "network": { "title": "Regional Network", "description": "Broad business relationships that support responsive execution across markets." },
+      "standards": { "title": "Elevated Standards", "description": "Professional delivery built around discipline, clarity, and accountability." },
+      "reach": { "title": "Global Reach", "description": "Solutions designed to support organizations operating beyond local boundaries." },
+      "delivery": { "title": "Reliable Delivery", "description": "A consistent approach focused on outcomes, quality, and follow-through." }
+    }
+  },
+  "enterpriseCta": {
+    "eyebrow": "Ready to engage",
+    "title": "Let’s shape a more refined, more effective operating model together.",
+    "description": "Whether you need support across recruitment, logistics, operations, or growth strategy, Prime Global offers a measured, executive-level approach.",
+    "primaryCta": "Start a Conversation",
+    "secondaryCta": "Explore Services"
+  },
   "services": {
     "eyebrow": "Our Services",
     "title": "Integrated Solutions for Every Need",

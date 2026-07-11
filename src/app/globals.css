@@ -34,3 +34,18 @@
     outline-offset: 2px;
   }
 }
+
+@keyframes orbit-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .orbit-anim {
+    animation: none !important;
+  }
+}

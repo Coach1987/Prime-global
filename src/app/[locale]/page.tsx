@@ -1,10 +1,14 @@
 import type { Metadata } from "next";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { Hero } from "@/components/sections/Hero";
-import { ServicesSection } from "@/components/sections/Services";
 import { WhyUsSection } from "@/components/sections/WhyUs";
+import { ServicesSection } from "@/components/sections/Services";
+import { IndustriesSection } from "@/components/sections/Industries/IndustriesSection";
+import { ProcessSection } from "@/components/sections/Process/ProcessSection";
+import { StatsSection } from "@/components/sections/Stats/StatsSection";
 import { TestimonialsSection } from "@/components/sections/Testimonials";
-import { FAQSection } from "@/components/sections/FAQ";
+import { PartnersSection } from "@/components/sections/Partners/PartnersSection";
+import { EnterpriseCtaSection } from "@/components/sections/CTA/EnterpriseCtaSection";
 import { ContactSection } from "@/components/sections/Contact";
 
 export async function generateMetadata({
@@ -38,10 +42,14 @@ export default async function HomePage({
   return (
     <main>
       <Hero />
-      <ServicesSection />
       <WhyUsSection />
+      <ServicesSection />
+      <IndustriesSection />
+      <ProcessSection />
+      <StatsSection />
       <TestimonialsSection />
-      <FAQSection />
+      <PartnersSection />
+      <EnterpriseCtaSection />
       <ContactSection />
     </main>
   );
