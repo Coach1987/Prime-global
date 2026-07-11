@@ -11,9 +11,15 @@ export function ScrollIndicator() {
         {t("scrollHint")}
       </span>
 
-      <div className="relative flex h-10 w-6 items-start justify-center rounded-full border border-white/15 bg-white/[0.03] p-1 backdrop-blur-sm">
-        <span className="mt-1 h-1.5 w-1.5 animate-bounce rounded-full bg-blue-300 shadow-[0_0_10px_rgba(125,211,252,0.8)]" />
+      <div className="flex items-center gap-2 rounded-full border border-white/12 bg-white/[0.03] px-3 py-2 backdrop-blur-sm">
+        <span className="h-1.5 w-1.5 rounded-full bg-gold shadow-[0_0_8px_rgba(201,162,75,0.7)]" />
+        <span className="h-1.5 w-1.5 rounded-full bg-slate-500/70" />
+        <span className="h-1.5 w-1.5 rounded-full bg-slate-500/70" />
       </div>
+
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" className="motion-reduce:animate-none animate-bounce" aria-hidden="true">
+        <path d="M3 6l5 5 5-5" stroke="rgba(255,255,255,0.6)" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
     </div>
   );
 }
