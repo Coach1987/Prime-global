@@ -10,74 +10,145 @@ interface ServiceCardProps {
   index: number;
 }
 
-export function ServiceCard({ service, index }: ServiceCardProps) {
+export function ServiceCard({
+  service,
+  index,
+}: ServiceCardProps) {
+
   const t = useTranslations(`services.items.${service.key}`);
-  const tCommon = useTranslations("services");
-  const indexLabel = String(index + 1).padStart(2, "0");
+  const common = useTranslations("services");
+
+  const number = String(index + 1).padStart(2, "0");
 
   return (
     <Link
-      // NOTE: individual /services/[slug] detail pages don't exist yet in
-      // this project — only /services (the index) is a real route. Linking
-      // to `/services/${service.slug}` would be a guaranteed 404. Pointing
-      // at the Contact section instead ensures the card leads somewhere
-      // real. Once detail pages are built, change this back to
-      // `/services/${service.slug}`.
       href="/contact"
-      className="group relative flex flex-col overflow-hidden rounded-[20px] border border-white/[0.08] bg-white/[0.03] p-8 backdrop-blur-md
-        transition-all duration-[280ms] ease-premium-out
-        hover:-translate-y-1.5 hover:border-accent-primary/50 hover:bg-white/[0.045]
-        hover:shadow-[0_16px_48px_rgba(201,162,75,0.18)]
-        focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-primary focus-visible:ring-offset-2 focus-visible:ring-offset-bg-primary"
+      className="
+      group
+      relative
+      flex
+      h-full
+      flex-col
+      overflow-hidden
+      rounded-[28px]
+      border
+      border-white/10
+      bg-gradient-to-b
+      from-white/[0.05]
+      to-white/[0.02]
+      p-8
+      backdrop-blur-2xl
+      transition-all
+      duration-500
+      hover:-translate-y-3
+      hover:border-blue-400/40
+      hover:shadow-[0_30px_80px_rgba(20,90,180,0.22)]
+      "
     >
-      {/* Faint large index number, top-right */}
-      <span
-        aria-hidden="true"
-        className="pointer-events-none absolute right-6 top-4 font-heading text-5xl text-white/[0.05] transition-colors duration-300 group-hover:text-accent-primary/10"
-      >
-        {indexLabel}
-      </span>
 
-      {/* Subtle gradient sweep on hover, anchored top-left */}
-      <span
+      {/* Ambient light */}
+      <div
         aria-hidden="true"
-        className="pointer-events-none absolute inset-0 opacity-0 transition-opacity duration-500 group-hover:opacity-100"
-        style={{
-          background:
-            "radial-gradient(120% 60% at 0% 0%, rgba(201,162,75,0.08) 0%, transparent 55%)",
-        }}
+        className="absolute -right-20 -top-20 h-44 w-44 rounded-full bg-blue-500/10 blur-3xl transition-all duration-500 group-hover:bg-blue-400/20"
       />
 
-      <IconBadge icon={service.icon} size="md" className="relative z-10" />
+      {/* Card Number */}
+      <span
+        className="
+        absolute
+        right-7
+        top-5
+        font-heading
+        text-6xl
+        font-bold
+        text-white/[0.035]
+        transition-all
+        duration-500
+        group-hover:text-blue-300/[0.08]
+        "
+      >
+        {number}
+      </span>
 
-      <h3 className="relative z-10 mt-6 font-heading text-xl text-text-primary">
+      {/* Icon */}
+      <div className="relative z-10">
+        <IconBadge
+          icon={service.icon}
+          size="md"
+          className="transition-transform duration-500 group-hover:scale-110"
+        />
+      </div>
+
+      {/* Title */}
+      <h3
+        className="
+        relative
+        z-10
+        mt-7
+        text-[25px]
+        font-heading
+        font-semibold
+        tracking-tight
+        text-white
+        "
+      >
         {t("title")}
       </h3>
 
-      <p className="relative z-10 mt-3 text-[15px] leading-relaxed text-text-secondary">
+      {/* Description */}
+      <p
+        className="
+        relative
+        z-10
+        mt-4
+        flex-1
+        text-[15px]
+        leading-7
+        text-slate-300
+        "
+      >
         {t("description")}
       </p>
 
-      {/* Learn more link, arrow slides right on hover */}
-      <span className="relative z-10 mt-6 inline-flex items-center gap-1.5 text-sm font-semibold text-accent-primary">
-        {tCommon("learnMore")}
+      {/* Divider */}
+      <div className="relative z-10 mt-7 h-px bg-gradient-to-r from-blue-400/30 to-transparent" />
+
+      {/* CTA */}
+      <div
+        className="
+        relative
+        z-10
+        mt-6
+        inline-flex
+        items-center
+        gap-3
+        text-[14px]
+        font-semibold
+        uppercase
+        tracking-[0.18em]
+        text-blue-300
+        "
+      >
+        {common("learnMore")}
+
         <svg
-          width="14"
-          height="14"
-          viewBox="0 0 14 14"
+          width="18"
+          height="18"
+          viewBox="0 0 18 18"
           fill="none"
-          className="rtl:rotate-180 transition-transform duration-300 ease-premium-out group-hover:translate-x-1 rtl:group-hover:-translate-x-1"
-          aria-hidden="true"
+          className="transition-transform duration-500 group-hover:translate-x-2 rtl:rotate-180 rtl:group-hover:-translate-x-2"
         >
           <path
-            d="M2 7h10M8 3l4 4-4 4"
+            d="M3 9h12M10 4l5 5-5 5"
             stroke="currentColor"
-            strokeWidth="1.5"
+            strokeWidth="1.6"
             strokeLinecap="round"
             strokeLinejoin="round"
           />
         </svg>
-      </span>
+
+      </div>
+
     </Link>
   );
 }
