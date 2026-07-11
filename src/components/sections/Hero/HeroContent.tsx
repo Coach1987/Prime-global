@@ -2,7 +2,6 @@
 
 import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/routing";
-import { smoothScrollTo } from "@/lib/utils/smoothScroll";
 
 export function HeroContent() {
   const t = useTranslations("hero");
