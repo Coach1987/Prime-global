@@ -16,10 +16,9 @@ import { MobileMenu } from "./MobileMenu";
 export function Header() {
   const t = useTranslations("nav");
   const isHome = useIsHome();
-  const scrolled = useScrolled(80);
+  const scrolled = useScrolled(60);
   const [menuOpen, setMenuOpen] = useState(false);
 
-  // Lock body scroll while the mobile menu is open.
   useEffect(() => {
     document.body.style.overflow = menuOpen ? "hidden" : "";
     return () => {
@@ -27,11 +26,12 @@ export function Header() {
     };
   }, [menuOpen]);
 
-  // Close the mobile menu automatically if the viewport grows to desktop width.
   useEffect(() => {
-    const mq = window.matchMedia("(min-width: 768px)");
+    const mq = window.matchMedia("(min-width:768px)");
     const handle = () => mq.matches && setMenuOpen(false);
+
     mq.addEventListener("change", handle);
+
     return () => mq.removeEventListener("change", handle);
   }, []);
 
@@ -46,18 +46,20 @@ export function Header() {
     <>
       <header
         className={cn(
-          "fixed inset-x-0 top-0 z-50 transition-all duration-300 ease-premium-out",
+          "fixed inset-x-0 top-0 z-50 transition-all duration-500",
           scrolled
-            ? "h-16 border-b border-gold/[0.12] bg-bg-primary/95 shadow-[0_4px_28px_rgba(0,0,0,0.35)] backdrop-blur-header"
-            : "h-[88px] bg-transparent"
+            ? "h-[74px] border-b border-white/10 bg-[#06111d]/75 backdrop-blur-2xl shadow-[0_18px_50px_rgba(0,0,0,0.35)]"
+            : "h-[92px] bg-transparent"
         )}
       >
-        <div className="mx-auto flex h-full max-w-[1280px] items-center justify-between px-5 md:px-8">
+        <div className="mx-auto flex h-full max-w-[1380px] items-center justify-between px-6 md:px-10">
+
           <Logo scrolled={scrolled} />
 
           <NavMenu />
 
           <div className="flex items-center gap-4">
+
             <div className="hidden md:block">
               <LanguageSwitcher />
             </div>
@@ -65,21 +67,24 @@ export function Header() {
             <Link
               href={isHome ? "#contact" : "/contact"}
               onClick={handleCtaClick}
-              className={cn(
-                "hidden md:inline-flex items-center rounded-[10px] border border-gold/40 bg-accent-primary px-6 py-[10px]",
-                "text-[13px] font-semibold uppercase tracking-[0.06em] text-charcoal",
-                "transition-all duration-200 ease-out hover:bg-gold-bright hover:border-gold-bright hover:-translate-y-0.5 active:scale-[0.98]"
-              )}
+              className="hidden md:inline-flex items-center rounded-xl border border-blue-300/30 bg-gradient-to-r from-blue-600 via-blue-500 to-cyan-400 px-7 py-3 text-sm font-semibold text-white transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_12px_35px_rgba(30,120,255,0.35)]"
             >
               {t("cta")}
             </Link>
 
-            <MenuToggle open={menuOpen} onToggle={() => setMenuOpen((v) => !v)} />
+            <MenuToggle
+              open={menuOpen}
+              onToggle={() => setMenuOpen((v) => !v)}
+            />
+
           </div>
         </div>
       </header>
 
-      <MobileMenu open={menuOpen} onClose={() => setMenuOpen(false)} />
+      <MobileMenu
+        open={menuOpen}
+        onClose={() => setMenuOpen(false)}
+      />
     </>
   );
 }
