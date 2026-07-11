@@ -11,7 +11,7 @@ const MAP_POINTS = [
 
 function WorldMapIllustration() {
   return (
-    <div className="pointer-events-none absolute inset-x-0 top-[6%] h-[68%] opacity-[0.98] sm:h-[70%] md:top-[4%] md:h-[72%]">
+    <div className="pointer-events-none absolute inset-x-0 top-[6%] h-[68%] opacity-95 sm:h-[70%] md:top-[4%] md:h-[72%]">
       <svg
         viewBox="0 0 1600 820"
         preserveAspectRatio="xMidYMid meet"
@@ -32,7 +32,7 @@ function WorldMapIllustration() {
         </defs>
 
         <rect width="1600" height="820" fill="url(#heroWorldGlow)" />
-        <g fill="rgba(123,192,255,0.2)">
+        <g fill="rgba(123,192,255,0.24)">
           <circle cx="220" cy="178" r="1.4" />
           <circle cx="342" cy="232" r="1.2" />
           <circle cx="594" cy="170" r="1.4" />
@@ -42,9 +42,9 @@ function WorldMapIllustration() {
           <circle cx="1400" cy="252" r="1.2" />
         </g>
 
-        <g fill="#9FD5FF" stroke="url(#heroDotGlow)" strokeWidth="0.62">
+        <g fill="#9FD5FF" stroke="url(#heroDotGlow)" strokeWidth="0.6">
           {MAP_POINTS.map(([x, y], index) => (
-            <circle key={`map-dot-${index}`} cx={x} cy={y} r={1.92 + ((index + 2) % 4) * 0.2} opacity={0.66 + ((index + 1) % 5) * 0.05} />
+            <circle key={`map-dot-${index}`} cx={x} cy={y} r={1.85 + ((index + 2) % 4) * 0.18} opacity={0.68 + ((index + 1) % 5) * 0.05} />
           ))}
         </g>
 
