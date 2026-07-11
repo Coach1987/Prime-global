@@ -85,7 +85,7 @@ export function WhyUsSection() {
           ref={rowRef}
           className="mt-16 grid gap-6 md:mt-20 md:grid-cols-3"
         >
-          {WHY_US_ITEMS.map((item, index) => (
+          {WHY_US_ITEMS.map((item) => (
             <div
               key={item.key}
               data-feature-card
