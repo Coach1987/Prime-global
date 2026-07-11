@@ -11,7 +11,7 @@ const MAP_POINTS = [
 
 function WorldMapIllustration() {
   return (
-    <div className="pointer-events-none absolute inset-x-0 top-[6%] h-[68%] opacity-80 sm:h-[70%] md:top-[4%] md:h-[72%]">
+    <div className="pointer-events-none absolute inset-x-0 top-[4%] h-[72%] opacity-78 sm:h-[74%] md:h-[76%]">
       <svg
         viewBox="0 0 1600 820"
         preserveAspectRatio="xMidYMid meet"
@@ -33,31 +33,23 @@ function WorldMapIllustration() {
 
         <rect width="1600" height="820" fill="url(#heroWorldGlow)" />
 
-        <g fill="rgba(123,192,255,0.2)">
-          <circle cx="220" cy="178" r="1.4" />
-          <circle cx="342" cy="232" r="1.2" />
-          <circle cx="594" cy="170" r="1.4" />
-          <circle cx="734" cy="232" r="1.2" />
-          <circle cx="910" cy="176" r="1.3" />
-          <circle cx="1216" cy="226" r="1.4" />
-          <circle cx="1400" cy="252" r="1.2" />
+        <g fill="rgba(123,192,255,0.16)">
+          <circle cx="180" cy="170" r="1.1" />
+          <circle cx="312" cy="216" r="1" />
+          <circle cx="474" cy="198" r="1.1" />
+          <circle cx="612" cy="168" r="1.1" />
+          <circle cx="748" cy="230" r="1" />
+          <circle cx="886" cy="176" r="1.1" />
+          <circle cx="1042" cy="188" r="1.1" />
+          <circle cx="1216" cy="226" r="1.1" />
+          <circle cx="1386" cy="246" r="1" />
+          <circle cx="1488" cy="232" r="1" />
         </g>
 
         <g fill="#9FD5FF" stroke="url(#heroDotGlow)" strokeWidth="0.6">
           {MAP_POINTS.map(([x, y], index) => (
-            <circle key={`map-dot-${index}`} cx={x} cy={y} r={1.85 + ((index + 2) % 4) * 0.18} opacity={0.55 + ((index + 1) % 5) * 0.06} />
+            <circle key={`map-dot-${index}`} cx={x} cy={y} r={1.7 + ((index + 2) % 4) * 0.16} opacity={0.42 + ((index + 1) % 5) * 0.05} />
           ))}
-        </g>
-
-        <g fill="none" stroke="rgba(76,153,255,0.12)" strokeWidth="1">
-          <path d="M104 216 C214 156 348 154 446 210" />
-          <path d="M552 186 C640 142 760 146 842 188" />
-          <path d="M872 182 C986 142 1110 146 1228 196" />
-          <path d="M1268 236 C1380 204 1480 208 1568 170" />
-          <path d="M174 378 C292 360 408 370 522 420" />
-          <path d="M592 330 C702 300 822 302 934 348" />
-          <path d="M1014 332 C1136 310 1254 318 1378 362" />
-          <path d="M1428 392 C1490 402 1544 424 1588 458" />
         </g>
       </svg>
     </div>
@@ -67,13 +59,13 @@ function WorldMapIllustration() {
 export function HeroBackground() {
   return (
     <div aria-hidden="true" className="absolute inset-0 overflow-hidden bg-[#050b16]">
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_36%,rgba(35,128,255,0.62),rgba(10,22,44,0.34)_18%,rgba(5,12,24,0.96)_44%,#040812_100%),radial-gradient(circle_at_50%_36%,rgba(86,188,255,0.42),transparent_22%),radial-gradient(circle_at_14%_20%,rgba(49,110,255,0.18),transparent_26%),radial-gradient(circle_at_86%_20%,rgba(81,197,255,0.16),transparent_24%)]" />
-      <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(8,18,35,0.15)_0%,rgba(5,10,20,0.34)_34%,rgba(4,8,16,0.96)_100%)]" />
-      <div className="absolute inset-0 opacity-[0.12] bg-[linear-gradient(rgba(154,200,255,0.18)_1px,transparent_1px),linear-gradient(90deg,rgba(154,200,255,0.12)_1px,transparent_1px)] bg-[size:96px_96px] [mask-image:radial-gradient(circle_at_50%_36%,black_0%,rgba(0,0,0,0.8)_40%,transparent_78%)]" />
-      <div className="absolute left-1/2 top-[37%] h-[540px] w-[540px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#2f7dff]/34 blur-[150px] sm:h-[720px] sm:w-[720px] sm:blur-[190px]" />
-      <div className="absolute left-1/2 top-[33%] h-[230px] w-[230px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#66c7ff]/28 blur-[78px] sm:h-[320px] sm:w-[320px] sm:blur-[110px]" />
-      <div className="absolute left-[6%] top-[18%] h-[320px] w-[320px] rounded-full bg-[#2b63ff]/12 blur-[140px] sm:h-[420px] sm:w-[420px] sm:blur-[170px]" />
-      <div className="absolute right-[4%] top-[16%] h-[280px] w-[280px] rounded-full bg-[#58b9ff]/12 blur-[128px] sm:h-[380px] sm:w-[380px] sm:blur-[160px]" />
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_36%,rgba(44,144,255,0.7),rgba(10,24,48,0.4)_20%,rgba(5,12,24,0.96)_47%,#040812_100%),radial-gradient(circle_at_50%_36%,rgba(102,201,255,0.5),transparent_22%),radial-gradient(circle_at_14%_20%,rgba(49,110,255,0.22),transparent_26%),radial-gradient(circle_at_86%_20%,rgba(81,197,255,0.2),transparent_24%)]" />
+      <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(9,22,42,0.1)_0%,rgba(5,10,20,0.28)_34%,rgba(4,8,16,0.96)_100%)]" />
+      <div className="absolute inset-0 opacity-[0.08] bg-[linear-gradient(rgba(154,200,255,0.16)_1px,transparent_1px),linear-gradient(90deg,rgba(154,200,255,0.1)_1px,transparent_1px)] bg-[size:108px_108px] [mask-image:radial-gradient(circle_at_50%_36%,black_0%,rgba(0,0,0,0.75)_42%,transparent_80%)]" />
+      <div className="absolute left-1/2 top-[37%] h-[620px] w-[620px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#2f7dff]/42 blur-[176px] sm:h-[840px] sm:w-[840px] sm:blur-[220px]" />
+      <div className="absolute left-1/2 top-[34%] h-[280px] w-[280px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#66c7ff]/34 blur-[98px] sm:h-[380px] sm:w-[380px] sm:blur-[128px]" />
+      <div className="absolute left-[6%] top-[18%] h-[360px] w-[360px] rounded-full bg-[#2b63ff]/14 blur-[156px] sm:h-[480px] sm:w-[480px] sm:blur-[188px]" />
+      <div className="absolute right-[4%] top-[16%] h-[320px] w-[320px] rounded-full bg-[#58b9ff]/14 blur-[146px] sm:h-[420px] sm:w-[420px] sm:blur-[176px]" />
       <div className="absolute inset-x-0 bottom-0 h-[24%] bg-gradient-to-t from-[#040812] via-[#040812]/92 to-transparent" />
 
       <WorldMapIllustration />

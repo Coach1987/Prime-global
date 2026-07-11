@@ -20,16 +20,16 @@ export function Logo({ scrolled }: LogoProps) {
       <span
         className={
           scrolled
-            ? "relative h-[44px] w-[132px] sm:h-[46px] sm:w-[138px]"
-            : "relative h-[48px] w-[142px] sm:h-[52px] sm:w-[152px]"
+            ? "relative h-[44px] w-[178px] sm:h-[46px] sm:w-[186px]"
+            : "relative h-[48px] w-[192px] sm:h-[52px] sm:w-[202px]"
         }
       >
         <Image
-          src="/images/logo/prime-global-mark.png"
+          src="/images/logo/prime-global-logo-clean.png"
           alt="Prime Global"
           fill
           priority
-          sizes="(max-width: 430px) 132px, 152px"
+          sizes="(max-width: 430px) 178px, 202px"
           className="object-contain drop-shadow-[0_0_16px_rgba(89,166,255,0.26)] transition-transform duration-500 group-hover:scale-[1.02]"
         />
       </span>
