@@ -54,7 +54,7 @@ export function ServicesSection() {
     <section
       ref={sectionRef}
       id="services"
-      className="relative isolate overflow-hidden bg-[#030814] py-20 md:py-32 lg:py-40"
+      className="relative isolate overflow-hidden bg-[#030814] py-20 md:py-28 lg:py-36"
     >
       {/* Background atmosphere */}
       <div
@@ -84,7 +84,7 @@ export function ServicesSection() {
         {/* Premium section divider */}
         <div
           aria-hidden="true"
-          className="mx-auto mt-10 flex max-w-md items-center gap-4"
+          className="mx-auto mt-8 flex max-w-md items-center gap-4"
         >
           <span className="h-px flex-1 bg-gradient-to-r from-transparent to-blue-400/35" />
           <span className="h-1.5 w-1.5 rounded-full bg-blue-300 shadow-[0_0_12px_rgba(125,211,252,0.8)]" />
@@ -93,7 +93,7 @@ export function ServicesSection() {
 
         <div
           ref={gridRef}
-          className="mt-14 grid grid-cols-1 gap-5 sm:grid-cols-2 md:mt-20 md:gap-6 xl:grid-cols-3"
+          className="mt-12 grid grid-cols-1 gap-5 sm:grid-cols-2 md:mt-16 md:gap-6 lg:grid-cols-2"
         >
           {SERVICES.map((service, index) => (
             <div
@@ -107,7 +107,7 @@ export function ServicesSection() {
         </div>
 
         {/* Bottom trust line */}
-        <div className="mt-14 flex items-center justify-center gap-3 text-center text-xs uppercase tracking-[0.22em] text-slate-500 md:mt-20">
+        <div className="mt-12 flex items-center justify-center gap-3 text-center text-xs uppercase tracking-[0.22em] text-slate-500 md:mt-16">
           <span className="h-px w-8 bg-blue-400/30" />
           <span>Integrated solutions. Global standards.</span>
           <span className="h-px w-8 bg-blue-400/30" />

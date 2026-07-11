@@ -22,55 +22,22 @@ export function ServiceCard({
 
   return (
     <Link
-      href="/contact"
-      className="
-      group
-      relative
-      flex
-      h-full
-      flex-col
-      overflow-hidden
-      rounded-[28px]
-      border
-      border-white/10
-      bg-gradient-to-b
-      from-white/[0.05]
-      to-white/[0.02]
-      p-8
-      backdrop-blur-2xl
-      transition-all
-      duration-500
-      hover:-translate-y-3
-      hover:border-blue-400/40
-      hover:shadow-[0_30px_80px_rgba(20,90,180,0.22)]
-      "
+      href="/services"
+      className="group relative flex h-full flex-col overflow-hidden rounded-[28px] border border-white/10 bg-[linear-gradient(135deg,rgba(255,255,255,0.09),rgba(255,255,255,0.03))] p-7 shadow-[0_24px_70px_rgba(3,8,20,0.35)] backdrop-blur-[18px] transition-all duration-500 hover:-translate-y-2 hover:border-gold/30 hover:bg-[linear-gradient(135deg,rgba(255,255,255,0.13),rgba(255,255,255,0.05))] hover:shadow-[0_32px_90px_rgba(11,31,65,0.35)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold/70 focus-visible:ring-offset-2 focus-visible:ring-offset-[#030814]"
     >
-
-      {/* Ambient light */}
       <div
         aria-hidden="true"
-        className="absolute -right-20 -top-20 h-44 w-44 rounded-full bg-blue-500/10 blur-3xl transition-all duration-500 group-hover:bg-blue-400/20"
+        className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(201,162,75,0.14),transparent_42%)] opacity-0 transition-all duration-500 group-hover:opacity-100"
+      />
+      <div
+        aria-hidden="true"
+        className="absolute inset-0 bg-[linear-gradient(125deg,transparent_0%,rgba(255,255,255,0.04)_40%,transparent_80%)] opacity-70 transition-all duration-700 group-hover:translate-x-[8%] group-hover:translate-y-[6%]"
       />
 
-      {/* Card Number */}
-      <span
-        className="
-        absolute
-        right-7
-        top-5
-        font-heading
-        text-6xl
-        font-bold
-        text-white/[0.035]
-        transition-all
-        duration-500
-        group-hover:text-blue-300/[0.08]
-        "
-      >
+      <span className="absolute right-6 top-5 font-heading text-6xl font-bold text-white/[0.05] transition-all duration-500 group-hover:text-blue-300/[0.1]">
         {number}
       </span>
 
-      {/* Icon */}
       <div className="relative z-10">
         <IconBadge
           icon={service.icon}
@@ -79,56 +46,17 @@ export function ServiceCard({
         />
       </div>
 
-      {/* Title */}
-      <h3
-        className="
-        relative
-        z-10
-        mt-7
-        text-[25px]
-        font-heading
-        font-semibold
-        tracking-tight
-        text-white
-        "
-      >
+      <h3 className="relative z-10 mt-7 text-[24px] font-heading font-semibold tracking-tight text-white sm:text-[25px]">
         {t("title")}
       </h3>
 
-      {/* Description */}
-      <p
-        className="
-        relative
-        z-10
-        mt-4
-        flex-1
-        text-[15px]
-        leading-7
-        text-slate-300
-        "
-      >
+      <p className="relative z-10 mt-4 flex-1 text-[15px] leading-7 text-slate-300">
         {t("description")}
       </p>
 
-      {/* Divider */}
-      <div className="relative z-10 mt-7 h-px bg-gradient-to-r from-blue-400/30 to-transparent" />
+      <div className="relative z-10 mt-7 h-px bg-gradient-to-r from-blue-400/30 via-gold/20 to-transparent" />
 
-      {/* CTA */}
-      <div
-        className="
-        relative
-        z-10
-        mt-6
-        inline-flex
-        items-center
-        gap-3
-        text-[14px]
-        font-semibold
-        uppercase
-        tracking-[0.18em]
-        text-blue-300
-        "
-      >
+      <div className="relative z-10 mt-6 inline-flex items-center gap-3 text-[13px] font-semibold uppercase tracking-[0.18em] text-blue-300">
         {common("learnMore")}
 
         <svg
@@ -146,9 +74,7 @@ export function ServiceCard({
             strokeLinejoin="round"
           />
         </svg>
-
       </div>
-
     </Link>
   );
 }

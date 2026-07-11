@@ -18,6 +18,7 @@
     "subtext": "A Tunisian company specialized in delivering integrated business support solutions with efficiency and professionalism.",
     "ctaPrimary": "Explore Services",
     "ctaSecondary": "Contact Us",
+    "scrollHint": "Scroll",
     "stats": {
       "experience": { "value": "10+", "label": "Years of Experience" },
       "clients": { "value": "150+", "label": "Clients Served" },

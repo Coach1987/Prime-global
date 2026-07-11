@@ -1,10 +1,14 @@
 "use client";
 
+import { useTranslations } from "next-intl";
+
 export function ScrollIndicator() {
+  const t = useTranslations("hero");
+
   return (
-    <div className="pointer-events-none absolute bottom-6 left-1/2 z-20 hidden -translate-x-1/2 flex-col items-center gap-3 md:flex">
+    <div className="pointer-events-none absolute bottom-5 left-1/2 z-20 hidden -translate-x-1/2 flex-col items-center gap-3 md:flex">
       <span className="text-[10px] font-medium uppercase tracking-[0.28em] text-slate-500">
-        Scroll
+        {t("scrollHint")}
       </span>
 
       <div className="relative flex h-10 w-6 items-start justify-center rounded-full border border-white/15 bg-white/[0.03] p-1 backdrop-blur-sm">
