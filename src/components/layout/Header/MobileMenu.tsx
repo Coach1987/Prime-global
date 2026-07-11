@@ -8,7 +8,6 @@ import { NAV_ITEMS } from "@/lib/constants/nav";
 import { useIsHome } from "@/lib/hooks/useIsHome";
 import { smoothScrollTo } from "@/lib/utils/smoothScroll";
 import { LanguageSwitcher } from "./LanguageSwitcher";
-import { cn } from "@/lib/utils/cn";
 
 interface MobileMenuProps {
   open: boolean;
@@ -16,133 +15,139 @@ interface MobileMenuProps {
 }
 
 const SECTION_IDS = ["services", "about", "contact"];
-const FOCUSABLE_SELECTOR = 'a[href], button:not([disabled])';
 
-const overlayVariants = {
+const overlay = {
   hidden: { opacity: 0 },
-  visible: { opacity: 1, transition: { duration: 0.25 } },
-  exit: { opacity: 0, transition: { duration: 0.2 } },
+  visible: { opacity: 1 },
+  exit: { opacity: 0 }
 };
 
-const listVariants = {
-  hidden: {},
-  visible: {
-    transition: { staggerChildren: 0.06, delayChildren: 0.1 },
+const panel = {
+  hidden: {
+    y: -40,
+    opacity: 0
   },
+  visible: {
+    y: 0,
+    opacity: 1,
+    transition: {
+      duration: 0.45
+    }
+  },
+  exit: {
+    y: -30,
+    opacity: 0,
+    transition: {
+      duration: 0.25
+    }
+  }
 };
 
-const itemVariants = {
-  hidden: { opacity: 0, y: 16 },
-  visible: { opacity: 1, y: 0, transition: { duration: 0.35, ease: [0.22, 1, 0.36, 1] } },
-};
+export function MobileMenu({
+  open,
+  onClose,
+}: MobileMenuProps) {
 
-export function MobileMenu({ open, onClose }: MobileMenuProps) {
   const t = useTranslations("nav");
   const isHome = useIsHome();
   const panelRef = useRef<HTMLDivElement>(null);
 
-  // Focus trap + Escape-to-close, per WAI-ARIA APG dialog pattern. Without
-  // this, keyboard/screen-reader users who open the menu have no way to
-  // close it without a mouse, and Tab can escape into content hidden
-  // behind the overlay. Uses querySelector rather than a ref forwarded
-  // through next-intl's Link component, since ref-forwarding support
-  // there isn't guaranteed across versions — this is more robust.
   useEffect(() => {
-    if (!open || !panelRef.current) return;
 
-    const panel = panelRef.current;
-    const firstFocusable = panel.querySelector<HTMLElement>(FOCUSABLE_SELECTOR);
-    firstFocusable?.focus();
+    if (!open) return;
 
-    function handleKeyDown(e: KeyboardEvent) {
-      if (e.key === "Escape") {
-        onClose();
-        return;
-      }
+    const first =
+      panelRef.current?.querySelector("a");
 
-      if (e.key !== "Tab") return;
+    first?.focus();
 
-      const focusable = panel.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR);
-      if (focusable.length === 0) return;
+  }, [open]);
 
-      const first = focusable[0];
-      const last = focusable[focusable.length - 1];
+  function handleClick(
+    e: React.MouseEvent,
+    href: string
+  ) {
 
-      if (e.shiftKey && document.activeElement === first) {
-        e.preventDefault();
-        last.focus();
-      } else if (!e.shiftKey && document.activeElement === last) {
-        e.preventDefault();
-        first.focus();
-      }
-    }
+    const section = href.replace("/", "");
 
-    document.addEventListener("keydown", handleKeyDown);
-    return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [open, onClose]);
-
-  function handleClick(e: React.MouseEvent, href: string) {
-    const sectionId = href.replace("/", "");
-    if (isHome && SECTION_IDS.includes(sectionId)) {
+    if (
+      isHome &&
+      SECTION_IDS.includes(section)
+    ) {
       e.preventDefault();
+
       onClose();
-      // Let the overlay close before scrolling so the motion doesn't fight.
-      window.setTimeout(() => smoothScrollTo(sectionId), 200);
-    } else {
-      onClose();
+
+      setTimeout(() => {
+        smoothScrollTo(section);
+      }, 250);
+
+      return;
     }
+
+    onClose();
   }
 
   return (
     <AnimatePresence>
+
       {open && (
+
         <motion.div
-          key="mobile-menu"
-          ref={panelRef}
-          variants={overlayVariants}
+          variants={overlay}
           initial="hidden"
           animate="visible"
           exit="exit"
-          className="fixed inset-0 z-40 flex flex-col border-t border-gold/[0.15] bg-bg-primary/98 backdrop-blur-xl md:hidden"
-          role="dialog"
-          aria-modal="true"
-          aria-label={t("openMenu")}
+          className="fixed inset-0 z-50 bg-[#040b15]/95 backdrop-blur-2xl md:hidden"
         >
-          <div className="flex-1 flex flex-col items-center justify-center gap-2 px-6">
-            <motion.ul
-              variants={listVariants}
-              initial="hidden"
-              animate="visible"
-              className="flex flex-col items-center gap-1 text-center"
-            >
-              {NAV_ITEMS.map((item) => (
-                <motion.li key={item.href} variants={itemVariants}>
-                  <Link
-                    href={item.href}
-                    onClick={(e) => handleClick(e, item.href)}
-                    className={cn(
-                      "block px-4 py-4 font-heading text-2xl text-text-primary transition-colors duration-200 active:text-gold",
-                      "min-h-[56px] flex items-center justify-center"
-                    )}
-                  >
-                    {t(item.labelKey)}
-                  </Link>
-                </motion.li>
-              ))}
-            </motion.ul>
 
-            <motion.div
-              variants={itemVariants}
-              initial="hidden"
-              animate="visible"
-              className="mt-10 flex flex-col items-center gap-6"
-            >
-              <span className="h-px w-10 bg-gold/30" aria-hidden="true" />
+          <motion.div
+            ref={panelRef}
+            variants={panel}
+            initial="hidden"
+            animate="visible"
+            exit="exit"
+            className="flex h-full flex-col items-center justify-center px-8"
+          >
+
+            <div className="mb-10">
+
               <LanguageSwitcher />
-            </motion.div>
-          </div>
+
+            </div>
+
+            <nav className="flex flex-col items-center gap-5">
+
+              {NAV_ITEMS.map((item) => (
+
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  onClick={(e) =>
+                    handleClick(e, item.href)
+                  }
+                  className="group text-[32px] font-heading font-semibold tracking-[0.05em] text-white transition-all duration-300 hover:text-blue-300"
+                >
+                  {t(item.labelKey)}
+
+                </Link>
+
+              ))}
+
+            </nav>
+
+            <div className="mt-14 h-px w-20 bg-gradient-to-r from-transparent via-blue-400 to-transparent" />
+
+            <p className="mt-6 text-xs uppercase tracking-[0.3em] text-slate-500">
+              PRIME GLOBAL
+            </p>
+
+          </motion.div>
+
         </motion.div>
+
       )}
+
     </AnimatePresence>
   );
 }
