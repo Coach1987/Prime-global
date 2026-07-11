@@ -54,7 +54,7 @@ export function Header() {
       >
         <div className="mx-auto flex h-full max-w-[1380px] items-center justify-between px-6 md:px-10">
 
-          <Logo scrolled={scrolled} />
+          <Logo scrolled={false} />
 
           <NavMenu />
 

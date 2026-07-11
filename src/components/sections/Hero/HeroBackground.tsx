@@ -11,7 +11,7 @@ const MAP_POINTS = [
 
 function WorldMapIllustration() {
   return (
-    <div className="pointer-events-none absolute inset-x-0 top-[6%] h-[68%] opacity-80 sm:h-[70%] md:top-[4%] md:h-[72%]">
+    <div className="pointer-events-none absolute inset-x-0 top-[6%] h-[68%] opacity-[0.9] sm:h-[70%] md:top-[4%] md:h-[72%]">
       <svg
         viewBox="0 0 1600 820"
         preserveAspectRatio="xMidYMid meet"
