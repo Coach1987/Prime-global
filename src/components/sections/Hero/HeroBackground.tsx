@@ -1,6 +1,6 @@
 function WorldMapIllustration() {
   return (
-    <div className="pointer-events-none absolute left-1/2 top-[7%] h-[44%] w-[min(1240px,95vw)] -translate-x-1/2 opacity-[0.26] sm:top-[6%] sm:h-[46%] sm:w-[min(1280px,93vw)] md:top-[5%] md:h-[50%] md:w-[min(1340px,91vw)]">
+    <div className="pointer-events-none absolute left-1/2 top-[7%] h-[44%] w-[min(1480px,98vw)] -translate-x-1/2 opacity-[0.1] sm:top-[6%] sm:h-[46%] md:top-[5%] md:h-[50%]">
       <svg
         viewBox="0 0 1600 760"
         preserveAspectRatio="xMidYMid meet"
@@ -9,37 +9,44 @@ function WorldMapIllustration() {
         aria-hidden="true"
       >
         <defs>
-          <radialGradient id="heroWorldGlow" cx="50%" cy="44%" r="56%">
-            <stop offset="0%" stopColor="rgba(52,146,255,0.28)" />
-            <stop offset="46%" stopColor="rgba(35,97,216,0.08)" />
-            <stop offset="100%" stopColor="rgba(5,13,25,0)" />
+          <radialGradient id="heroWorldMapGlow" cx="50%" cy="46%" r="58%">
+            <stop offset="0%" stopColor="rgba(168,186,205,0.22)" />
+            <stop offset="48%" stopColor="rgba(118,150,178,0.08)" />
+            <stop offset="100%" stopColor="rgba(7,14,24,0)" />
           </radialGradient>
-          <pattern id="heroMapDots" x="0" y="0" width="9" height="9" patternUnits="userSpaceOnUse">
-            <circle cx="4.5" cy="4.5" r="0.96" fill="rgba(132,206,255,0.9)" />
+          <pattern id="heroWorldMapDots" x="0" y="0" width="9" height="9" patternUnits="userSpaceOnUse">
+            <circle cx="4.5" cy="4.5" r="0.82" fill="rgba(174,194,216,0.82)" />
           </pattern>
-          <mask id="heroMapMask">
+          <mask id="heroWorldMapMask">
             <rect width="1600" height="760" fill="black" />
             <g fill="white">
-              <path d="M100 246 L130 214 L178 184 L242 170 L310 174 L362 194 L396 226 L412 260 L404 294 L372 320 L320 332 L250 326 L194 306 L152 282 L120 268 Z M314 338 L350 326 L384 338 L410 370 L414 408 L398 448 L376 482 L350 520 L322 554 L296 538 L290 500 L298 454 L308 412 Z M458 188 L500 166 L552 158 L602 170 L628 196 L626 226 L610 252 L576 266 L534 262 L494 242 L468 218 Z M646 190 L708 164 L786 152 L882 154 L984 170 L1076 194 L1152 224 L1218 260 L1270 294 L1308 330 L1322 362 L1310 384 L1276 392 L1236 384 L1198 364 L1162 350 L1126 356 L1088 380 L1046 414 L1000 448 L950 456 L906 438 L874 414 L846 402 L812 406 L774 430 L740 458 L702 478 L662 474 L638 454 L638 426 L658 404 L684 374 L696 338 L688 308 L668 282 L648 250 Z M850 396 L880 384 L914 388 L944 408 L966 438 L974 474 L966 512 L944 550 L912 574 L876 580 L846 564 L834 526 L834 482 L842 436 Z M1128 496 L1166 486 L1208 496 L1242 520 L1260 552 L1252 578 L1220 592 L1180 590 L1144 574 L1120 546 L1114 518 Z M1276 566 L1314 556 L1354 564 L1386 586 L1404 612 L1396 634 L1366 648 L1326 646 L1290 630 L1266 604 L1260 580 Z M1404 420 L1430 408 L1460 410 L1486 424 L1504 446 L1504 468 L1484 484 L1456 488 L1428 482 L1408 466 L1398 444 Z" />
+              <path d="M140 230 L176 200 L230 175 L292 168 L350 176 L404 196 L438 226 L424 256 L374 278 L316 286 L252 278 L196 262 L152 246 Z" />
+              <path d="M316 294 L346 310 L362 338 L356 374 L338 410 L320 448 L304 492 L286 540 L266 568 L248 550 L248 510 L258 462 L270 418 L286 376 L300 338 Z" />
+              <path d="M596 188 L620 172 L650 170 L670 182 L666 202 L644 214 L612 212 L592 202 Z" />
+              <path d="M654 214 L690 194 L740 186 L788 188 L836 196 L878 210 L916 230 L946 252 L934 274 L896 276 L864 266 L834 266 L804 278 L780 302 L758 324 L736 344 L710 350 L684 344 L668 324 L662 296 L650 268 Z" />
+              <path d="M702 330 L730 340 L754 364 L762 396 L758 436 L750 476 L736 520 L714 560 L684 590 L658 582 L648 554 L652 514 L664 468 L680 422 L690 384 Z" />
+              <path d="M948 306 L980 304 L1010 316 L1032 338 L1034 364 L1014 378 L982 380 L956 366 L940 344 Z" />
+              <path d="M1082 496 L1114 486 L1142 494 L1160 514 L1156 540 L1128 548 L1098 536 L1082 516 Z" />
+              <path d="M1218 548 L1254 538 L1290 544 L1324 560 L1352 582 L1370 604 L1360 624 L1326 628 L1288 622 L1254 606 L1228 582 L1214 562 Z" />
             </g>
           </mask>
-          <filter id="heroMapBlur" x="-10%" y="-10%" width="120%" height="120%">
-            <feGaussianBlur stdDeviation="0.2" />
+          <filter id="heroWorldMapSoften" x="-10%" y="-10%" width="120%" height="120%">
+            <feGaussianBlur stdDeviation="0.16" />
           </filter>
         </defs>
 
-        <rect width="1600" height="760" fill="url(#heroWorldGlow)" />
+        <rect width="1600" height="760" fill="url(#heroWorldMapGlow)" />
 
-        <g mask="url(#heroMapMask)">
-          <rect x="46" y="110" width="1508" height="520" fill="url(#heroMapDots)" filter="url(#heroMapBlur)" />
-          <rect x="46" y="110" width="1508" height="520" fill="rgba(84,170,236,0.08)" />
+        <g mask="url(#heroWorldMapMask)">
+          <rect x="60" y="120" width="1480" height="520" fill="url(#heroWorldMapDots)" filter="url(#heroWorldMapSoften)" />
+          <rect x="60" y="120" width="1480" height="520" fill="rgba(156,176,198,0.15)" />
         </g>
 
         <path
-          d="M100 246 L130 214 L178 184 L242 170 L310 174 L362 194 L396 226 L412 260 L404 294 L372 320 L320 332 L250 326 L194 306 L152 282 L120 268 Z M314 338 L350 326 L384 338 L410 370 L414 408 L398 448 L376 482 L350 520 L322 554 L296 538 L290 500 L298 454 L308 412 Z M458 188 L500 166 L552 158 L602 170 L628 196 L626 226 L610 252 L576 266 L534 262 L494 242 L468 218 Z M646 190 L708 164 L786 152 L882 154 L984 170 L1076 194 L1152 224 L1218 260 L1270 294 L1308 330 L1322 362 L1310 384 L1276 392 L1236 384 L1198 364 L1162 350 L1126 356 L1088 380 L1046 414 L1000 448 L950 456 L906 438 L874 414 L846 402 L812 406 L774 430 L740 458 L702 478 L662 474 L638 454 L638 426 L658 404 L684 374 L696 338 L688 308 L668 282 L648 250 Z M850 396 L880 384 L914 388 L944 408 L966 438 L974 474 L966 512 L944 550 L912 574 L876 580 L846 564 L834 526 L834 482 L842 436 Z M1128 496 L1166 486 L1208 496 L1242 520 L1260 552 L1252 578 L1220 592 L1180 590 L1144 574 L1120 546 L1114 518 Z M1276 566 L1314 556 L1354 564 L1386 586 L1404 612 L1396 634 L1366 648 L1326 646 L1290 630 L1266 604 L1260 580 Z M1404 420 L1430 408 L1460 410 L1486 424 L1504 446 L1504 468 L1484 484 L1456 488 L1428 482 L1408 466 L1398 444 Z"
+          d="M140 230 L176 200 L230 175 L292 168 L350 176 L404 196 L438 226 L424 256 L374 278 L316 286 L252 278 L196 262 L152 246 Z M316 294 L346 310 L362 338 L356 374 L338 410 L320 448 L304 492 L286 540 L266 568 L248 550 L248 510 L258 462 L270 418 L286 376 L300 338 Z M596 188 L620 172 L650 170 L670 182 L666 202 L644 214 L612 212 L592 202 Z M654 214 L690 194 L740 186 L788 188 L836 196 L878 210 L916 230 L946 252 L934 274 L896 276 L864 266 L834 266 L804 278 L780 302 L758 324 L736 344 L710 350 L684 344 L668 324 L662 296 L650 268 Z M702 330 L730 340 L754 364 L762 396 L758 436 L750 476 L736 520 L714 560 L684 590 L658 582 L648 554 L652 514 L664 468 L680 422 L690 384 Z M948 306 L980 304 L1010 316 L1032 338 L1034 364 L1014 378 L982 380 L956 366 L940 344 Z M1082 496 L1114 486 L1142 494 L1160 514 L1156 540 L1128 548 L1098 536 L1082 516 Z M1218 548 L1254 538 L1290 544 L1324 560 L1352 582 L1370 604 L1360 624 L1326 628 L1288 622 L1254 606 L1228 582 L1214 562 Z"
           fill="none"
-          stroke="rgba(126,198,255,0.24)"
-          strokeWidth="1"
+          stroke="rgba(169,190,212,0.65)"
+          strokeWidth="1.04"
           strokeLinejoin="round"
         />
       </svg>

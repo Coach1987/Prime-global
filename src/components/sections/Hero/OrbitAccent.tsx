@@ -11,12 +11,12 @@ export function OrbitAccent() {
       >
         <ellipse
           cx="500"
-          cy="316"
-          rx="432"
-          ry="192"
+          cy="320"
+          rx="426"
+          ry="186"
           transform="rotate(-14 500 316)"
-          stroke="rgba(120,186,255,0.255)"
-          strokeWidth="0.9"
+          stroke="rgba(130,192,255,0.31)"
+          strokeWidth="1.05"
         />
       </svg>
     </div>

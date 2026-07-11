@@ -17,13 +17,13 @@ export function MenuToggle({ open, onToggle }: MenuToggleProps) {
       onClick={onToggle}
       aria-label={open ? t("closeMenu") : t("openMenu")}
       aria-expanded={open}
-      className="relative z-50 flex h-10 w-10 items-center justify-center rounded-full md:hidden"
+      className="relative z-50 flex h-9 w-9 items-center justify-center rounded-full md:hidden"
     >
-      <span className="relative flex h-4 w-5 flex-col justify-between">
+      <span className="relative flex h-[14px] w-[18px] flex-col justify-between">
         <span
           className={cn(
             "h-[1.5px] w-full origin-center bg-text-primary transition-transform duration-300 ease-premium-out",
-            open && "translate-y-[7px] rotate-45"
+            open && "translate-y-[6px] rotate-45"
           )}
         />
         <span
@@ -35,7 +35,7 @@ export function MenuToggle({ open, onToggle }: MenuToggleProps) {
         <span
           className={cn(
             "h-[1.5px] w-full origin-center bg-text-primary transition-transform duration-300 ease-premium-out",
-            open && "-translate-y-[7px] -rotate-45"
+            open && "-translate-y-[6px] -rotate-45"
           )}
         />
       </span>
