@@ -15,15 +15,15 @@ export function Logo({ scrolled }: LogoProps) {
     <Link
       href="/"
       aria-label={t("homeLabel")}
-      className="group relative flex shrink-0 items-center -translate-y-[1px] md:-translate-y-[2px]"
+      className="group relative flex shrink-0 items-center md:-translate-y-[2px]"
     >
-      <span className="relative h-[42px] w-[62px] sm:h-[46px] sm:w-[68px] md:hidden">
+      <span className="relative h-[40px] w-[150px] sm:h-[42px] sm:w-[162px] md:hidden">
         <Image
-          src="/images/logo/prime-global-mark.png"
+          src="/images/logo/prime-global-logo-clean.png"
           alt="Prime Global"
           fill
           priority
-          sizes="68px"
+          sizes="162px"
           className="object-contain object-left-center drop-shadow-[0_0_18px_rgba(89,166,255,0.28)] transition-transform duration-500 group-hover:scale-[1.02]"
         />
       </span>
