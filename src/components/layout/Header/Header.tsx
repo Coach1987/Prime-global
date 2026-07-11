@@ -48,13 +48,13 @@ export function Header() {
         className={cn(
           "fixed inset-x-0 top-0 z-50 transition-all duration-500",
           scrolled
-            ? "h-[74px] border-b border-white/10 bg-[#06111d]/75 backdrop-blur-2xl shadow-[0_18px_50px_rgba(0,0,0,0.35)]"
-            : "h-[92px] bg-transparent"
+            ? "h-[72px] border-b border-white/10 bg-[#06111d]/75 backdrop-blur-2xl shadow-[0_18px_50px_rgba(0,0,0,0.35)] md:h-[74px]"
+            : "h-[72px] bg-transparent md:h-[92px]"
         )}
       >
-        <div className="mx-auto flex h-full max-w-[1380px] items-center justify-between px-6 md:px-10">
+        <div className="mx-auto flex h-full max-w-[1380px] items-center justify-between px-4 sm:px-6 md:px-10">
 
-          <Logo scrolled={false} />
+          <Logo scrolled={scrolled} />
 
           <NavMenu />
 

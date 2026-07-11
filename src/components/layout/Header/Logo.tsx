@@ -17,11 +17,22 @@ export function Logo({ scrolled }: LogoProps) {
       aria-label={t("homeLabel")}
       className="group relative flex shrink-0 items-center"
     >
+      <span className="relative h-[38px] w-[56px] sm:h-[42px] sm:w-[62px] md:hidden">
+        <Image
+          src="/images/logo/prime-global-mark.png"
+          alt="Prime Global"
+          fill
+          priority
+          sizes="62px"
+          className="object-contain drop-shadow-[0_0_16px_rgba(89,166,255,0.26)] transition-transform duration-500 group-hover:scale-[1.02]"
+        />
+      </span>
+
       <span
         className={
           scrolled
-            ? "relative h-[48px] w-[194px] sm:h-[50px] sm:w-[204px]"
-            : "relative h-[54px] w-[218px] sm:h-[58px] sm:w-[232px]"
+            ? "relative hidden h-[48px] w-[194px] md:block md:h-[50px] md:w-[204px]"
+            : "relative hidden h-[54px] w-[218px] md:block md:h-[58px] md:w-[232px]"
         }
       >
         <Image

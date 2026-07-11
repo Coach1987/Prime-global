@@ -11,7 +11,7 @@ const MAP_POINTS = [
 
 function WorldMapIllustration() {
   return (
-    <div className="pointer-events-none absolute inset-x-0 top-[6%] h-[68%] opacity-95 sm:h-[70%] md:top-[4%] md:h-[72%]">
+    <div className="pointer-events-none absolute inset-x-0 top-[2%] h-[62%] opacity-[0.94] sm:h-[64%] md:top-[1%] md:h-[66%]">
       <svg
         viewBox="0 0 1600 820"
         preserveAspectRatio="xMidYMid meet"
@@ -20,35 +20,35 @@ function WorldMapIllustration() {
         aria-hidden="true"
       >
         <defs>
-          <radialGradient id="heroWorldGlow" cx="50%" cy="44%" r="54%">
-            <stop offset="0%" stopColor="rgba(50,144,255,0.42)" />
-            <stop offset="42%" stopColor="rgba(33,94,214,0.16)" />
+          <radialGradient id="heroWorldGlow" cx="50%" cy="44%" r="56%">
+            <stop offset="0%" stopColor="rgba(52,146,255,0.5)" />
+            <stop offset="42%" stopColor="rgba(35,97,216,0.22)" />
             <stop offset="100%" stopColor="rgba(5,13,25,0)" />
           </radialGradient>
           <radialGradient id="heroDotGlow" cx="50%" cy="50%" r="50%">
-            <stop offset="0%" stopColor="rgba(178,224,255,0.95)" />
-            <stop offset="100%" stopColor="rgba(84,165,255,0.12)" />
+            <stop offset="0%" stopColor="rgba(178,224,255,0.98)" />
+            <stop offset="100%" stopColor="rgba(84,165,255,0.26)" />
           </radialGradient>
         </defs>
 
         <rect width="1600" height="820" fill="url(#heroWorldGlow)" />
-        <g fill="rgba(123,192,255,0.24)">
-          <circle cx="220" cy="178" r="1.4" />
-          <circle cx="342" cy="232" r="1.2" />
-          <circle cx="594" cy="170" r="1.4" />
-          <circle cx="734" cy="232" r="1.2" />
-          <circle cx="910" cy="176" r="1.3" />
-          <circle cx="1216" cy="226" r="1.4" />
-          <circle cx="1400" cy="252" r="1.2" />
+        <g fill="rgba(123,192,255,0.48)">
+          <circle cx="220" cy="178" r="2.8" />
+          <circle cx="342" cy="232" r="2.4" />
+          <circle cx="594" cy="170" r="3" />
+          <circle cx="734" cy="232" r="2.4" />
+          <circle cx="910" cy="176" r="2.6" />
+          <circle cx="1216" cy="226" r="2.8" />
+          <circle cx="1400" cy="252" r="2.4" />
         </g>
 
-        <g fill="#9FD5FF" stroke="url(#heroDotGlow)" strokeWidth="0.6">
+        <g fill="#9FD5FF" stroke="url(#heroDotGlow)" strokeWidth="0.8">
           {MAP_POINTS.map(([x, y], index) => (
-            <circle key={`map-dot-${index}`} cx={x} cy={y} r={1.85 + ((index + 2) % 4) * 0.18} opacity={0.68 + ((index + 1) % 5) * 0.05} />
+            <circle key={`map-dot-${index}`} cx={x} cy={y} r={2.25 + ((index + 2) % 4) * 0.18} opacity={0.78 + ((index + 1) % 5) * 0.05} />
           ))}
         </g>
 
-        <g fill="none" stroke="rgba(76,153,255,0.12)" strokeWidth="1">
+        <g fill="none" stroke="rgba(76,153,255,0.26)" strokeWidth="1.25">
           <path d="M104 216 C214 156 348 154 446 210" />
           <path d="M552 186 C640 142 760 146 842 188" />
           <path d="M872 182 C986 142 1110 146 1228 196" />
@@ -66,11 +66,11 @@ function WorldMapIllustration() {
 export function HeroBackground() {
   return (
     <div aria-hidden="true" className="absolute inset-0 overflow-hidden bg-[#050b16]">
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_36%,rgba(35,128,255,0.62),rgba(10,22,44,0.34)_18%,rgba(5,12,24,0.96)_44%,#040812_100%),radial-gradient(circle_at_50%_36%,rgba(86,188,255,0.42),transparent_22%),radial-gradient(circle_at_14%_20%,rgba(49,110,255,0.18),transparent_26%),radial-gradient(circle_at_86%_20%,rgba(81,197,255,0.16),transparent_24%)]" />
-      <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(8,18,35,0.15)_0%,rgba(5,10,20,0.34)_34%,rgba(4,8,16,0.96)_100%)]" />
-      <div className="absolute inset-0 opacity-[0.12] bg-[linear-gradient(rgba(154,200,255,0.18)_1px,transparent_1px),linear-gradient(90deg,rgba(154,200,255,0.12)_1px,transparent_1px)] bg-[size:96px_96px] [mask-image:radial-gradient(circle_at_50%_36%,black_0%,rgba(0,0,0,0.8)_40%,transparent_78%)]" />
-      <div className="absolute left-1/2 top-[37%] h-[540px] w-[540px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#2f7dff]/34 blur-[150px] sm:h-[720px] sm:w-[720px] sm:blur-[190px]" />
-      <div className="absolute left-1/2 top-[33%] h-[230px] w-[230px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#66c7ff]/28 blur-[78px] sm:h-[320px] sm:w-[320px] sm:blur-[110px]" />
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_35%,rgba(39,133,255,0.72),rgba(10,22,44,0.34)_20%,rgba(5,12,24,0.96)_48%,#040812_100%),radial-gradient(circle_at_50%_35%,rgba(99,201,255,0.45),transparent_22%),radial-gradient(circle_at_14%_20%,rgba(49,110,255,0.2),transparent_28%),radial-gradient(circle_at_86%_20%,rgba(81,197,255,0.18),transparent_26%)]" />
+      <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(8,18,35,0.06)_0%,rgba(5,10,20,0.28)_36%,rgba(4,8,16,0.95)_100%)]" />
+      <div className="absolute inset-0 opacity-[0.22] bg-[linear-gradient(rgba(154,200,255,0.2)_1px,transparent_1px),linear-gradient(90deg,rgba(154,200,255,0.16)_1px,transparent_1px)] bg-[size:86px_86px] [mask-image:radial-gradient(circle_at_50%_34%,black_0%,rgba(0,0,0,0.9)_46%,transparent_84%)]" />
+      <div className="absolute left-1/2 top-[34%] h-[620px] w-[620px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#2f7dff]/44 blur-[170px] sm:h-[760px] sm:w-[760px] sm:blur-[200px]" />
+      <div className="absolute left-1/2 top-[31%] h-[250px] w-[250px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#66c7ff]/34 blur-[82px] sm:h-[330px] sm:w-[330px] sm:blur-[115px]" />
       <div className="absolute left-[6%] top-[18%] h-[320px] w-[320px] rounded-full bg-[#2b63ff]/12 blur-[140px] sm:h-[420px] sm:w-[420px] sm:blur-[170px]" />
       <div className="absolute right-[4%] top-[16%] h-[280px] w-[280px] rounded-full bg-[#58b9ff]/12 blur-[128px] sm:h-[380px] sm:w-[380px] sm:blur-[160px]" />
       <div className="absolute inset-x-0 bottom-0 h-[24%] bg-gradient-to-t from-[#040812] via-[#040812]/92 to-transparent" />

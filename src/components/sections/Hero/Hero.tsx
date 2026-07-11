@@ -7,16 +7,16 @@ export function Hero() {
   return (
     <section
       id="hero"
-      className="relative flex min-h-[100svh] items-center bg-bg-primary pt-[88px] sm:min-h-[calc(100vh-88px)] sm:pt-[96px]"
+      className="relative flex min-h-[100svh] items-start bg-bg-primary pt-[72px] sm:pt-[92px]"
     >
       <HeroBackground />
 
-      <div className="relative z-10 mx-auto flex w-full max-w-[1280px] flex-1 flex-col items-center justify-center px-4 pb-14 pt-6 sm:px-6 sm:pb-16 sm:pt-8 md:px-8 md:pt-10 lg:pt-12">
+      <div className="relative z-10 mx-auto flex w-full max-w-[1120px] flex-1 flex-col items-center px-4 pb-12 pt-3 sm:px-6 sm:pb-14 sm:pt-6 md:px-8 md:pt-8">
         <div className="flex w-full justify-center">
           <HeroLogoLockup />
         </div>
 
-        <div className="mt-2 flex w-full justify-center sm:mt-3 md:mt-4">
+        <div className="-mt-1 flex w-full justify-center sm:mt-0 md:mt-1">
           <HeroContent />
         </div>
       </div>
