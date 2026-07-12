@@ -462,7 +462,7 @@
       },
       "eyebrow": "Application",
       "title": "Apply To Prime Global",
-      "description": "Submit your professional profile for upcoming opportunities. This is an application UI foundation; final submission workflow will be connected in a later phase.",
+      "description": "Submit your professional profile for upcoming opportunities and upload your CV for recruiter review.",
       "fields": {
         "firstName": "First Name",
         "lastName": "Last Name",
@@ -492,17 +492,19 @@
       },
       "submit": "Submit Application",
       "submitting": "Submitting...",
-      "success": "Application placeholder submitted. Final workflow will be connected in the next integration phase.",
+      "success": "Application submitted successfully. Our team will review your profile.",
+      "submitFailed": "We could not submit your application right now. Please try again.",
       "upload": {
-        "title": "CV Upload Placeholder",
-        "hint": "Accepted formats: PDF, DOC, DOCX. Maximum size: 5 MB. File storage is not connected in this phase.",
+        "title": "Upload Your CV",
+        "hint": "Accepted formats: PDF, DOC, DOCX. Maximum size: 5 MB.",
         "selectFile": "Select File",
         "remove": "Remove",
         "fileMeta": "{type} • {size}",
         "progress": "Upload progress placeholder: {value}%",
         "errors": {
           "type": "Unsupported file type. Please select a PDF, DOC, or DOCX file.",
-          "size": "File is too large. Maximum allowed size is 5 MB."
+          "size": "File is too large. Maximum allowed size is 5 MB.",
+          "required": "Please upload your CV before submitting."
         }
       }
     }

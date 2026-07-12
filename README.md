@@ -73,8 +73,12 @@ messages/
 | Variable | Required? | Purpose |
 |---|---|---|
 | `NEXT_PUBLIC_SITE_URL` | Recommended for production | Canonical site URL used in metadata, sitemap, robots.txt, and JSON-LD. Falls back to Vercel's own preview URL, then to `https://www.primeglobal.tn`, if unset. |
+| `SUPABASE_URL` | Required for careers submission API | Supabase project URL used by backend API routes. |
+| `SUPABASE_ANON_KEY` | Optional in current server flow | Reserved for client-side Supabase usage if enabled later. |
+| `SUPABASE_SERVICE_ROLE_KEY` | Required for careers submission API | Service role key used server-side to upload CVs and insert applications securely. |
+| `SUPABASE_CV_BUCKET` | Required for careers submission API | Storage bucket name for uploaded CVs (`prime-global-cv` for current migration). |
 
-No other environment variables or secrets are required — there is currently no backend/database/API integration (see "Known gaps").
+For migration/deployment steps, see `docs/SUPABASE_DEPLOYMENT.md`.
 
 ### Local setup
 

@@ -63,14 +63,17 @@ function Field({
 export function ApplicationForm() {
   const t = useTranslations("careers.apply");
   const [uploadError, setUploadError] = useState<string | null>(null);
-  const [uploadName, setUploadName] = useState<string | null>(null);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [submitSuccess, setSubmitSuccess] = useState(false);
 
   const {
     register,
     handleSubmit,
     setValue,
     watch,
-    formState: { errors, isSubmitting, isSubmitSuccessful },
+    reset,
+    formState: { errors, isSubmitting },
   } = useForm<CareerApplicationSchema>({
     resolver: zodResolver(careerApplicationSchema),
     defaultValues: {
@@ -95,34 +98,64 @@ export function ApplicationForm() {
   });
 
   const preview = useMemo(() => {
-    if (!uploadName) {
+    if (!selectedFile) {
       return null;
     }
-    return { name: uploadName, sizeLabel: "--", typeLabel: "other" as const };
-  }, [uploadName]);
+    return toUploadPreview(selectedFile);
+  }, [selectedFile]);
 
   async function onSubmit(values: CareerApplicationSchema) {
-    await new Promise((resolve) => setTimeout(resolve, 350));
-    console.info("Careers application placeholder payload", values);
+    setSubmitError(null);
+    setSubmitSuccess(false);
+
+    if (!selectedFile) {
+      setUploadError(t("upload.errors.required"));
+      return;
+    }
+
+    const formData = new FormData();
+    for (const [key, value] of Object.entries(values)) {
+      formData.append(key, typeof value === "boolean" ? String(value) : value ?? "");
+    }
+    formData.append("cv", selectedFile);
+
+    try {
+      const response = await fetch("/api/careers", {
+        method: "POST",
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const payload = (await response.json().catch(() => null)) as { error?: string } | null;
+        throw new Error(payload?.error || t("submitFailed"));
+      }
+
+      reset();
+      setSelectedFile(null);
+      setUploadError(null);
+      setSubmitSuccess(true);
+    } catch (error) {
+      setSubmitSuccess(false);
+      setSubmitError(error instanceof Error ? error.message : t("submitFailed"));
+    }
   }
 
   function handleSelectFile(file: File | null) {
     if (!file) {
       setUploadError(null);
-      setUploadName(null);
+      setSelectedFile(null);
       return;
     }
 
     const result = validateUploadFile(file);
     if (!result.valid) {
-      setUploadName(null);
+      setSelectedFile(null);
       setUploadError(result.reason === "invalidType" ? t("upload.errors.type") : t("upload.errors.size"));
       return;
     }
 
-    const filePreview = toUploadPreview(file);
     setUploadError(null);
-    setUploadName(filePreview.name);
+    setSelectedFile(file);
     setValue("coverLetter", watch("coverLetter"));
   }
 
@@ -168,7 +201,7 @@ export function ApplicationForm() {
         <div className="space-y-3">
           <h2 className="text-sm font-semibold uppercase tracking-[0.14em] text-blue-200">{t("fields.uploadCv")}</h2>
           <UploadZone onSelect={handleSelectFile} />
-          <FilePreview file={preview} onClear={() => setUploadName(null)} />
+          <FilePreview file={preview} onClear={() => setSelectedFile(null)} />
           <UploadProgress progress={0} />
           {uploadError && <p className="text-xs text-rose-300">{uploadError}</p>}
         </div>
@@ -192,7 +225,8 @@ export function ApplicationForm() {
             {isSubmitting ? t("submitting") : t("submit")}
           </button>
 
-          {isSubmitSuccessful && <p className="text-sm text-emerald-300">{t("success")}</p>}
+          {submitSuccess && <p className="text-sm text-emerald-300">{t("success")}</p>}
+          {submitError && <p className="text-sm text-rose-300">{submitError}</p>}
         </div>
       </form>
     </section>

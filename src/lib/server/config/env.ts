@@ -20,6 +20,7 @@ export const serverEnv = {
   SUPABASE_URL: readOptionalEnv("SUPABASE_URL"),
   SUPABASE_ANON_KEY: readOptionalEnv("SUPABASE_ANON_KEY"),
   SUPABASE_SERVICE_ROLE_KEY: readOptionalEnv("SUPABASE_SERVICE_ROLE_KEY"),
+  SUPABASE_CV_BUCKET: readOptionalEnv("SUPABASE_CV_BUCKET"),
   RESEND_API_KEY: readOptionalEnv("RESEND_API_KEY"),
   OPENAI_API_KEY: readOptionalEnv("OPENAI_API_KEY"),
 } as const;
