@@ -6,7 +6,7 @@ import { SITE_URL as BASE_URL } from "@/lib/constants/site";
 // /privacy-policy and /terms, which are currently placeholder content
 // marked `robots: { index: false }` in their own metadata — listing a
 // noindex page in the sitemap sends a contradictory signal to crawlers.
-const INDEXABLE_PATHS = ["/", "/services", "/about", "/contact"] as const;
+const INDEXABLE_PATHS = ["/", "/services", "/about", "/contact", "/careers"] as const;
 
 async function buildAlternates(pathname: (typeof INDEXABLE_PATHS)[number]) {
   const languages: Record<string, string> = {};

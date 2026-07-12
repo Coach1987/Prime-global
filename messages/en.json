@@ -243,6 +243,270 @@
       "approximateNotice": "Approximate location — Sousse, Tunisia"
     }
   },
+  "careers": {
+    "meta": {
+      "title": "Careers",
+      "description": "Explore international opportunities and apply to premium career tracks with Prime Global."
+    },
+    "hero": {
+      "eyebrow": "Prime Global Careers",
+      "title": "Build Your Future With Prime Global",
+      "subtitle": "Join a disciplined international workforce where operational excellence, professional growth, and cross-border opportunity come together.",
+      "cta": "Apply Now"
+    },
+    "info": {
+      "eyebrow": "Career Excellence",
+      "title": "A Global Career Path Built With Intention",
+      "whyPrimeGlobal": {
+        "title": "Why Work With Prime Global",
+        "description": "We connect talent to high-impact assignments with clear standards, reliable support, and long-term career visibility."
+      },
+      "benefits": {
+        "title": "Competitive Benefits",
+        "description": "Our placements are structured around stability, fair compensation, and practical support for international mobility."
+      },
+      "process": {
+        "title": "Transparent Recruitment Process",
+        "description": "Every candidate follows a clear process from profile review to onboarding, with professional communication at each stage."
+      },
+      "international": {
+        "title": "International Opportunities",
+        "description": "We actively source opportunities across key global markets with demand for skilled and motivated professionals."
+      },
+      "growth": {
+        "title": "Professional Growth",
+        "description": "Career progression is planned through continuous role matching, readiness support, and structured advancement pathways."
+      },
+      "workforce": {
+        "title": "Global Workforce Network",
+        "description": "Prime Global supports a diverse workforce ecosystem connecting employers with qualified talent across borders."
+      }
+    },
+    "categories": {
+      "eyebrow": "Job Categories",
+      "title": "Explore Career Tracks",
+      "description": "Discover roles by professional domain and review current open-position volume.",
+      "openPositions": "{count} open positions",
+      "items": {
+        "construction": {
+          "title": "Construction",
+          "description": "Site operations, project controls, and technical supervision roles for large-scale developments."
+        },
+        "engineering": {
+          "title": "Engineering",
+          "description": "Mechanical, electrical, and civil engineering opportunities across high-demand projects."
+        },
+        "healthcare": {
+          "title": "Healthcare",
+          "description": "Clinical and care-focused placements with internationally aligned quality standards."
+        },
+        "hospitality": {
+          "title": "Hospitality",
+          "description": "Guest-experience and service operations roles in premium hospitality environments."
+        },
+        "logistics": {
+          "title": "Logistics",
+          "description": "Supply chain coordination, transport operations, and cross-border distribution roles."
+        },
+        "manufacturing": {
+          "title": "Manufacturing",
+          "description": "Production, quality assurance, and plant operations opportunities."
+        },
+        "administration": {
+          "title": "Administration",
+          "description": "Business support, coordination, and office operations positions."
+        },
+        "technology": {
+          "title": "Technology",
+          "description": "Software, systems, and digital transformation roles for modern enterprises."
+        }
+      }
+    },
+    "jobs": {
+      "eyebrow": "Open Roles",
+      "title": "Current Job Listings",
+      "description": "Use search and filters to discover relevant opportunities and review role expectations.",
+      "emptyState": "No roles match your current filters. Please adjust criteria and try again.",
+      "featured": "Featured",
+      "applyNow": "Apply Now",
+      "meta": {
+        "location": "Location",
+        "workType": "Work Model",
+        "employment": "Employment",
+        "level": "Experience"
+      },
+      "details": {
+        "toggle": "View Role Details",
+        "responsibilities": "Responsibilities",
+        "requirements": "Requirements"
+      },
+      "search": {
+        "label": "Search roles",
+        "placeholder": "Search by role, city, or country"
+      },
+      "filters": {
+        "all": "All",
+        "category": "Category",
+        "locationType": "Work model",
+        "employmentType": "Employment type",
+        "experience": "Experience level",
+        "categoryOptions": {
+          "construction": "Construction",
+          "engineering": "Engineering",
+          "healthcare": "Healthcare",
+          "hospitality": "Hospitality",
+          "logistics": "Logistics",
+          "manufacturing": "Manufacturing",
+          "administration": "Administration",
+          "technology": "Technology"
+        },
+        "locationOptions": {
+          "onSite": "On-site",
+          "hybrid": "Hybrid",
+          "remote": "Remote"
+        },
+        "employmentOptions": {
+          "fullTime": "Full-time",
+          "contract": "Contract",
+          "temporary": "Temporary"
+        },
+        "experienceOptions": {
+          "entry": "Entry",
+          "mid": "Mid",
+          "senior": "Senior"
+        }
+      },
+      "pagination": {
+        "aria": "Job list pagination",
+        "previous": "Previous",
+        "next": "Next",
+        "summary": "Page {page} of {totalPages}"
+      },
+      "items": {
+        "siteSupervisor": {
+          "title": "Site Supervisor",
+          "summary": "Lead multidisciplinary site execution teams while ensuring schedule integrity, safety compliance, and quality delivery.",
+          "responsibilities": [
+            "Coordinate daily site activities with subcontractors and internal stakeholders.",
+            "Monitor execution quality, safety standards, and milestone completion.",
+            "Prepare concise progress updates and escalate operational risks early."
+          ],
+          "requirements": [
+            "5+ years of site supervision in complex construction programs.",
+            "Strong command of site HSE protocols and quality control processes.",
+            "Professional communication in English; Arabic is an advantage."
+          ]
+        },
+        "mechanicalEngineer": {
+          "title": "Mechanical Engineer",
+          "summary": "Support engineering design, technical validation, and field coordination for mission-critical mechanical systems.",
+          "responsibilities": [
+            "Review drawings, specifications, and installation sequencing plans.",
+            "Coordinate with procurement and site teams on technical requirements.",
+            "Contribute to testing, commissioning, and documentation packages."
+          ],
+          "requirements": [
+            "Bachelor's degree in Mechanical Engineering or equivalent.",
+            "3+ years in mechanical systems delivery for industrial or infrastructure projects.",
+            "Proficiency in technical reporting and multidisciplinary coordination."
+          ]
+        },
+        "registeredNurse": {
+          "title": "Registered Nurse",
+          "summary": "Deliver compassionate, standards-led clinical care while coordinating with multidisciplinary teams in structured care environments.",
+          "responsibilities": [
+            "Provide direct patient care aligned with established clinical protocols.",
+            "Maintain accurate patient records and treatment documentation.",
+            "Collaborate with physicians and support teams for continuity of care."
+          ],
+          "requirements": [
+            "Recognized nursing qualification and active registration eligibility.",
+            "2+ years of practical nursing experience in hospital or clinical settings.",
+            "Strong interpersonal communication and patient-focused mindset."
+          ]
+        },
+        "logisticsCoordinator": {
+          "title": "Logistics Coordinator",
+          "summary": "Coordinate shipment planning, vendor scheduling, and cross-border logistics communication to maintain delivery continuity.",
+          "responsibilities": [
+            "Plan and monitor movement schedules for inbound and outbound cargo.",
+            "Coordinate with transport providers and customs stakeholders.",
+            "Track shipment performance and resolve delays proactively."
+          ],
+          "requirements": [
+            "3+ years in logistics operations or supply chain coordination.",
+            "Working knowledge of shipping documentation and routing controls.",
+            "High attention to detail and deadline-oriented execution."
+          ]
+        },
+        "frontendEngineer": {
+          "title": "Frontend Engineer",
+          "summary": "Build performant, accessible web interfaces for enterprise workflows with a focus on quality, consistency, and maintainability.",
+          "responsibilities": [
+            "Develop responsive UI components aligned with platform design standards.",
+            "Collaborate with backend and product teams on feature delivery.",
+            "Contribute to quality standards through testing and review discipline."
+          ],
+          "requirements": [
+            "4+ years of frontend development using modern TypeScript frameworks.",
+            "Strong understanding of accessibility and semantic web best practices.",
+            "Experience shipping production-grade interfaces in multilingual contexts."
+          ]
+        }
+      }
+    },
+    "apply": {
+      "meta": {
+        "title": "Apply",
+        "description": "Submit your Prime Global career application profile and upload your CV for future review."
+      },
+      "eyebrow": "Application",
+      "title": "Apply To Prime Global",
+      "description": "Submit your professional profile for upcoming opportunities. This is an application UI foundation; final submission workflow will be connected in a later phase.",
+      "fields": {
+        "firstName": "First Name",
+        "lastName": "Last Name",
+        "nationality": "Nationality",
+        "country": "Country",
+        "currentLocation": "Current Location",
+        "phone": "Phone",
+        "whatsapp": "WhatsApp",
+        "email": "Email",
+        "desiredPosition": "Desired Position",
+        "yearsOfExperience": "Years of Experience",
+        "education": "Education",
+        "languages": "Languages",
+        "currentEmployer": "Current Employer",
+        "expectedSalary": "Expected Salary",
+        "availableFrom": "Available From",
+        "coverLetter": "Cover Letter",
+        "uploadCv": "Upload CV",
+        "acceptTerms": "I confirm that the information provided is accurate and can be reviewed for recruitment purposes."
+      },
+      "errors": {
+        "required": "This field is required.",
+        "tooShort": "Please provide a longer value.",
+        "tooLong": "Please shorten this value.",
+        "invalid": "Please provide a valid value.",
+        "acceptTerms": "You must accept the terms to continue."
+      },
+      "submit": "Submit Application",
+      "submitting": "Submitting...",
+      "success": "Application placeholder submitted. Final workflow will be connected in the next integration phase.",
+      "upload": {
+        "title": "CV Upload Placeholder",
+        "hint": "Accepted formats: PDF, DOC, DOCX. Maximum size: 5 MB. File storage is not connected in this phase.",
+        "selectFile": "Select File",
+        "remove": "Remove",
+        "fileMeta": "{type} • {size}",
+        "progress": "Upload progress placeholder: {value}%",
+        "errors": {
+          "type": "Unsupported file type. Please select a PDF, DOC, or DOCX file.",
+          "size": "File is too large. Maximum allowed size is 5 MB."
+        }
+      }
+    }
+  },
   "footer": {
     "tagline": "Tunisian expertise, delivered to a global standard.",
     "quickLinks": "Quick Links",
