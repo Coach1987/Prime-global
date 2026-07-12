@@ -1,3 +1,5 @@
+import { LOCALES, type Locale } from "./locales";
+
 export type NavItem = {
   href: string;
   labelKey: string;
@@ -10,5 +12,5 @@ export const NAV_ITEMS: NavItem[] = [
   { href: "/contact", labelKey: "contact" },
 ];
 
-export const LOCALES = ["en", "ar"] as const;
-export type Locale = (typeof LOCALES)[number];
+export { LOCALES };
+export type { Locale };
