@@ -4,7 +4,7 @@ import { MotionPathPlugin } from "gsap/MotionPathPlugin";
 
 // Registered once here rather than repeated in every component that uses
 // ScrollTrigger/MotionPathPlugin (previously duplicated across
-// ServicesSection, WhyUsSection, FAQSection, Footer, and OrbitAccent).
+// ServicesSection, WhyUsSection, FAQSection, and Footer).
 // gsap.registerPlugin is idempotent and safe to call multiple times, but
 // centralizing this makes the "register once" intent explicit rather than
 // incidental, and gives every consumer a single import to reach for.
