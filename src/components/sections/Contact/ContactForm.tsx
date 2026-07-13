@@ -33,9 +33,18 @@ export function ContactForm() {
     setSubmitState("submitting");
 
     try {
-      await new Promise((r) => setTimeout(r, 900));
+      const response = await fetch("/api/contact", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(values),
+      });
 
-      void values;
+      if (!response.ok) {
+        const payload = (await response.json().catch(() => null)) as { error?: string } | null;
+        throw new Error(payload?.error || t("errorMessage"));
+      }
 
       setSubmitState("success");
       reset();

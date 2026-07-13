@@ -82,10 +82,14 @@ For migration/deployment steps, see `docs/SUPABASE_DEPLOYMENT.md`.
 
 ### Local setup
 
-Create `.env.local` (already gitignored) if you want to override the default:
+Create `.env.local` (already gitignored):
 
 ```bash
 NEXT_PUBLIC_SITE_URL=http://localhost:3000
+SUPABASE_URL=https://nqfcnkufpeevisfpjttu.supabase.co
+SUPABASE_ANON_KEY=<your-anon-key>
+SUPABASE_SERVICE_ROLE_KEY=<your-service-role-key>
+SUPABASE_CV_BUCKET=prime-global-cv
 ```
 
 ## Deploying to Vercel
@@ -110,14 +114,13 @@ This project needs no special Vercel configuration beyond the standard Next.js a
 
 These were deliberately left as placeholders or flagged rather than silently guessed at, since inventing the content would be worse than leaving it clearly marked:
 
-1. **Contact form has no backend.** `ContactForm.tsx` validates and simulates a submission but does not send anywhere. Wire it to a real API route (e.g. `app/api/contact/route.ts` using Resend or Nodemailer) or a third-party form service (Formspree, etc.) before launch.
-2. **Testimonials are placeholder content.** The brochure this site was built from contains no real client testimonials. Every quote/name/role in `messages/*.json` under `testimonials.items` is explicitly marked as placeholder text — replace with real, permissioned client quotes.
-3. **Privacy Policy and Terms of Service pages are placeholders**, not real legal documents, and are intentionally marked `robots: { index: false }` and excluded from the sitemap so they aren't indexed in their current state. Have real legal content drafted (ideally with legal review) before removing the noindex flag.
-4. **No individual service detail pages.** `/services` (the index) exists, but `/services/[slug]` detail pages don't. Service cards currently link to `/contact` as an interim measure rather than a 404.
-5. **Statistics are placeholder numbers.** The "10+ years," "150+ clients," etc. figures in the Hero and Why-Us sections were invented to demonstrate the animated-counter component and are not real company data — replace with actual figures in `src/lib/constants/whyUs.ts` and `messages/*.json`.
-6. **Header uses the real logo mark image + text wordmark, not the full lockup.** The real Prime Global logo artwork (`public/images/logo/prime-global-logo.png`, cropped to just the icon for `prime-global-mark.png`) is now used throughout — Hero uses the full lockup (globe + ring + arrow + wordmark, exactly as provided), Header/Footer pair the cropped mark with a styled text wordmark since the full square lockup's text would be illegible at ~36px. The favicon (`src/app/favicon.ico`) is a separately-generated approximation, not derived from the real logo file, since it needs to work as a tiny multi-resolution icon.
-7. **Contact map is approximate.** The brochure gives only "Sousse, Tunisia," not a street address, so the embedded Google Map centers on the city, not a precise office location.
-8. **Per-page hreflang alternates are incomplete.** The sitemap (`sitemap.ts`) correctly generates hreflang alternates for every locale/page combination, but individual page `<head>` metadata only sets `alternates.canonical`, not `alternates.languages`. Search engines will still discover translations via the sitemap, but adding explicit per-page `alternates.languages` would be a further improvement.
+1. **Testimonials are placeholder content.** The brochure this site was built from contains no real client testimonials. Every quote/name/role in `messages/*.json` under `testimonials.items` is explicitly marked as placeholder text — replace with real, permissioned client quotes.
+2. **Privacy Policy and Terms of Service pages are placeholders**, not real legal documents, and are intentionally marked `robots: { index: false }` and excluded from the sitemap so they aren't indexed in their current state. Have real legal content drafted (ideally with legal review) before removing the noindex flag.
+3. **No individual service detail pages.** `/services` (the index) exists, but `/services/[slug]` detail pages don't. Service cards currently link to `/contact` as an interim measure rather than a 404.
+4. **Statistics are placeholder numbers.** The "10+ years," "150+ clients," etc. figures in the Hero and Why-Us sections were invented to demonstrate the animated-counter component and are not real company data — replace with actual figures in `src/lib/constants/whyUs.ts` and `messages/*.json`.
+5. **Header uses the real logo mark image + text wordmark, not the full lockup.** The real Prime Global logo artwork (`public/images/logo/prime-global-logo.png`, cropped to just the icon for `prime-global-mark.png`) is now used throughout — Hero uses the full lockup (globe + ring + arrow + wordmark, exactly as provided), Header/Footer pair the cropped mark with a styled text wordmark since the full square lockup's text would be illegible at ~36px. The favicon (`src/app/favicon.ico`) is a separately-generated approximation, not derived from the real logo file, since it needs to work as a tiny multi-resolution icon.
+6. **Contact map is approximate.** The brochure gives only "Sousse, Tunisia," not a street address, so the embedded Google Map centers on the city, not a precise office location.
+7. **Per-page hreflang alternates are incomplete.** The sitemap (`sitemap.ts`) correctly generates hreflang alternates for every locale/page combination, but individual page `<head>` metadata only sets `alternates.canonical`, not `alternates.languages`. Search engines will still discover translations via the sitemap, but adding explicit per-page `alternates.languages` would be a further improvement.
 
 ## Accessibility & i18n notes
 
