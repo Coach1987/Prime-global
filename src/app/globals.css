@@ -53,6 +53,24 @@
   }
 }
 
+@keyframes heroOrbitSparkFlow {
+  from {
+    stroke-dashoffset: 20;
+  }
+  to {
+    stroke-dashoffset: -180;
+  }
+}
+
+.hero-depth-shell {
+  transform: translate3d(var(--hero-depth-x, 0px), var(--hero-depth-y, 0px), 0);
+  will-change: transform;
+}
+
+.hero-orbit-track {
+  opacity: 0.72;
+}
+
 .hero-orbit-particles {
   animation-name: heroOrbitFlow;
   animation-timing-function: linear;
@@ -63,12 +81,24 @@
   animation-name: heroOrbitGlowFlow;
   animation-timing-function: linear;
   animation-iteration-count: infinite;
-  filter: blur(1.15px);
+  filter: blur(1px);
+}
+
+.hero-orbit-spark {
+  animation-name: heroOrbitSparkFlow;
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+  filter: blur(0.2px);
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .hero-depth-shell {
+    transform: translate3d(0, 0, 0) !important;
+  }
+
   .hero-orbit-particles,
-  .hero-orbit-glow {
+  .hero-orbit-glow,
+  .hero-orbit-spark {
     animation: none !important;
   }
 }
