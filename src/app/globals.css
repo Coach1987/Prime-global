@@ -34,3 +34,41 @@
     outline-offset: 2px;
   }
 }
+
+@keyframes heroOrbitFlow {
+  from {
+    stroke-dashoffset: 0;
+  }
+  to {
+    stroke-dashoffset: -120;
+  }
+}
+
+@keyframes heroOrbitGlowFlow {
+  from {
+    stroke-dashoffset: 12;
+  }
+  to {
+    stroke-dashoffset: -108;
+  }
+}
+
+.hero-orbit-particles {
+  animation-name: heroOrbitFlow;
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+}
+
+.hero-orbit-glow {
+  animation-name: heroOrbitGlowFlow;
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+  filter: blur(1.15px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero-orbit-particles,
+  .hero-orbit-glow {
+    animation: none !important;
+  }
+}
