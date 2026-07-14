@@ -52,9 +52,9 @@ export function Header() {
             : "h-[72px] bg-transparent md:h-[92px]"
         )}
       >
-        <div className="mx-auto flex h-full max-w-[1380px] items-center justify-between px-4 ltr:pl-3 rtl:pr-3 sm:px-6 md:px-10">
+        <div className="mx-auto flex h-full max-w-[1380px] items-center justify-between px-4 ltr:pl-2 rtl:pr-2 sm:px-5 sm:ltr:pl-3 sm:rtl:pr-3 md:px-10">
 
-          <div className="origin-left ltr:-ml-1 rtl:origin-right rtl:-mr-1">
+          <div className="origin-left rtl:origin-right">
             <Logo scrolled={scrolled} />
           </div>
 

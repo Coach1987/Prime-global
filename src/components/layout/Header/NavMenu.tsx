@@ -8,7 +8,7 @@ import { useIsHome } from "@/lib/hooks/useIsHome";
 import { smoothScrollTo } from "@/lib/utils/smoothScroll";
 import { cn } from "@/lib/utils/cn";
 
-const SECTION_IDS = ["services", "about", "contact"];
+const SECTION_IDS = ["services", "contact"];
 
 export function NavMenu() {
   const t = useTranslations("nav");

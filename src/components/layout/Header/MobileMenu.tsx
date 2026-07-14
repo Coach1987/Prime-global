@@ -15,7 +15,7 @@ interface MobileMenuProps {
   onClose: () => void;
 }
 
-const SECTION_IDS = ["services", "about", "contact"];
+const SECTION_IDS = ["services", "contact"];
 
 export function MobileMenu({ open, onClose }: MobileMenuProps) {
   const t = useTranslations("nav");
