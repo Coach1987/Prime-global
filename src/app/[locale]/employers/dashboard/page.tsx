@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useEffect, useMemo, useState } from "react";
+import { useLocale } from "next-intl";
 
 type EmployerStats = {
   totalJobs: number;
@@ -29,6 +30,7 @@ export default function EmployerDashboardPage() {
   const [jobTitle, setJobTitle] = useState("");
   const [jobCountry, setJobCountry] = useState("");
   const [jobCity, setJobCity] = useState("");
+  const locale = useLocale();
 
   const isReady = useMemo(() => Boolean(token), [token]);
 
@@ -172,6 +174,10 @@ export default function EmployerDashboardPage() {
       <section className="rounded-3xl border border-gold/20 bg-bg-secondary/80 p-7 backdrop-blur-xl md:p-10">
         <h1 className="font-heading text-4xl text-text-primary">Employer Dashboard</h1>
         <p className="mt-2 text-sm text-text-secondary">Verification, jobs, and applicants in one command center.</p>
+
+        <a href={`/${locale}/enterprise`} className="mt-6 inline-flex rounded-full border border-gold/30 px-5 py-2 text-sm font-semibold text-gold transition hover:bg-gold/10">
+          Open Enterprise Center
+        </a>
 
         {stats ? (
           <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
