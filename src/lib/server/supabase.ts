@@ -1,8 +1,8 @@
 import { createClient } from "@supabase/supabase-js";
-import { readRequiredEnv } from "./config/env";
+import { readRequiredEnv, readRequiredSupabaseUrl } from "./config/env";
 
 export function createSupabaseAdminClient() {
-  const supabaseUrl = readRequiredEnv("SUPABASE_URL");
+  const supabaseUrl = readRequiredSupabaseUrl();
   const serviceRoleKey = readRequiredEnv("SUPABASE_SERVICE_ROLE_KEY");
 
   return createClient(supabaseUrl, serviceRoleKey, {

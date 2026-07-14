@@ -74,9 +74,11 @@ messages/
 |---|---|---|
 | `NEXT_PUBLIC_SITE_URL` | Recommended for production | Canonical site URL used in metadata, sitemap, robots.txt, and JSON-LD. Falls back to Vercel's own preview URL, then to `https://www.primeglobal.tn`, if unset. |
 | `SUPABASE_URL` | Required for careers submission API | Supabase project URL used by backend API routes. |
+| `NEXT_PUBLIC_SUPABASE_URL` | Optional fallback | Public alias for the same project URL; server code falls back to this if `SUPABASE_URL` is not set. |
 | `SUPABASE_ANON_KEY` | Optional in current server flow | Reserved for client-side Supabase usage if enabled later. |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Optional fallback | Public alias for anon key if client-side Supabase is enabled later. |
 | `SUPABASE_SERVICE_ROLE_KEY` | Required for careers submission API | Service role key used server-side to upload CVs and insert applications securely. |
-| `SUPABASE_CV_BUCKET` | Required for careers submission API | Storage bucket name for uploaded CVs (`prime-global-cv` for current migration). |
+| `SUPABASE_CV_BUCKET` | Required for careers submission API | Storage bucket name for uploaded CVs (`candidate-cvs`). |
 
 For migration/deployment steps, see `docs/SUPABASE_DEPLOYMENT.md`.
 
@@ -87,9 +89,11 @@ Create `.env.local` (already gitignored):
 ```bash
 NEXT_PUBLIC_SITE_URL=http://localhost:3000
 SUPABASE_URL=https://nqfcnkufpeevisfpjttu.supabase.co
+NEXT_PUBLIC_SUPABASE_URL=https://nqfcnkufpeevisfpjttu.supabase.co
 SUPABASE_ANON_KEY=<your-anon-key>
+NEXT_PUBLIC_SUPABASE_ANON_KEY=<your-anon-key>
 SUPABASE_SERVICE_ROLE_KEY=<your-service-role-key>
-SUPABASE_CV_BUCKET=prime-global-cv
+SUPABASE_CV_BUCKET=candidate-cvs
 ```
 
 ## Deploying to Vercel
@@ -99,7 +103,7 @@ This project needs no special Vercel configuration beyond the standard Next.js a
 1. **Push to a Git repository** (GitHub/GitLab/Bitbucket).
 2. **Import the repository** in the Vercel dashboard -> "Add New Project."
 3. Vercel will auto-detect Next.js and use `npm run build` / `.next` output — no build command overrides needed.
-4. **Set the environment variable** `NEXT_PUBLIC_SITE_URL` in Project Settings -> Environment Variables, scoped to **Production**, set to your real domain (e.g. `https://www.primeglobal.tn`). Preview deployments will automatically fall back to their own generated `*.vercel.app` URL if you leave this unset for the Preview scope.
+4. **Set environment variables** in Project Settings -> Environment Variables (Production and Preview): `NEXT_PUBLIC_SITE_URL`, `SUPABASE_URL` (or `NEXT_PUBLIC_SUPABASE_URL`), `SUPABASE_SERVICE_ROLE_KEY`, and `SUPABASE_CV_BUCKET=candidate-cvs`. Keep `SUPABASE_SERVICE_ROLE_KEY` server-only.
 5. **Deploy.** Every push to a non-production branch creates a Preview Deployment; merges to the production branch (commonly `main`) deploy to production automatically.
 6. Once on your real domain, connect it under Project Settings -> Domains.
 

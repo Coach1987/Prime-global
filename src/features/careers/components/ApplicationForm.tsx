@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { careerApplicationSchema, type CareerApplicationSchema } from "../schemas";
 import { FilePreview } from "./FilePreview";
 import { UploadZone } from "./UploadZone";
@@ -61,6 +61,7 @@ function Field({
 
 export function ApplicationForm() {
   const t = useTranslations("careers.apply");
+  const locale = useLocale();
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -107,6 +108,7 @@ export function ApplicationForm() {
     for (const [key, value] of Object.entries(values)) {
       formData.append(key, typeof value === "boolean" ? String(value) : value ?? "");
     }
+    formData.append("locale", locale === "ar" ? "ar" : "en");
     formData.append("cv", selectedFile);
 
     try {
@@ -205,8 +207,10 @@ export function ApplicationForm() {
             {isSubmitting ? t("submitting") : t("submit")}
           </button>
 
-          {submitSuccess && <p className="text-sm text-emerald-300">{t("success")}</p>}
-          {submitError && <p className="text-sm text-rose-300">{submitError}</p>}
+          <div role="status" aria-live="polite" className="min-h-6">
+            {submitSuccess && <p className="text-sm text-emerald-300">{t("success")}</p>}
+            {submitError && <p className="text-sm text-rose-300">{submitError}</p>}
+          </div>
         </div>
       </form>
     </section>
