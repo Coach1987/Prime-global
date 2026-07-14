@@ -36,7 +36,7 @@ export async function GET(request: Request) {
   const supabase = createSupabaseAdminClient();
   let dbQuery = supabase
     .from("jobs")
-    .select("id, title, department, employment_type, work_mode, country, city, salary_min, salary_max, salary_currency, experience, education, required_skills, application_deadline, publish_date, employers!inner(company_name, industry, verification_status)", {
+    .select("id, title, department, employment_type, work_mode, country, city, salary_min, salary_max, salary_currency, experience, education, required_skills, application_deadline, publish_date, employers!inner(id, company_name, industry, verification_status)", {
       count: "exact",
     })
     .eq("status", "published")
@@ -66,9 +66,30 @@ export async function GET(request: Request) {
     );
   }
 
+  const employerIds = Array.from(
+    new Set(
+      (data ?? []).flatMap((job) => {
+        const employer = Array.isArray(job.employers) ? job.employers[0] : job.employers;
+        return employer?.id ? [employer.id] : [];
+      })
+    )
+  );
+
+  const { data: trustScores } = employerIds.length
+    ? await supabase.from("prime_trust_scores").select("employer_id, verification_score, trust_badge, completion_rate").in("employer_id", employerIds)
+    : { data: [] };
+
+  const trustScoreMap = new Map((trustScores ?? []).map((score) => [score.employer_id, score]));
+
   return NextResponse.json({
     success: true,
-    data,
+    data: (data ?? []).map((job) => {
+      const employer = Array.isArray(job.employers) ? job.employers[0] : job.employers;
+      return {
+        ...job,
+        employerTrustScore: employer?.id ? trustScoreMap.get(employer.id) ?? null : null,
+      };
+    }),
     pagination: {
       page: input.page,
       pageSize: input.pageSize,

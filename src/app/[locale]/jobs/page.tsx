@@ -12,6 +12,11 @@ type PublicJob = {
   salary_min: number | null;
   salary_max: number | null;
   employers?: { company_name?: string }[] | { company_name?: string };
+  employerTrustScore?: {
+    verification_score?: number;
+    trust_badge?: string;
+    completion_rate?: number;
+  } | null;
 };
 
 export default function PublicJobsPage() {
@@ -113,6 +118,9 @@ export default function PublicJobsPage() {
                 <p className="mt-2 text-sm text-text-secondary">{job.city}, {job.country}</p>
                 <p className="mt-2 text-xs uppercase tracking-[0.15em] text-text-tertiary">
                   {job.employment_type.replace("_", " ")} | {job.work_mode}
+                </p>
+                <p className="mt-2 text-sm text-gold">
+                  Trust: {job.employerTrustScore?.trust_badge ?? "bronze"} • Score {job.employerTrustScore?.verification_score ?? 0}
                 </p>
                 <p className="mt-4 text-sm text-gold">
                   Salary: {job.salary_min ?? "-"} - {job.salary_max ?? "-"}
