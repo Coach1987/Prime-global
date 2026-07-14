@@ -142,9 +142,11 @@ function getRuntimeEnvSnapshot(cvBucket: string) {
   const nextPublicSupabaseAnonKey = readOptionalEnv("NEXT_PUBLIC_SUPABASE_ANON_KEY");
   const serviceRoleKey = readOptionalEnv("SUPABASE_SERVICE_ROLE_KEY");
   const configuredBucket = readOptionalEnv("SUPABASE_CV_BUCKET");
+  const resolvedSupabaseUrl = readSupabaseUrl() ?? null;
 
   return {
     NEXT_PUBLIC_SUPABASE_URL: nextPublicSupabaseUrl ?? null,
+    RESOLVED_SUPABASE_URL: resolvedSupabaseUrl,
     NEXT_PUBLIC_SUPABASE_ANON_KEY: maskSecret(nextPublicSupabaseAnonKey),
     SUPABASE_SERVICE_ROLE_KEY: {
       isSet: Boolean(serviceRoleKey),

@@ -1,5 +1,23 @@
 const PLACEHOLDER_VALUES = new Set(["", "changeme", "your-value"]);
 
+function normalizeSupabaseProjectUrl(value: string): string {
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return trimmed;
+  }
+
+  try {
+    const url = new URL(trimmed);
+    const normalizedPath = url.pathname.replace(/\/+$/, "");
+    if (normalizedPath === "/rest/v1") {
+      url.pathname = "";
+    }
+    return url.toString().replace(/\/+$/, "");
+  } catch {
+    return trimmed.replace(/\/+$/, "").replace(/\/rest\/v1$/i, "");
+  }
+}
+
 function readOptionalEnv(key: string): string | undefined {
   const value = process.env[key]?.trim();
   if (!value || PLACEHOLDER_VALUES.has(value.toLowerCase())) {
@@ -17,7 +35,8 @@ function readRequiredEnv(key: string): string {
 }
 
 function readSupabaseUrl(): string | undefined {
-  return readOptionalEnv("SUPABASE_URL") ?? readOptionalEnv("NEXT_PUBLIC_SUPABASE_URL");
+  const value = readOptionalEnv("SUPABASE_URL") ?? readOptionalEnv("NEXT_PUBLIC_SUPABASE_URL");
+  return value ? normalizeSupabaseProjectUrl(value) : undefined;
 }
 
 function readSupabaseAnonKey(): string | undefined {
