@@ -16,7 +16,7 @@ const MIME_EXTENSION_MAP: Record<string, "pdf" | "doc" | "docx"> = {
   "application/vnd.openxmlformats-officedocument.wordprocessingml.document": "docx",
 };
 
-const DEFAULT_CV_BUCKET = "candidate-cvs";
+const DEFAULT_CV_BUCKET = "prime-global-cv";
 
 const applicationPayloadSchema = z.object({
   fullName: z.string().trim().min(2).max(120),
@@ -91,16 +91,88 @@ function getCvBucketName() {
   return readOptionalEnv("SUPABASE_CV_BUCKET") ?? DEFAULT_CV_BUCKET;
 }
 
+function maskSecret(value?: string) {
+  if (!value) return null;
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+  if (trimmed.length <= 10) return `${trimmed.slice(0, 2)}***`;
+  return `${trimmed.slice(0, 6)}...${trimmed.slice(-4)}`;
+}
+
+function toObjectError(error: unknown) {
+  if (!error || typeof error !== "object") {
+    return {
+      code: null,
+      statusCode: null,
+      message: String(error ?? "Unknown error"),
+      name: "UnknownError",
+    };
+  }
+
+  const record = error as Record<string, unknown>;
+  return {
+    code:
+      (typeof record.code === "string" && record.code) ||
+      (typeof record.error === "string" && record.error) ||
+      (typeof record.statusCode === "string" && record.statusCode) ||
+      (typeof record.statusCode === "number" ? String(record.statusCode) : null),
+    statusCode:
+      typeof record.statusCode === "number"
+        ? record.statusCode
+        : typeof record.status === "number"
+          ? record.status
+          : null,
+    message:
+      (typeof record.message === "string" && record.message) ||
+      (typeof record.error_description === "string" && record.error_description) ||
+      JSON.stringify(record),
+    name: (typeof record.name === "string" && record.name) || "StorageError",
+  };
+}
+
+function getDebugMode(request: Request) {
+  const url = new URL(request.url);
+  const debugParam = url.searchParams.get("debug");
+  const debugHeader = request.headers.get("x-debug-careers");
+  return debugParam === "1" || debugHeader === "1";
+}
+
+function getRuntimeEnvSnapshot(cvBucket: string) {
+  const nextPublicSupabaseUrl = readOptionalEnv("NEXT_PUBLIC_SUPABASE_URL");
+  const nextPublicSupabaseAnonKey = readOptionalEnv("NEXT_PUBLIC_SUPABASE_ANON_KEY");
+  const serviceRoleKey = readOptionalEnv("SUPABASE_SERVICE_ROLE_KEY");
+  const configuredBucket = readOptionalEnv("SUPABASE_CV_BUCKET");
+
+  return {
+    NEXT_PUBLIC_SUPABASE_URL: nextPublicSupabaseUrl ?? null,
+    NEXT_PUBLIC_SUPABASE_ANON_KEY: maskSecret(nextPublicSupabaseAnonKey),
+    SUPABASE_SERVICE_ROLE_KEY: {
+      isSet: Boolean(serviceRoleKey),
+      masked: maskSecret(serviceRoleKey),
+      length: serviceRoleKey?.length ?? 0,
+    },
+    SUPABASE_CV_BUCKET: configuredBucket ?? null,
+    resolvedUploadBucket: cvBucket,
+  };
+}
+
 export async function GET() {
   return NextResponse.json({ error: "Method not allowed" }, { status: 405 });
 }
 
 export async function POST(request: Request) {
   try {
+    const debugMode = getDebugMode(request);
+
     if (!readSupabaseUrl() || !readOptionalEnv("SUPABASE_SERVICE_ROLE_KEY")) {
+      const cvBucket = getCvBucketName();
+      const envSnapshot = getRuntimeEnvSnapshot(cvBucket);
+      console.error("[careers:config] missing Supabase server configuration", envSnapshot);
+
       return NextResponse.json(
         {
           error: "Application submission is being configured. Please contact us directly for now.",
+          ...(debugMode ? { debug: envSnapshot } : {}),
         },
         { status: 503 }
       );
@@ -147,6 +219,14 @@ export async function POST(request: Request) {
     const locale = inferLocale(request, data.locale);
     const countryCity = parseCountryCity(data.location);
     const cvBucket = getCvBucketName();
+    const envSnapshot = getRuntimeEnvSnapshot(cvBucket);
+
+    console.info("[careers:upload] resolved storage bucket", {
+      resolvedUploadBucket: cvBucket,
+      configuredBucket: envSnapshot.SUPABASE_CV_BUCKET,
+      serviceRoleConfigured: envSnapshot.SUPABASE_SERVICE_ROLE_KEY.isSet,
+    });
+
     const supabase = createSupabaseAdminClient();
 
     const applicationId = crypto.randomUUID();
@@ -159,8 +239,38 @@ export async function POST(request: Request) {
     });
 
     if (uploadError) {
-      return NextResponse.json({ error: "Failed to upload CV.", details: uploadError.message }, { status: 500 });
+      const parsedUploadError = toObjectError(uploadError);
+      console.error("[careers:upload] storage upload failed", {
+        bucket: cvBucket,
+        storagePath,
+        ...parsedUploadError,
+      });
+
+      return NextResponse.json(
+        {
+          error: "Failed to upload CV.",
+          details: parsedUploadError.message,
+          code: parsedUploadError.code,
+          statusCode: parsedUploadError.statusCode,
+          ...(debugMode
+            ? {
+                debug: {
+                  bucket: cvBucket,
+                  storagePath,
+                  env: envSnapshot,
+                },
+              }
+            : {}),
+        },
+        { status: 500 }
+      );
     }
+
+    console.info("[careers:upload] file upload succeeded, proceeding to insert database row", {
+      bucket: cvBucket,
+      storagePath,
+      applicationId,
+    });
 
     const { error: insertError } = await supabase.from("job_applications").insert({
       id: applicationId,
@@ -181,11 +291,57 @@ export async function POST(request: Request) {
     });
 
     if (insertError) {
+      const parsedInsertError = toObjectError(insertError);
+      console.error("[careers:insert] insert failed, removing uploaded file", {
+        bucket: cvBucket,
+        storagePath,
+        applicationId,
+        ...parsedInsertError,
+      });
+
       await supabase.storage.from(cvBucket).remove([storagePath]);
-      return NextResponse.json({ error: "Failed to save application.", details: insertError.message }, { status: 500 });
+      return NextResponse.json(
+        {
+          error: "Failed to save application.",
+          details: parsedInsertError.message,
+          code: parsedInsertError.code,
+          statusCode: parsedInsertError.statusCode,
+          ...(debugMode
+            ? {
+                debug: {
+                  bucket: cvBucket,
+                  storagePath,
+                  env: envSnapshot,
+                },
+              }
+            : {}),
+        },
+        { status: 500 }
+      );
     }
 
-    return NextResponse.json({ success: true, id: applicationId }, { status: 201 });
+    console.info("[careers:insert] application insert succeeded", {
+      applicationId,
+      bucket: cvBucket,
+      storagePath,
+    });
+
+    return NextResponse.json(
+      {
+        success: true,
+        id: applicationId,
+        ...(debugMode
+          ? {
+              debug: {
+                bucket: cvBucket,
+                storagePath,
+                env: envSnapshot,
+              },
+            }
+          : {}),
+      },
+      { status: 201 }
+    );
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown server error";
     return NextResponse.json({ error: "Unexpected server error.", details: message }, { status: 500 });
