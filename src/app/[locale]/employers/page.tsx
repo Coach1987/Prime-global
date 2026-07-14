@@ -41,6 +41,12 @@ export default async function EmployersLandingPage({
           >
             Open Dashboard
           </Link>
+          <Link
+            href={`/${locale}/partners/request`}
+            className="rounded-full border border-gold/30 px-7 py-3 text-sm font-semibold text-gold transition hover:bg-gold/10"
+          >
+            Request Hiring Support
+          </Link>
         </div>
       </section>
     </main>
