@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useLocale } from "next-intl";
 
 export default function CandidateDashboardPage() {
   const [token, setToken] = useState("");
@@ -8,6 +9,7 @@ export default function CandidateDashboardPage() {
   const [applications, setApplications] = useState<Array<Record<string, unknown>>>([]);
   const [savedJobs, setSavedJobs] = useState<Array<Record<string, unknown>>>([]);
   const [notifications, setNotifications] = useState<Array<Record<string, unknown>>>([]);
+  const locale = useLocale();
 
   useEffect(() => {
     const accessToken = localStorage.getItem("prime_auth_token") ?? "";
@@ -41,6 +43,10 @@ export default function CandidateDashboardPage() {
       <section className="rounded-3xl border border-gold/20 bg-bg-secondary/80 p-7 backdrop-blur-xl md:p-10">
         <h1 className="font-heading text-4xl text-text-primary">Candidate Dashboard</h1>
         <p className="mt-3 text-sm text-text-secondary">Profile, resumes, saved jobs, applications, status updates, and settings.</p>
+
+        <a href={`/${locale}/matching/v2`} className="mt-6 inline-flex rounded-full border border-gold/30 px-5 py-2 text-sm font-semibold text-gold transition hover:bg-gold/10">
+          Open AI Matching V2
+        </a>
 
         <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {[
