@@ -77,6 +77,22 @@ function parseCountryCity(location: string) {
   return location.trim().slice(0, 160);
 }
 
+function parseLegacyCountryAndCity(location: string) {
+  const parts = location
+    .split(",")
+    .map((part) => part.trim())
+    .filter(Boolean);
+
+  if (parts.length >= 2) {
+    const city = parts[0].slice(0, 120) || "Unknown City";
+    const country = parts.slice(1).join(", ").slice(0, 100) || "Unknown Country";
+    return { country, city };
+  }
+
+  const fallback = location.trim().slice(0, 100) || "Unknown";
+  return { country: fallback, city: fallback.slice(0, 120) };
+}
+
 function createStoragePath(applicationId: string, fileName: string, mimeType: string) {
   const extension = inferExtension(fileName, mimeType);
   const safeName = sanitizeFileName(fileName.replace(/\.[^.]+$/, "")) || "cv";
@@ -274,7 +290,7 @@ export async function POST(request: Request) {
       applicationId,
     });
 
-    const { error: insertError } = await supabase.from("job_applications").insert({
+    const jobApplicationPayload = {
       id: applicationId,
       full_name: data.fullName,
       email: data.email,
@@ -290,7 +306,50 @@ export async function POST(request: Request) {
       consent_accepted: true,
       status: "new",
       locale,
-    });
+    };
+
+    const { error: jobInsertError } = await supabase.from("job_applications").insert(jobApplicationPayload);
+
+    let insertError = jobInsertError;
+    let insertedTable = "job_applications";
+
+    if (jobInsertError) {
+      const parsedJobInsertError = toObjectError(jobInsertError);
+      const shouldTryLegacyApplicationsTable =
+        parsedJobInsertError.code === "PGRST205" ||
+        parsedJobInsertError.message.toLowerCase().includes("job_applications");
+
+      if (shouldTryLegacyApplicationsTable) {
+        const { country, city } = parseLegacyCountryAndCity(data.location);
+        const { error: legacyInsertError } = await supabase.from("applications").insert({
+          id: applicationId,
+          full_name: data.fullName,
+          email: data.email,
+          phone: data.phone,
+          country,
+          city,
+          position: data.desiredPosition,
+          experience: String(data.yearsOfExperience),
+          cover_letter: data.coverLetter,
+          cv_url: storagePath,
+          cv_filename: cvFile.name.slice(0, 255),
+          status: "pending",
+        });
+
+        if (!legacyInsertError) {
+          insertError = null;
+          insertedTable = "applications";
+          console.warn("[careers:insert] fell back to legacy applications table", {
+            applicationId,
+            bucket: cvBucket,
+            storagePath,
+          });
+        } else {
+          insertError = legacyInsertError;
+          insertedTable = "applications";
+        }
+      }
+    }
 
     if (insertError) {
       const parsedInsertError = toObjectError(insertError);
@@ -298,6 +357,7 @@ export async function POST(request: Request) {
         bucket: cvBucket,
         storagePath,
         applicationId,
+        insertedTable,
         ...parsedInsertError,
       });
 
@@ -314,6 +374,7 @@ export async function POST(request: Request) {
                   bucket: cvBucket,
                   storagePath,
                   env: envSnapshot,
+                  insertedTable,
                 },
               }
             : {}),
@@ -326,6 +387,7 @@ export async function POST(request: Request) {
       applicationId,
       bucket: cvBucket,
       storagePath,
+      insertedTable,
     });
 
     return NextResponse.json(
@@ -338,6 +400,7 @@ export async function POST(request: Request) {
                 bucket: cvBucket,
                 storagePath,
                 env: envSnapshot,
+                insertedTable,
               },
             }
           : {}),
