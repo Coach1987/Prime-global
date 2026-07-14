@@ -4,6 +4,7 @@
     "homeLabel": "Prime Global — Home",
     "services": "Services",
     "about": "About",
+    "careers": "Careers",
     "contact": "Contact",
     "cta": "Get Started",
     "openMenu": "Open menu",
@@ -30,6 +31,7 @@
     "eyebrow": "About Prime Global",
     "title": "Trusted support for ambitious business growth",
     "description": "We combine local insight with global standards to support organizations with precision, discretion, and dependable execution.",
+    "learnMore": "Learn More",
     "capabilities": {
       "recruitment": {
         "title": "Recruitment",
@@ -457,31 +459,22 @@
     },
     "apply": {
       "meta": {
-        "title": "Apply",
-        "description": "Submit your Prime Global career application profile and upload your CV for future review."
+        "title": "Join Prime Global",
+        "description": "Submit your professional application and upload your CV to be considered for upcoming opportunities."
       },
       "eyebrow": "Application",
-      "title": "Apply To Prime Global",
-      "description": "Submit your professional profile for upcoming opportunities and upload your CV for recruiter review.",
+      "title": "Join Prime Global",
+      "description": "Share your professional profile and upload your CV for Prime Global recruitment review.",
       "fields": {
-        "firstName": "First Name",
-        "lastName": "Last Name",
-        "nationality": "Nationality",
-        "country": "Country",
-        "currentLocation": "Current Location",
+        "fullName": "Full Name",
         "phone": "Phone",
-        "whatsapp": "WhatsApp",
         "email": "Email",
+        "location": "Country / City",
         "desiredPosition": "Desired Position",
         "yearsOfExperience": "Years of Experience",
-        "education": "Education",
-        "languages": "Languages",
-        "currentEmployer": "Current Employer",
-        "expectedSalary": "Expected Salary",
-        "availableFrom": "Available From",
-        "coverLetter": "Cover Letter",
+        "coverLetter": "Professional Message",
         "uploadCv": "Upload CV",
-        "acceptTerms": "I confirm that the information provided is accurate and can be reviewed for recruitment purposes."
+        "acceptTerms": "I consent to the processing of my data for recruitment purposes according to the privacy policy."
       },
       "errors": {
         "required": "This field is required.",
@@ -492,7 +485,7 @@
       },
       "submit": "Submit Application",
       "submitting": "Submitting...",
-      "success": "Application submitted successfully. Our team will review your profile.",
+      "success": "Application submitted successfully. Our recruitment team will review your profile.",
       "submitFailed": "We could not submit your application right now. Please try again.",
       "upload": {
         "title": "Upload Your CV",
@@ -507,6 +500,48 @@
           "required": "Please upload your CV before submitting."
         }
       }
+    }
+  },
+  "serviceDetails": {
+    "logistics": {
+      "eyebrow": "Logistics Support",
+      "title": "Structured Logistics Support",
+      "intro": "Prime Global supports your operations with disciplined logistics coordination built for reliability and execution clarity.",
+      "capabilitiesTitle": "Core Capabilities",
+      "capabilities": {
+        "planning": "Shipment planning aligned with operational priorities.",
+        "coordination": "Vendor and stakeholder coordination across delivery stages.",
+        "visibility": "Clear status visibility for schedules, handoffs, and milestones.",
+        "compliance": "Documentation and process discipline for controlled movement."
+      },
+      "whyTitle": "Why Prime Global",
+      "why": {
+        "discipline": "A measured, detail-oriented operating model built for dependable delivery.",
+        "speed": "Fast response across changing constraints without sacrificing control.",
+        "clarity": "Transparent communication so your teams stay aligned at every step."
+      },
+      "cta": "Contact Our Team",
+      "backToServices": "Back to Services"
+    },
+    "businessDevelopment": {
+      "eyebrow": "Business Development",
+      "title": "Strategic Business Development",
+      "intro": "We help you identify growth opportunities, build qualified pipelines, and advance high-value partnerships with precision.",
+      "capabilitiesTitle": "Core Capabilities",
+      "capabilities": {
+        "marketEntry": "Market-entry support tailored to your target sectors and priorities.",
+        "partnerships": "Partner identification and relationship structuring support.",
+        "pipeline": "Pipeline design with practical opportunity qualification standards.",
+        "accountGrowth": "Account development planning focused on long-term commercial value."
+      },
+      "whyTitle": "Why Prime Global",
+      "why": {
+        "advisory": "Strategic guidance backed by grounded regional and operational insight.",
+        "execution": "Execution-focused support that keeps initiatives moving with discipline.",
+        "longTerm": "A long-term partnership mindset aligned with sustained business growth."
+      },
+      "cta": "Start a Conversation",
+      "backToServices": "Back to Services"
     }
   },
   "footer": {

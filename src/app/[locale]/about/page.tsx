@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { SectionHeading } from "@/components/ui/SectionHeading";
+import { Link } from "@/i18n/routing";
 
 export async function generateMetadata({
   params,
@@ -27,10 +28,9 @@ export default async function AboutPage({
   const t = await getTranslations({ locale, namespace: "about" });
 
   const capabilities = [
-    { key: "recruitment" },
-    { key: "logistics" },
-    { key: "businessDevelopment" },
-    { key: "consulting" },
+    { key: "recruitment", href: "/careers" },
+    { key: "logistics", href: "/services/logistics" },
+    { key: "businessDevelopment", href: "/services/business-development" },
   ];
 
   return (
@@ -41,9 +41,10 @@ export default async function AboutPage({
 
           <div className="mt-12 grid gap-4 sm:grid-cols-2">
             {capabilities.map((capability) => (
-              <article
+              <Link
                 key={capability.key}
-                className="rounded-[20px] border border-white/[0.08] bg-white/[0.03] p-5 shadow-[0_10px_30px_rgba(0,0,0,0.18)] backdrop-blur-xl"
+                href={capability.href}
+                className="group block rounded-[20px] border border-white/[0.08] bg-white/[0.03] p-5 shadow-[0_10px_30px_rgba(0,0,0,0.18)] backdrop-blur-xl transition-all duration-300 hover:border-blue-300/25 hover:bg-white/[0.05] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold/60 focus-visible:ring-offset-2 focus-visible:ring-offset-bg-primary"
               >
                 <div className="mb-3 h-8 w-8 rounded-full border border-gold/30 bg-gold/[0.08]" aria-hidden="true" />
                 <h3 className="font-heading text-[20px] text-text-primary">
@@ -52,7 +53,11 @@ export default async function AboutPage({
                 <p className="mt-2 text-sm leading-relaxed text-text-secondary sm:text-[15px]">
                   {t(`capabilities.${capability.key}.description`)}
                 </p>
-              </article>
+                <span className="mt-4 inline-flex items-center gap-2 text-[12px] font-semibold uppercase tracking-[0.12em] text-blue-200/90 transition-colors duration-300 group-hover:text-blue-100">
+                  {t("learnMore")}
+                  <span aria-hidden="true" className="transition-transform duration-300 group-hover:translate-x-1 rtl:group-hover:-translate-x-1">&rarr;</span>
+                </span>
+              </Link>
             ))}
           </div>
         </div>

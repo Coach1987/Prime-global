@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { createSupabaseAdminClient } from "@/lib/server/supabase";
-import { readRequiredEnv } from "@/lib/server/config/env";
+import { readOptionalEnv, readRequiredEnv } from "@/lib/server/config/env";
 
 const MAX_FILE_SIZE_BYTES = 5 * 1024 * 1024;
 const ALLOWED_MIME_TYPES = new Set([
@@ -11,22 +11,13 @@ const ALLOWED_MIME_TYPES = new Set([
 ]);
 
 const applicationPayloadSchema = z.object({
-  firstName: z.string().trim().min(2).max(60),
-  lastName: z.string().trim().min(2).max(60),
-  nationality: z.string().trim().min(2).max(80),
+  fullName: z.string().trim().min(2).max(120),
   email: z.string().trim().email().max(320),
   phone: z.string().trim().min(6).max(24),
-  whatsapp: z.string().trim().min(6).max(24),
-  country: z.string().trim().min(2).max(80),
-  currentLocation: z.string().trim().min(2).max(120),
+  location: z.string().trim().min(2).max(120),
   desiredPosition: z.string().trim().min(2).max(120),
   yearsOfExperience: z.string().trim().min(1).max(16),
-  education: z.string().trim().min(2).max(120),
-  languages: z.string().trim().min(2).max(240),
-  currentEmployer: z.string().trim().max(120).optional().default(""),
-  expectedSalary: z.string().trim().max(80).optional().default(""),
-  availableFrom: z.string().trim().min(1).max(40),
-  coverLetter: z.string().max(2000).optional().default(""),
+  coverLetter: z.string().trim().min(10).max(2000),
   acceptedTerms: z.literal("true"),
 });
 
@@ -59,25 +50,32 @@ export async function GET() {
   return NextResponse.json({ error: "Method not allowed" }, { status: 405 });
 }
 
-function buildApplicationCoverLetter(data: z.infer<typeof applicationPayloadSchema>) {
-  const sections = [
-    data.coverLetter.trim(),
-    "",
-    "--- Candidate Profile ---",
-    `Nationality: ${data.nationality}`,
-    `WhatsApp: ${data.whatsapp}`,
-    `Education: ${data.education}`,
-    `Languages: ${data.languages}`,
-    `Current Employer: ${data.currentEmployer || "N/A"}`,
-    `Expected Salary: ${data.expectedSalary || "N/A"}`,
-    `Available From: ${data.availableFrom}`,
-  ];
+function parseLocation(location: string) {
+  const [country, ...cityParts] = location
+    .split(/[,-]/)
+    .map((part) => part.trim())
+    .filter(Boolean);
 
-  return sections.filter((line, index) => !(index === 0 && line.length === 0)).join("\n").trim();
+  const normalizedCountry = country ?? location.trim();
+  const normalizedCity = cityParts.join(" ").trim() || location.trim();
+
+  return {
+    country: normalizedCountry.slice(0, 100),
+    city: normalizedCity.slice(0, 120),
+  };
 }
 
 export async function POST(request: Request) {
   try {
+    if (!readOptionalEnv("SUPABASE_URL") || !readOptionalEnv("SUPABASE_SERVICE_ROLE_KEY") || !readOptionalEnv("SUPABASE_CV_BUCKET")) {
+      return NextResponse.json(
+        {
+          error: "Application submission is being configured. Please contact us directly for now.",
+        },
+        { status: 503 }
+      );
+    }
+
     const cvBucket = readRequiredEnv("SUPABASE_CV_BUCKET");
     const formData = await request.formData();
     const cvFile = formData.get("cv");
@@ -95,21 +93,12 @@ export async function POST(request: Request) {
     }
 
     const parseResult = applicationPayloadSchema.safeParse({
-      firstName: getString(formData, "firstName"),
-      lastName: getString(formData, "lastName"),
-      nationality: getString(formData, "nationality"),
+      fullName: getString(formData, "fullName"),
       email: getString(formData, "email"),
       phone: getString(formData, "phone"),
-      whatsapp: getString(formData, "whatsapp"),
-      country: getString(formData, "country"),
-      currentLocation: getString(formData, "currentLocation"),
+      location: getString(formData, "location"),
       desiredPosition: getString(formData, "desiredPosition"),
       yearsOfExperience: getString(formData, "yearsOfExperience"),
-      education: getString(formData, "education"),
-      languages: getString(formData, "languages"),
-      currentEmployer: getString(formData, "currentEmployer"),
-      expectedSalary: getString(formData, "expectedSalary"),
-      availableFrom: getString(formData, "availableFrom"),
       coverLetter: getString(formData, "coverLetter"),
       acceptedTerms: getString(formData, "acceptedTerms"),
     });
@@ -125,6 +114,7 @@ export async function POST(request: Request) {
     }
 
     const data = parseResult.data;
+  const location = parseLocation(data.location);
     const supabase = createSupabaseAdminClient();
 
     const applicationId = crypto.randomUUID();
@@ -145,14 +135,14 @@ export async function POST(request: Request) {
 
     const { error: insertError } = await supabase.from("applications").insert({
       id: applicationId,
-      full_name: `${data.firstName} ${data.lastName}`.trim(),
+      full_name: data.fullName,
       email: data.email,
       phone: data.phone,
-      country: data.country,
-      city: data.currentLocation,
+      country: location.country,
+      city: location.city,
       position: data.desiredPosition,
       experience: data.yearsOfExperience,
-      cover_letter: buildApplicationCoverLetter(data),
+      cover_letter: data.coverLetter,
       cv_url: storagePath,
       cv_filename: cvFile.name,
       status: "pending",

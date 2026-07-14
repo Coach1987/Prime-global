@@ -63,10 +63,7 @@ export function Footer() {
     href: item.href,
   }));
 
-  /*
-   * صفحات تفاصيل الخدمات غير موجودة حاليًا، لذلك نوجّه جميع روابط
-   * الخدمات إلى صفحة الخدمات الحقيقية بدل إنشاء روابط تؤدي إلى 404.
-   */
+  // Keep footer service links pointed to the main services overview.
   const serviceLinks = SERVICES.map((service) => ({
     label: tServices(`${service.key}.title`),
     href: "/services",

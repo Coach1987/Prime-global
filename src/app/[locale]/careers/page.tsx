@@ -2,10 +2,10 @@ import type { Metadata } from "next";
 import dynamic from "next/dynamic";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 
-const CareersLandingPage = dynamic(
-  () => import("@/features/careers/components").then((mod) => mod.CareersLandingPage),
+const ApplicationForm = dynamic(
+  () => import("@/features/careers/components").then((mod) => mod.ApplicationForm),
   {
-    loading: () => <div className="mx-auto mt-[110px] h-[320px] w-full max-w-[1260px] animate-pulse rounded-3xl bg-[#0f1a2d]" />,
+    loading: () => <div className="mx-auto mt-6 h-[700px] w-full max-w-5xl animate-pulse rounded-3xl bg-[#0f1a2d]" />,
   }
 );
 
@@ -15,7 +15,7 @@ export async function generateMetadata({
   params: Promise<{ locale: string }>;
 }): Promise<Metadata> {
   const { locale } = await params;
-  const t = await getTranslations({ locale, namespace: "careers.meta" });
+  const t = await getTranslations({ locale, namespace: "careers.apply.meta" });
 
   return {
     title: t("title"),
@@ -33,8 +33,8 @@ export default async function CareersPage({
   setRequestLocale(locale);
 
   return (
-    <main className="pt-[88px]">
-      <CareersLandingPage />
+    <main className="mx-auto w-full max-w-[1260px] px-4 pb-16 pt-[112px] sm:px-6 sm:pb-20 md:px-8">
+      <ApplicationForm />
     </main>
   );
 }

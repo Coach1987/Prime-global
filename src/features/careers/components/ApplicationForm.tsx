@@ -6,7 +6,6 @@ import { useForm } from "react-hook-form";
 import { useTranslations } from "next-intl";
 import { careerApplicationSchema, type CareerApplicationSchema } from "../schemas";
 import { FilePreview } from "./FilePreview";
-import { UploadProgress } from "./UploadProgress";
 import { UploadZone } from "./UploadZone";
 import { toUploadPreview, validateUploadFile } from "./UploadValidation";
 
@@ -43,7 +42,7 @@ function Field({
 }: {
   label: string;
   name: FieldName;
-  type?: "text" | "email" | "date";
+  type?: "text" | "email";
   register: ReturnType<typeof useForm<CareerApplicationSchema>>["register"];
   error?: string;
 }) {
@@ -77,21 +76,12 @@ export function ApplicationForm() {
   } = useForm<CareerApplicationSchema>({
     resolver: zodResolver(careerApplicationSchema),
     defaultValues: {
-      firstName: "",
-      lastName: "",
-      nationality: "",
-      country: "",
-      currentLocation: "",
+      fullName: "",
       phone: "",
-      whatsapp: "",
       email: "",
+      location: "",
       desiredPosition: "",
       yearsOfExperience: "",
-      education: "",
-      languages: "",
-      currentEmployer: "",
-      expectedSalary: "",
-      availableFrom: "",
       coverLetter: "",
       acceptedTerms: false,
     },
@@ -156,7 +146,7 @@ export function ApplicationForm() {
 
     setUploadError(null);
     setSelectedFile(file);
-    setValue("coverLetter", watch("coverLetter"));
+    setValue("coverLetter", watch("coverLetter"), { shouldValidate: true });
   }
 
   return (
@@ -171,21 +161,12 @@ export function ApplicationForm() {
 
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-8" noValidate>
         <div className="grid gap-4 sm:grid-cols-2">
-          <Field label={t("fields.firstName")} name="firstName" register={register} error={getFieldError(errors.firstName, t)} />
-          <Field label={t("fields.lastName")} name="lastName" register={register} error={getFieldError(errors.lastName, t)} />
-          <Field label={t("fields.nationality")} name="nationality" register={register} error={getFieldError(errors.nationality, t)} />
-          <Field label={t("fields.country")} name="country" register={register} error={getFieldError(errors.country, t)} />
-          <Field label={t("fields.currentLocation")} name="currentLocation" register={register} error={getFieldError(errors.currentLocation, t)} />
-          <Field label={t("fields.phone")} name="phone" register={register} error={getFieldError(errors.phone, t)} />
-          <Field label={t("fields.whatsapp")} name="whatsapp" register={register} error={getFieldError(errors.whatsapp, t)} />
+          <Field label={t("fields.fullName")} name="fullName" register={register} error={getFieldError(errors.fullName, t)} />
           <Field label={t("fields.email")} name="email" type="email" register={register} error={getFieldError(errors.email, t)} />
+          <Field label={t("fields.phone")} name="phone" register={register} error={getFieldError(errors.phone, t)} />
+          <Field label={t("fields.location")} name="location" register={register} error={getFieldError(errors.location, t)} />
           <Field label={t("fields.desiredPosition")} name="desiredPosition" register={register} error={getFieldError(errors.desiredPosition, t)} />
           <Field label={t("fields.yearsOfExperience")} name="yearsOfExperience" register={register} error={getFieldError(errors.yearsOfExperience, t)} />
-          <Field label={t("fields.education")} name="education" register={register} error={getFieldError(errors.education, t)} />
-          <Field label={t("fields.languages")} name="languages" register={register} error={getFieldError(errors.languages, t)} />
-          <Field label={t("fields.currentEmployer")} name="currentEmployer" register={register} error={getFieldError(errors.currentEmployer, t)} />
-          <Field label={t("fields.expectedSalary")} name="expectedSalary" register={register} error={getFieldError(errors.expectedSalary, t)} />
-          <Field label={t("fields.availableFrom")} name="availableFrom" type="date" register={register} error={getFieldError(errors.availableFrom, t)} />
         </div>
 
         <label className="block space-y-2">
@@ -202,7 +183,6 @@ export function ApplicationForm() {
           <h2 className="text-sm font-semibold uppercase tracking-[0.14em] text-blue-200">{t("fields.uploadCv")}</h2>
           <UploadZone onSelect={handleSelectFile} />
           <FilePreview file={preview} onClear={() => setSelectedFile(null)} />
-          <UploadProgress progress={0} />
           {uploadError && <p className="text-xs text-rose-300">{uploadError}</p>}
         </div>
 
