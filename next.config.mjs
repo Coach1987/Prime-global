@@ -4,6 +4,18 @@ import createNextIntlPlugin from "next-intl/plugin";
 const nextConfig = {
   reactStrictMode: true,
 
+  async redirects() {
+    return [
+      { source: "/employers", destination: "/en/employers", permanent: false },
+      { source: "/employers/login", destination: "/en/employers/login", permanent: false },
+      { source: "/employers/register", destination: "/en/employers/register", permanent: false },
+      { source: "/employers/dashboard", destination: "/en/employers/dashboard", permanent: false },
+      { source: "/jobs", destination: "/en/jobs", permanent: false },
+      { source: "/candidate/dashboard", destination: "/en/candidate/dashboard", permanent: false },
+      { source: "/admin/dashboard", destination: "/en/admin/dashboard", permanent: false },
+    ];
+  },
+
   images: {
     formats: ["image/avif", "image/webp"],
     remotePatterns: [
