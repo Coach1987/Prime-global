@@ -1,0 +1,55 @@
+import type { Phase10FeatureFlagSnapshot, Phase10FeatureFlags, Phase10FeatureFlagName } from "./types.ts";
+
+const DEFAULT_PHASE10_FLAGS: Phase10FeatureFlags = {
+  PRIME_SHIELD_ENABLED: false,
+  PROTECTED_INTERVIEWS_ENABLED: false,
+  SHIELD_ATTACHMENT_SCANNING_ENABLED: false,
+  SHIELD_PROGRESSIVE_ENFORCEMENT_ENABLED: false,
+  RECRUITMENT_TIMELINE_ENABLED: false,
+  CIRCUMVENTION_RISK_ENABLED: false,
+  AI_RECRUITER_ASSISTANT_ENABLED: false,
+  AI_CANDIDATE_COACH_ENABLED: false,
+  VIDEO_ROOMS_ENABLED: false,
+  SERVICE_FEE_GATE_ENABLED: false,
+  GOVERNANCE_CENTER_ENABLED: false,
+  ENTERPRISE_SLA_ENABLED: false,
+  TENANT_ABSTRACTION_ENABLED: false,
+};
+
+function readBooleanFlag(name: Phase10FeatureFlagName): boolean {
+  const value = process.env[name]?.trim().toLowerCase();
+  if (!value) return DEFAULT_PHASE10_FLAGS[name];
+  return ["1", "true", "yes", "on", "enabled"].includes(value);
+}
+
+export function getPhase10FeatureFlags(): Phase10FeatureFlags {
+  return {
+    PRIME_SHIELD_ENABLED: readBooleanFlag("PRIME_SHIELD_ENABLED"),
+    PROTECTED_INTERVIEWS_ENABLED: readBooleanFlag("PROTECTED_INTERVIEWS_ENABLED"),
+    SHIELD_ATTACHMENT_SCANNING_ENABLED: readBooleanFlag("SHIELD_ATTACHMENT_SCANNING_ENABLED"),
+    SHIELD_PROGRESSIVE_ENFORCEMENT_ENABLED: readBooleanFlag("SHIELD_PROGRESSIVE_ENFORCEMENT_ENABLED"),
+    RECRUITMENT_TIMELINE_ENABLED: readBooleanFlag("RECRUITMENT_TIMELINE_ENABLED"),
+    CIRCUMVENTION_RISK_ENABLED: readBooleanFlag("CIRCUMVENTION_RISK_ENABLED"),
+    AI_RECRUITER_ASSISTANT_ENABLED: readBooleanFlag("AI_RECRUITER_ASSISTANT_ENABLED"),
+    AI_CANDIDATE_COACH_ENABLED: readBooleanFlag("AI_CANDIDATE_COACH_ENABLED"),
+    VIDEO_ROOMS_ENABLED: readBooleanFlag("VIDEO_ROOMS_ENABLED"),
+    SERVICE_FEE_GATE_ENABLED: readBooleanFlag("SERVICE_FEE_GATE_ENABLED"),
+    GOVERNANCE_CENTER_ENABLED: readBooleanFlag("GOVERNANCE_CENTER_ENABLED"),
+    ENTERPRISE_SLA_ENABLED: readBooleanFlag("ENTERPRISE_SLA_ENABLED"),
+    TENANT_ABSTRACTION_ENABLED: readBooleanFlag("TENANT_ABSTRACTION_ENABLED"),
+  };
+}
+
+export function isPhase10FeatureEnabled(name: Phase10FeatureFlagName): boolean {
+  return getPhase10FeatureFlags()[name];
+}
+
+export function getPhase10FeatureFlagSnapshot(): Phase10FeatureFlagSnapshot {
+  return {
+    flags: getPhase10FeatureFlags(),
+    source: "environment",
+    evaluatedAt: new Date().toISOString(),
+  };
+}
+
+export type { Phase10FeatureFlagSnapshot, Phase10FeatureFlags, Phase10FeatureFlagName } from "./types.ts";
