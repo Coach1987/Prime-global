@@ -2,8 +2,9 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams, useParams } from "next/navigation";
+import { Suspense } from "react";
 
-export default function JobAlertUnsubscribePage() {
+function JobAlertUnsubscribeContent() {
   const params = useParams<{ locale: string }>();
   const locale = String(params.locale ?? "en");
   const searchParams = useSearchParams();
@@ -54,19 +55,33 @@ export default function JobAlertUnsubscribePage() {
   }
 
   return (
-    <main className="mx-auto w-full max-w-[760px] px-4 pb-20 pt-[124px] sm:px-6 md:px-8">
-      <section className="rounded-3xl border border-gold/20 bg-bg-secondary/80 p-7 backdrop-blur-xl md:p-10">
-        <h1 className="font-heading text-4xl text-text-primary">{copy.title}</h1>
-        {message ? (
-          <p className={`mt-4 text-sm ${status === "success" ? "text-emerald-300" : "text-red-300"}`}>
-            {message}
-          </p>
-        ) : null}
+    <section className="rounded-3xl border border-gold/20 bg-bg-secondary/80 p-7 backdrop-blur-xl md:p-10">
+      <h1 className="font-heading text-4xl text-text-primary">{copy.title}</h1>
+      {message ? (
+        <p className={`mt-4 text-sm ${status === "success" ? "text-emerald-300" : "text-red-300"}`}>
+          {message}
+        </p>
+      ) : null}
 
-        <button onClick={unsubscribe} className="mt-8 rounded-full bg-gold px-5 py-3 text-sm font-semibold text-bg-primary">
-          {copy.button}
-        </button>
-      </section>
+      <button onClick={unsubscribe} className="mt-8 rounded-full bg-gold px-5 py-3 text-sm font-semibold text-bg-primary">
+        {copy.button}
+      </button>
+    </section>
+  );
+}
+
+export default function JobAlertUnsubscribePage() {
+  return (
+    <main className="mx-auto w-full max-w-[760px] px-4 pb-20 pt-[124px] sm:px-6 md:px-8">
+      <Suspense
+        fallback={
+          <section className="rounded-3xl border border-gold/20 bg-bg-secondary/80 p-7 text-sm text-text-secondary backdrop-blur-xl md:p-10">
+            Loading...
+          </section>
+        }
+      >
+        <JobAlertUnsubscribeContent />
+      </Suspense>
     </main>
   );
 }
