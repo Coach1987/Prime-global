@@ -31,6 +31,7 @@ function getCopy(locale: string, role: "employer" | "candidate" | "staff") {
     reassign: isArabic ? "إعادة التعيين" : "Reassign",
     status: isArabic ? "الحالة" : "Status",
     stage: isArabic ? "المرحلة" : "Stage",
+    mode: isArabic ? "وضع الإشراف" : "Supervision mode",
     representative: isArabic ? "ممثل برايم جلوبال" : "Prime Global representative",
     interviews: isArabic ? "المقابلات" : "Interviews",
     noMessages: isArabic ? "لا توجد رسائل بعد." : "No messages yet.",
@@ -43,6 +44,12 @@ function getCopy(locale: string, role: "employer" | "candidate" | "staff") {
     conversationNotice: isArabic
       ? "تخضع هذه المحادثة لإشراف برايم جلوبال. لا يُسمح بتبادل بيانات التواصل المباشر أو نقل التواصل خارج المنصة أثناء إجراءات التوظيف."
       : "This conversation is supervised by Prime Global. Direct contact information and communication outside the platform are not permitted during the recruitment process.",
+    aiAssistNotice: isArabic
+      ? "مساعد برايم جلوبال الذكي يساعد مؤقتًا في هذه المحادثة. تبقى القرارات النهائية للتوظيف خاضعة لمراجعة موظف برايم جلوبال."
+      : "Prime Global AI Assistant is temporarily assisting this conversation. Final recruitment decisions remain subject to Prime Global staff review.",
+    activateAi: isArabic ? "تفعيل المساعدة الذكية" : "Activate AI Assist",
+    awaitStaff: isArabic ? "انتظار الموظف" : "Set Awaiting Staff",
+    resumeStaff: isArabic ? "استئناف إشراف الموظف" : "Resume Staff Control",
     role,
   };
 }
@@ -205,6 +212,28 @@ export function ConversationDetail({
     await loadConversation(token);
   }
 
+  async function runAiAction(action: "assist" | "set_awaiting_staff" | "set_staff_active" | "handover") {
+    if (!token) return;
+
+    const response = await fetch(`/api/recruitment/conversations/${conversationId}/ai-supervisor`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+        "x-csrf-token": csrfToken,
+      },
+      body: JSON.stringify({ action, locale }),
+    });
+
+    const payload = await response.json();
+    if (!response.ok || !payload.success) {
+      setError(payload?.error?.message ?? "Failed to execute AI supervisor action");
+      return;
+    }
+
+    await loadConversation(token);
+  }
+
   async function updateInterview(interviewId: string, hostAction: "start" | "end") {
     if (!token) return;
 
@@ -248,6 +277,11 @@ export function ConversationDetail({
         <p className="mt-3 rounded-2xl border border-gold/25 bg-bg-primary/60 p-4 text-sm leading-7 text-text-secondary">
           {copy.conversationNotice}
         </p>
+        {String(conversation.conversationMode ?? conversation.conversation_mode ?? "staff_active") !== "staff_active" ? (
+          <p className="mt-3 rounded-2xl border border-gold/25 bg-bg-primary/60 p-4 text-sm leading-7 text-gold">
+            {copy.aiAssistNotice}
+          </p>
+        ) : null}
 
         {error ? <p className="mt-4 text-sm text-red-300">{error}</p> : null}
 
@@ -255,6 +289,7 @@ export function ConversationDetail({
           {[
             [copy.status, String(conversation.status ?? "-")],
             [copy.stage, String(conversation.recruitment_stage ?? "-")],
+            [copy.mode, String(conversation.conversationMode ?? conversation.conversation_mode ?? "staff_active")],
             [copy.representative, String(assignedStaff.label ?? "Prime Global")],
             [locale === "ar" ? "المرجع" : "Reference", String(candidateProfile.candidate_reference ?? employer.company_name ?? "-")],
           ].map(([label, value]) => (
@@ -402,6 +437,15 @@ export function ConversationDetail({
                   </button>
                   <button onClick={() => updateConversation({ status: "archived" })} className="rounded-full border border-gold/30 px-4 py-2 text-sm font-semibold text-gold">
                     {copy.archive}
+                  </button>
+                  <button onClick={() => runAiAction("assist")} className="rounded-full border border-gold/30 px-4 py-2 text-sm font-semibold text-gold">
+                    {copy.activateAi}
+                  </button>
+                  <button onClick={() => runAiAction("set_awaiting_staff")} className="rounded-full border border-gold/30 px-4 py-2 text-sm font-semibold text-gold">
+                    {copy.awaitStaff}
+                  </button>
+                  <button onClick={() => runAiAction("set_staff_active")} className="rounded-full border border-gold/30 px-4 py-2 text-sm font-semibold text-gold">
+                    {copy.resumeStaff}
                   </button>
                 </div>
                 <div className="mt-4 flex flex-col gap-3 sm:flex-row">

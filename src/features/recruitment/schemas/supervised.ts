@@ -40,6 +40,7 @@ export const recruitmentConversationMessageSchema = z.object({
 
 export const recruitmentConversationUpdateSchema = z.object({
   status: z.enum(["active", "paused", "closed", "archived"]).optional(),
+  conversationMode: z.enum(["staff_active", "ai_supervised", "awaiting_staff", "closed"]).optional(),
   recruitmentStage: z
     .enum(["conversation_requested", "candidate_review", "active_dialogue", "interview_planning", "interview_live", "offer_review", "closed"])
     .optional(),
@@ -47,6 +48,24 @@ export const recruitmentConversationUpdateSchema = z.object({
   closureReason: z.string().trim().max(1000).optional().nullable(),
   assignedStaffUserId: z.string().uuid().optional(),
   escalatedToAdmin: z.boolean().optional(),
+  locale: z.enum(["en", "ar"]).optional().default("en"),
+});
+
+export const recruitmentAiSupervisorActionSchema = z.object({
+  action: z.enum(["assist", "handover", "set_awaiting_staff", "set_staff_active"]),
+  taskType: z
+    .enum([
+      "process_qna",
+      "candidate_job_summary",
+      "availability_collection",
+      "interview_suggestion",
+      "reminder",
+      "escalation",
+      "handover_summary",
+      "follow_up_task",
+    ])
+    .optional(),
+  message: z.string().trim().max(2000).optional(),
   locale: z.enum(["en", "ar"]).optional().default("en"),
 });
 

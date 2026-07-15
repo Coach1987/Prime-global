@@ -6,7 +6,9 @@ export const PRIME_GLOBAL_STAFF_ROLE_VALUES = [
 ] as const;
 
 const EMAIL_PATTERN = /\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/i;
+const EMAIL_WORD_PATTERN = /\b[a-z0-9._%+-]+\s*(?:\[?at\]?|\(at\)|at)\s*[a-z0-9.-]+\s*(?:\[?dot\]?|\(dot\)|dot)\s*[a-z]{2,}\b/i;
 const PHONE_PATTERN = /(?:(?:\+|00)\d{1,3}[\s.-]?)?(?:\(?\d{2,4}\)?[\s.-]?){2,5}\d{2,4}/;
+const PHONE_OBFUSCATED_PATTERN = /\b(?:zero|one|two|three|four|five|six|seven|eight|nine)[\s.-]+(?:zero|one|two|three|four|five|six|seven|eight|nine)\b/i;
 const WHATSAPP_PATTERN = /\bwhats?app\b/i;
 const TELEGRAM_PATTERN = /(?:\bt\.me\/|\btelegram\b|@[a-z0-9_]{5,})/i;
 const SOCIAL_PATTERN = /\b(?:linkedin|facebook|instagram|x\.com|twitter|snapchat|tiktok)\.com\b/i;
@@ -33,7 +35,9 @@ export function detectRecruitmentContactModeration(content: string): MessageMode
   const reasons: ModerationReason[] = [];
 
   if (EMAIL_PATTERN.test(text)) reasons.push("email");
+  else if (EMAIL_WORD_PATTERN.test(text)) reasons.push("email");
   if (PHONE_PATTERN.test(text)) reasons.push("phone");
+  else if (PHONE_OBFUSCATED_PATTERN.test(text)) reasons.push("phone");
   if (WHATSAPP_PATTERN.test(text)) reasons.push("whatsapp");
   if (TELEGRAM_PATTERN.test(text)) reasons.push("telegram");
   if (SOCIAL_PATTERN.test(text)) reasons.push("social");

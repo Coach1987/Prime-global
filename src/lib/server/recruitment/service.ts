@@ -1,5 +1,6 @@
 import { createAuditLog } from "@/lib/server/security/audit";
 import { AppRole, AuthContext, forbiddenResponse } from "@/lib/server/security/auth";
+import { serverEnv } from "@/lib/server/config/env";
 import { createSupabaseAdminClient } from "@/lib/server/supabase";
 import { getCandidateByAuthUserId } from "@/lib/server/candidates";
 import { getEmployerByAuthUserId } from "@/lib/server/employers";
@@ -36,6 +37,57 @@ function getConversationBanner(locale: string) {
   return locale === "ar"
     ? "تخضع هذه المحادثة لإشراف برايم جلوبال. لا يُسمح بتبادل بيانات التواصل المباشر أو نقل التواصل خارج المنصة أثناء إجراءات التوظيف."
     : "This conversation is supervised by Prime Global. Direct contact information and communication outside the platform are not permitted during the recruitment process.";
+}
+
+function getAiSupervisorBanner(locale: string) {
+  return locale === "ar"
+    ? "مساعد برايم جلوبال الذكي يساعد مؤقتًا في هذه المحادثة الخاضعة للإشراف. تبقى القرارات النهائية للتوظيف خاضعة لمراجعة موظف برايم جلوبال."
+    : "Prime Global AI Assistant is temporarily assisting this supervised conversation. Final recruitment decisions remain subject to Prime Global staff review.";
+}
+
+function getSupervisorSlaMinutes(conversation: Record<string, unknown>) {
+  const fromConversation = Number(conversation.supervisor_sla_minutes ?? 0);
+  if (Number.isFinite(fromConversation) && fromConversation > 0) {
+    return Math.min(1440, Math.max(5, Math.floor(fromConversation)));
+  }
+
+  const fromEnv = Number(serverEnv.AI_SUPERVISOR_SLA_MINUTES ?? "30");
+  if (Number.isFinite(fromEnv) && fromEnv > 0) {
+    return Math.min(1440, Math.max(5, Math.floor(fromEnv)));
+  }
+
+  return 30;
+}
+
+function canPrimeGlobalAiPerformTask(taskType: string) {
+  return [
+    "process_qna",
+    "candidate_job_summary",
+    "availability_collection",
+    "interview_suggestion",
+    "reminder",
+    "escalation",
+    "handover_summary",
+    "follow_up_task",
+  ].includes(taskType);
+}
+
+function shouldSwitchToAiSupervised(conversation: Record<string, unknown>) {
+  if (!conversation.assigned_staff_id) return false;
+  const mode = String(conversation.conversation_mode ?? "staff_active");
+  if (mode === "ai_supervised") return false;
+  if (mode === "closed") return false;
+
+  const baseline =
+    conversation.staff_last_active_at ?? conversation.last_message_at ?? conversation.updated_at ?? null;
+  if (!baseline) return true;
+
+  const baselineTs = new Date(String(baseline)).getTime();
+  if (!Number.isFinite(baselineTs)) return true;
+
+  const slaMinutes = getSupervisorSlaMinutes(conversation);
+  const elapsedMinutes = (Date.now() - baselineTs) / 60_000;
+  return elapsedMinutes >= slaMinutes;
 }
 
 async function verifyPrimeStaffUser(userId: string) {
@@ -130,6 +182,8 @@ function mapConversationSummary(
       label: getRepresentativeLabel(locale),
     },
     supervisionNotice: getConversationBanner(locale),
+    aiAssistanceNotice: getAiSupervisorBanner(locale),
+    conversationMode: row.conversation_mode ?? "staff_active",
   };
 }
 
@@ -528,7 +582,7 @@ export async function getConversationDetail(auth: AuthContext, conversationId: s
   const { actor, conversation } = await loadConversationForActor(auth, conversationId);
   const supabase = createSupabaseAdminClient();
 
-  const [messagesResult, attachmentsResult, participantsResult, notesResult, interviewsResult] = await Promise.all([
+  const [messagesResult, attachmentsResult, participantsResult, notesResult, interviewsResult, aiHandoverResult] = await Promise.all([
     supabase.from("recruitment_messages").select("*").eq("conversation_id", conversationId).order("created_at", { ascending: true }),
     supabase
       .from("recruitment_message_attachments")
@@ -546,6 +600,13 @@ export async function getConversationDetail(auth: AuthContext, conversationId: s
       ? supabase.from("recruitment_internal_notes").select("*").eq("conversation_id", conversationId).order("created_at", { ascending: false })
       : Promise.resolve({ data: [], error: null }),
     supabase.from("recruitment_interviews").select("*").eq("conversation_id", conversationId).order("scheduled_at", { ascending: true }),
+    supabase
+      .from("recruitment_ai_handover_summaries")
+      .select("*")
+      .eq("conversation_id", conversationId)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle(),
   ]);
 
   if (messagesResult.error) throw new Error(messagesResult.error.message);
@@ -553,6 +614,7 @@ export async function getConversationDetail(auth: AuthContext, conversationId: s
   if (participantsResult.error) throw new Error(participantsResult.error.message);
   if (notesResult.error) throw new Error(notesResult.error.message);
   if (interviewsResult.error) throw new Error(interviewsResult.error.message);
+  if (aiHandoverResult.error) throw new Error(aiHandoverResult.error.message);
 
   const messageAttachments = new Map<string, Array<Record<string, unknown>>>();
   for (const attachment of attachmentsResult.data ?? []) {
@@ -588,6 +650,7 @@ export async function getConversationDetail(auth: AuthContext, conversationId: s
     messages: visibleMessages,
     internalNotes: notesResult.data ?? [],
     interviews: interviewsResult.data ?? [],
+    aiHandoverSummary: aiHandoverResult.data ?? null,
     permissions: {
       canSendMessages: conversation.status === "active" || actor.scope === "staff",
       canRespondToInvitation: actor.scope === "candidate" && conversation.status === "pending_candidate_acceptance",
@@ -708,8 +771,46 @@ export async function postConversationMessage(auth: AuthContext, conversationId:
     throw new Error("This conversation is closed");
   }
 
-  const moderation = moderateRecruitmentMessageContent(input.body);
+  let activeConversation = conversation as Record<string, unknown>;
   const senderRole = getConversationParticipantRole(auth.role);
+  const isEmployerOrCandidate = senderRole === "employer" || senderRole === "candidate";
+
+  if (isEmployerOrCandidate && shouldSwitchToAiSupervised(activeConversation)) {
+    await supabase
+      .from("recruitment_conversations")
+      .update({
+        conversation_mode: "ai_supervised",
+        ai_activated_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", conversationId);
+
+    const { data: refreshedConversation } = await supabase
+      .from("recruitment_conversations")
+      .select("*")
+      .eq("id", conversationId)
+      .maybeSingle();
+
+    if (refreshedConversation) {
+      activeConversation = refreshedConversation;
+    }
+
+    await supabase.from("recruitment_messages").insert({
+      conversation_id: conversationId,
+      sender_auth_user_id: auth.userId,
+      sender_role: "prime_global_ai",
+      actor_type: "prime_global_ai",
+      ai_task_type: "process_qna",
+      message_type: "system",
+      body: getAiSupervisorBanner(input.locale),
+      moderation_state: "approved",
+      visible_to_employer: true,
+      visible_to_candidate: true,
+      visible_to_staff: true,
+    });
+  }
+
+  const moderation = moderateRecruitmentMessageContent(input.body);
   const now = new Date().toISOString();
 
   const { data: message, error: messageError } = await supabase
@@ -718,6 +819,7 @@ export async function postConversationMessage(auth: AuthContext, conversationId:
       conversation_id: conversationId,
       sender_auth_user_id: auth.userId,
       sender_role: senderRole,
+      actor_type: "human",
       message_type: moderation.state === "requires_review" ? "moderation" : "text",
       body: input.body,
       moderation_state: moderation.state,
@@ -774,8 +876,9 @@ export async function postConversationMessage(auth: AuthContext, conversationId:
       .from("recruitment_messages")
       .insert({
         conversation_id: conversationId,
-        sender_auth_user_id: conversation.assigned_staff_id,
+        sender_auth_user_id: String(activeConversation.assigned_staff_id ?? conversation.assigned_staff_id),
         sender_role: "system",
+        actor_type: "system",
         message_type: "system",
         body: getModerationHoldMessage(input.locale),
       })
@@ -786,7 +889,7 @@ export async function postConversationMessage(auth: AuthContext, conversationId:
 
     await insertNotifications(supabase, [
       {
-        authUserId: String(conversation.assigned_staff_id),
+        authUserId: String(activeConversation.assigned_staff_id ?? conversation.assigned_staff_id),
         category: "message",
         title: input.locale === "ar" ? "رسالة تحتاج إلى مراجعة" : "Message requires review",
         body: input.locale === "ar" ? "تم رصد محاولة مشاركة بيانات تواصل مباشرة داخل محادثة خاضعة للإشراف." : "A supervised conversation message was held for direct-contact review.",
@@ -813,11 +916,37 @@ export async function postConversationMessage(auth: AuthContext, conversationId:
     }))
   );
 
+  if (
+    isEmployerOrCandidate &&
+    String(activeConversation.conversation_mode ?? "staff_active") === "ai_supervised" &&
+    moderation.state === "approved"
+  ) {
+    const aiReplyBody =
+      input.locale === "ar"
+        ? "تم استلام رسالتك بواسطة مساعد برايم جلوبال الذكي. سيتم تسليم التفاصيل لممثل برايم جلوبال، ويمكننا الآن جمع مواعيد المقابلة أو الإجابة عن أسئلة العملية."
+        : "Your message was received by the Prime Global AI Assistant. The details will be handed over to Prime Global staff, and I can help collect interview availability or answer process questions.";
+
+    await supabase.from("recruitment_messages").insert({
+      conversation_id: conversationId,
+      sender_auth_user_id: String(activeConversation.assigned_staff_id ?? conversation.assigned_staff_id),
+      sender_role: "prime_global_ai",
+      actor_type: "prime_global_ai",
+      ai_task_type: "process_qna",
+      message_type: "system",
+      body: aiReplyBody,
+      moderation_state: "approved",
+      visible_to_employer: true,
+      visible_to_candidate: true,
+      visible_to_staff: true,
+    });
+  }
+
   return { message, moderatedMessageId: null, moderationState: moderation.state };
 }
 
 export async function updateConversationForStaff(auth: AuthContext, conversationId: string, input: {
   status?: "active" | "paused" | "closed" | "archived";
+  conversationMode?: "staff_active" | "ai_supervised" | "awaiting_staff" | "closed";
   recruitmentStage?: "conversation_requested" | "candidate_review" | "active_dialogue" | "interview_planning" | "interview_live" | "offer_review" | "closed";
   pausedReason?: string | null;
   closureReason?: string | null;
@@ -833,6 +962,7 @@ export async function updateConversationForStaff(auth: AuthContext, conversation
   const patch: Record<string, unknown> = {};
 
   if (input.status) patch.status = input.status;
+  if (input.conversationMode) patch.conversation_mode = input.conversationMode;
   if (input.recruitmentStage) patch.recruitment_stage = input.recruitmentStage;
   if (input.pausedReason !== undefined) patch.paused_reason = input.pausedReason;
   if (input.closureReason !== undefined) patch.closure_reason = input.closureReason;
@@ -855,6 +985,75 @@ export async function updateConversationForStaff(auth: AuthContext, conversation
         .update({ assigned_staff_user_id: input.assignedStaffUserId, updated_at: new Date().toISOString() })
         .eq("id", conversation.request_id);
     }
+  }
+
+  if (
+    (input.conversationMode === "staff_active" || input.status === "active") &&
+    String(conversation.conversation_mode ?? "staff_active") === "ai_supervised"
+  ) {
+    const { data: heldMessages } = await supabase
+      .from("recruitment_messages")
+      .select("id, body, created_at, sender_role")
+      .eq("conversation_id", conversationId)
+      .eq("moderation_state", "requires_review")
+      .order("created_at", { ascending: false })
+      .limit(25);
+
+    const { data: blockedAttempts } = await supabase
+      .from("recruitment_moderation_events")
+      .select("details, created_at")
+      .eq("conversation_id", conversationId)
+      .eq("event_type", "contact_data_detected")
+      .order("created_at", { ascending: false })
+      .limit(25);
+
+    const { data: interviewSuggestions } = await supabase
+      .from("recruitment_messages")
+      .select("body, created_at")
+      .eq("conversation_id", conversationId)
+      .eq("sender_role", "prime_global_ai")
+      .eq("ai_task_type", "interview_suggestion")
+      .order("created_at", { ascending: false })
+      .limit(10);
+
+    await supabase.from("recruitment_ai_handover_summaries").insert({
+      conversation_id: conversationId,
+      generated_by_auth_user_id: auth.userId,
+      unanswered_questions: (heldMessages ?? []).map((message) => ({
+        messageId: message.id,
+        body: message.body,
+        createdAt: message.created_at,
+      })),
+      blocked_contact_attempts: blockedAttempts ?? [],
+      proposed_interview_times: interviewSuggestions ?? [],
+      follow_up_tasks: [
+        {
+          task: "Review AI-assisted conversation and pending moderated messages",
+          priority: "high",
+        },
+      ],
+      summary_text:
+        "AI-supervised period complete. Review blocked contact attempts, unanswered moderated messages, and suggested interview slots.",
+    });
+
+    patch.conversation_mode = "staff_active";
+    patch.ai_deactivated_at = new Date().toISOString();
+    patch.staff_last_active_at = new Date().toISOString();
+
+    await supabase.from("recruitment_messages").insert({
+      conversation_id: conversationId,
+      sender_auth_user_id: auth.userId,
+      sender_role: "system",
+      actor_type: "system",
+      ai_task_type: "handover_summary",
+      message_type: "system",
+      body:
+        "Prime Global staff has resumed direct supervision. AI handover summary was generated for internal follow-up.",
+      moderation_state: "approved",
+      visible_to_employer: true,
+      visible_to_candidate: true,
+      visible_to_staff: true,
+    });
   }
 
   const { data, error } = await supabase
@@ -1155,6 +1354,94 @@ export async function getStaffRecruitmentOverview(auth: AuthContext, locale: str
     moderationQueue: moderationQueue.data ?? [],
     auditHistory: auditHistory.data ?? [],
   };
+}
+
+export async function executeAiSupervisorAction(auth: AuthContext, conversationId: string, input: {
+  action: "assist" | "handover" | "set_awaiting_staff" | "set_staff_active";
+  taskType?: string;
+  message?: string;
+  locale: string;
+}) {
+  if (!isPrimeGlobalStaffRole(auth.role)) {
+    throw new Error("Only Prime Global staff may run AI supervisor controls");
+  }
+
+  const { conversation } = await loadConversationForActor(auth, conversationId);
+  const supabase = createSupabaseAdminClient();
+
+  if (input.action === "set_awaiting_staff") {
+    const { data, error } = await supabase
+      .from("recruitment_conversations")
+      .update({ conversation_mode: "awaiting_staff", updated_at: new Date().toISOString() })
+      .eq("id", conversationId)
+      .select("*")
+      .single();
+    if (error) throw new Error(error.message);
+    return data;
+  }
+
+  if (input.action === "set_staff_active" || input.action === "handover") {
+    return updateConversationForStaff(auth, conversationId, {
+      conversationMode: "staff_active",
+      status: "active",
+    });
+  }
+
+  const taskType = input.taskType ?? "process_qna";
+  if (!canPrimeGlobalAiPerformTask(taskType)) {
+    throw new Error("AI Supervisor task is not permitted");
+  }
+
+  const messageText = (input.message ?? "").toLowerCase();
+  if (
+    /approve|reject|offer accepted|offer rejected|compensation approved|contract signed|final decision|hired|not hired/.test(
+      messageText
+    )
+  ) {
+    throw new Error("AI Supervisor cannot perform final hiring, compensation, or legal decisions");
+  }
+
+  const currentMode = String(conversation.conversation_mode ?? "staff_active");
+  if (currentMode !== "ai_supervised" && currentMode !== "awaiting_staff") {
+    throw new Error("AI Supervisor can assist only in ai_supervised or awaiting_staff mode");
+  }
+
+  const aiMessage =
+    input.message?.trim() ||
+    (input.locale === "ar"
+      ? "مساعد برايم جلوبال الذكي متاح حاليًا للمساعدة في الأسئلة العامة، تنسيق المواعيد، والتذكير."
+      : "Prime Global AI Assistant is currently available for process questions, scheduling suggestions, and reminders.");
+
+  const { data: message, error: messageError } = await supabase
+    .from("recruitment_messages")
+    .insert({
+      conversation_id: conversationId,
+      sender_auth_user_id: auth.userId,
+      sender_role: "prime_global_ai",
+      actor_type: "prime_global_ai",
+      ai_task_type: taskType,
+      message_type: "system",
+      body: aiMessage,
+      moderation_state: "approved",
+      visible_to_employer: true,
+      visible_to_candidate: true,
+      visible_to_staff: true,
+    })
+    .select("*")
+    .single();
+
+  if (messageError) throw new Error(messageError.message);
+
+  await createAuditLog({
+    actorAuthUserId: auth.userId,
+    actorRole: auth.role,
+    action: "recruitment.ai_supervisor.assist",
+    targetType: "recruitment_conversation",
+    targetId: conversationId,
+    metadata: { taskType },
+  });
+
+  return { message };
 }
 
 export function toHttpError(error: unknown, fallbackMessage: string) {

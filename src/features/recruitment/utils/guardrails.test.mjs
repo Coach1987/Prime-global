@@ -24,6 +24,17 @@ test("detectRecruitmentContactModeration flags direct contact details and extern
   assert.ok(result.reasons.includes("meeting_link"));
 });
 
+test("detectRecruitmentContactModeration flags obfuscated contact details", () => {
+  const result = detectRecruitmentContactModeration(
+    "Reach me at jane dot doe at example dot com or call zero one two three four five."
+  );
+
+  assert.equal(result.state, "requires_review");
+  assert.equal(result.containsContactAttempt, true);
+  assert.ok(result.reasons.includes("email"));
+  assert.ok(result.reasons.includes("phone"));
+});
+
 test("canActivateSupervisedConversation requires employer candidate and staff participants", () => {
   const active = canActivateSupervisedConversation({
     employerAuthUserId: "employer-auth-id",
