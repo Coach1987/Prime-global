@@ -14,6 +14,9 @@ test("phase10 feature flags default to disabled", () => {
   assert.equal(flags.PRIME_SHIELD_ENABLED, false);
   assert.equal(flags.PROTECTED_INTERVIEWS_ENABLED, false);
   assert.equal(flags.VIDEO_ROOMS_ENABLED, false);
+  assert.equal(flags.SHIELD_INFRA_FOUNDATION_ENABLED, false);
+  assert.equal(flags.SHIELD_INTEGRITY_MONITOR_ENABLED, false);
+  assert.equal(flags.SHIELD_EVENT_REPLAY_ENABLED, false);
   assert.equal(isPhase10FeatureEnabled("GOVERNANCE_CENTER_ENABLED"), false);
 });
 

@@ -40,6 +40,30 @@ Stage 1 establishes the reusable Prime Global Shield Plus foundation only.
 - New policies and business rules exist as foundation objects only.
 - Existing production routes keep their current behavior until later stages explicitly wire Phase 10 services in.
 
+## Stage 3 Reusable Infrastructure (Foundation Only)
+- `HashProvider` abstraction for deterministic digesting.
+- `EvidenceStorageProvider` abstraction for evidence-monitor snapshots.
+- `ClockProvider` abstraction for deterministic monitor and replay timestamps.
+- `IdProvider` abstraction for monitor run IDs and replay cursors.
+- `CryptoProvider` abstraction for digest signature and verification workflows.
+- `EvidenceIntegrityMonitor` foundation for hash-chain monitoring.
+- `TamperDetection` model for severity-based chain integrity signals.
+- `EventReplay` foundation for deterministic case rehydration.
+- Evidence envelope versioning for schema-aware replay.
+- Forward and backward compatibility helpers for migration-safe payload handling.
+
+## Stage 3 Guardrails
+- No OCR implementation.
+- No QR scanning implementation.
+- No AI implementation.
+- No progressive enforcement implementation.
+- No risk scoring implementation.
+- No video integration implementation.
+- No payment integration implementation.
+- No attachment scanning implementation.
+- No external provider connection.
+- Every Stage 3 entrypoint remains disabled unless explicitly feature-flagged.
+
 ## Phase 10 Import Convention
 - Phase 10 foundation modules use explicit `.ts` import specifiers inside `src/lib/server/phase10/**`.
 - This exists because the foundation is exercised directly by Node-based tests, and the explicit specifiers keep the TS source graph resolvable in that runtime.
