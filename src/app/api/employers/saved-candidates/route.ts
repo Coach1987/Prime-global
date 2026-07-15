@@ -29,8 +29,9 @@ export async function GET(request: Request) {
   const supabase = createSupabaseAdminClient();
   const { data, error } = await supabase
     .from("employer_saved_candidates")
-    .select("id, created_at, candidate_profiles(*)")
+    .select("id, created_at, candidate_public_profiles!inner(candidate_id, candidate_reference, professional_title, professional_summary, years_of_experience, skills, employment_history, education, certifications, languages, general_location, availability, desired_role, expected_salary, ai_summary, profile_status, generated_at)")
     .eq("employer_id", employer.id)
+    .eq("candidate_public_profiles.profile_status", "approved")
     .order("created_at", { ascending: false });
 
   if (error) {

@@ -31,8 +31,9 @@ export async function GET(request: Request) {
       .in("status", ["published", "paused", "draft"])
       .limit(200),
     supabase
-      .from("candidate_profiles")
-      .select("id, full_name, professional_title, country, city, settings, updated_at")
+      .from("candidate_public_profiles")
+      .select("candidate_id, candidate_reference, professional_title, professional_summary, years_of_experience, skills, employment_history, education, certifications, languages, general_location, availability, desired_role, expected_salary, ai_summary, profile_status, generated_at")
+      .eq("profile_status", "approved")
       .order("updated_at", { ascending: false })
       .limit(500),
   ]);
@@ -50,7 +51,23 @@ export async function GET(request: Request) {
     );
   }
 
-  const recommendations = recommendCandidatesForEmployer(jobs ?? [], candidates ?? []);
+  const recommendations = recommendCandidatesForEmployer(
+    jobs ?? [],
+    (candidates ?? []).map((candidate) => ({
+      id: String(candidate.candidate_id),
+      full_name: String(candidate.candidate_reference ?? "PG Candidate"),
+      professional_title: candidate.professional_title ?? null,
+      country: candidate.general_location ?? null,
+      city: candidate.general_location ?? null,
+      settings: {
+        skills: candidate.skills ?? [],
+        languages: candidate.languages ?? [],
+        certifications: candidate.certifications ?? [],
+        availability: candidate.availability ?? null,
+      },
+      updated_at: String(candidate.generated_at ?? new Date().toISOString()),
+    }))
+  );
 
   return NextResponse.json({
     success: true,

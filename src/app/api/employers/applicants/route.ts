@@ -31,9 +31,10 @@ export async function GET(request: Request) {
   let dbQuery = supabase
     .from("job_applications_v2")
     .select(
-      "id, status, applied_at, updated_at, cover_letter, job_id, candidate_id, resume_id, jobs!inner(id, employer_id, title), candidate_profiles!inner(id, full_name, email, country, city, professional_title)"
+      "id, status, applied_at, updated_at, cover_letter, job_id, candidate_id, resume_id, jobs!inner(id, employer_id, title), candidate_public_profiles!inner(candidate_id, candidate_reference, professional_title, professional_summary, years_of_experience, skills, employment_history, education, certifications, languages, general_location, availability, desired_role, expected_salary, ai_summary, profile_status, generated_at)"
     )
     .eq("jobs.employer_id", employer.id)
+    .eq("candidate_public_profiles.profile_status", "approved")
     .order("applied_at", { ascending: false });
 
   if (status) {
@@ -55,12 +56,12 @@ export async function GET(request: Request) {
 
   const filtered = query
     ? data.filter((item) => {
-        const candidate = Array.isArray(item.candidate_profiles)
-          ? item.candidate_profiles[0]
-          : item.candidate_profiles;
+        const candidate = Array.isArray(item.candidate_public_profiles)
+          ? item.candidate_public_profiles[0]
+          : item.candidate_public_profiles;
         const job = Array.isArray(item.jobs) ? item.jobs[0] : item.jobs;
 
-        const fields = [candidate?.full_name, candidate?.email, job?.title, item.status]
+        const fields = [candidate?.candidate_reference, candidate?.professional_title, job?.title, item.status]
           .filter(Boolean)
           .map((value) => String(value).toLowerCase());
 

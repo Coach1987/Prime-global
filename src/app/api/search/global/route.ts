@@ -60,8 +60,9 @@ export async function GET(request: Request) {
       .ilike("company_name", `%${query.company ?? query.q ?? ""}%`)
       .limit(20),
     supabase
-      .from("candidate_professional_profiles")
-      .select("id, headline, skills, languages, visa_status, nationality, salary_expectation, candidate_profiles!inner(id, full_name, country, city)")
+      .from("candidate_public_profiles")
+      .select("candidate_id, candidate_reference, professional_title, professional_summary, years_of_experience, skills, employment_history, education, certifications, languages, general_location, availability, desired_role, expected_salary, ai_summary, profile_status, generated_at")
+      .eq("profile_status", "approved")
       .limit(50),
   ]);
 
@@ -85,14 +86,13 @@ export async function GET(request: Request) {
   const candidateResults = (candidatesResult.data ?? []).filter((item) => {
     const skills = (item.skills ?? []).map((entry: unknown) => String(entry).toLowerCase());
     const languages = (item.languages ?? []).map((entry: unknown) => String(entry).toLowerCase());
-    const visaStatus = String(item.visa_status ?? "").toLowerCase();
-    const nationality = String(item.nationality ?? "").toLowerCase();
+    const location = String(item.general_location ?? "").toLowerCase();
+    const expectedSalary = Number(item.expected_salary ?? 0);
 
     if (query.skill && !skills.some((value: string) => value.includes(query.skill!.toLowerCase()))) return false;
     if (query.language && !languages.some((value: string) => value.includes(query.language!.toLowerCase()))) return false;
-    if (query.visa && !visaStatus.includes(query.visa.toLowerCase())) return false;
-    if (query.nationality && !nationality.includes(query.nationality.toLowerCase())) return false;
-    if (query.salaryMin !== undefined && Number(item.salary_expectation ?? 0) < query.salaryMin) return false;
+    if (query.country && !location.includes(query.country.toLowerCase())) return false;
+    if (query.salaryMin !== undefined && expectedSalary < query.salaryMin) return false;
 
     return true;
   });

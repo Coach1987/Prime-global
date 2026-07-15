@@ -79,7 +79,7 @@ export async function POST(request: Request) {
   const supabase = createSupabaseAdminClient();
   const { data: offer, error: offerError } = await supabase
     .from("job_offers")
-    .select("id, title, compensation, currency, candidate_id, employers!inner(company_name), candidate_profiles!inner(full_name)")
+    .select("id, title, compensation, currency, candidate_id, employers!inner(company_name), candidate_public_profiles!inner(candidate_reference)")
     .eq("id", parsed.data.offerId)
     .eq("employer_id", employer.id)
     .single();
@@ -92,13 +92,13 @@ export async function POST(request: Request) {
   }
 
   const employerDetails = Array.isArray(offer.employers) ? offer.employers[0] : offer.employers;
-  const candidateDetails = Array.isArray(offer.candidate_profiles)
-    ? offer.candidate_profiles[0]
-    : offer.candidate_profiles;
+  const candidateDetails = Array.isArray(offer.candidate_public_profiles)
+    ? offer.candidate_public_profiles[0]
+    : offer.candidate_public_profiles;
 
   const contractBuffer = await createContractPdf({
     employerName: String(employerDetails?.company_name ?? "Prime Global Employer"),
-    candidateName: String(candidateDetails?.full_name ?? "Candidate"),
+    candidateName: String(candidateDetails?.candidate_reference ?? "PG Candidate"),
     title: offer.title,
     compensation: offer.compensation,
     currency: offer.currency,
