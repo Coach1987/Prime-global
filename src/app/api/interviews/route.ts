@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
-import { scheduleInterviewSchema } from "@/features/employers/schemas/interview";
 import { requireAuth, requireRole } from "@/lib/server/security/auth";
-import { enforceCsrf, enforceRateLimit, parseJsonBody } from "@/lib/server/http";
+import { enforceCsrf, enforceRateLimit } from "@/lib/server/http";
 import { getEmployerByAuthUserId } from "@/lib/server/employers";
 import { createSupabaseAdminClient } from "@/lib/server/supabase";
 
@@ -80,64 +79,17 @@ export async function POST(request: Request) {
 
   const auth = await requireAuth(request);
   if (auth instanceof NextResponse) return auth;
-  const roleCheck = requireRole(auth, ["employer", "admin", "super_admin"]);
+  const roleCheck = requireRole(auth, ["employer", "prime_global_recruiter", "prime_global_admin", "admin", "super_admin"]);
   if (roleCheck) return roleCheck;
 
-  const parsed = await parseJsonBody(request, scheduleInterviewSchema);
-  if (parsed.error) return parsed.error;
-
-  const supabase = createSupabaseAdminClient();
-  const employer = await getEmployerByAuthUserId(auth.userId);
-  if (!employer) {
-    return NextResponse.json(
-      { success: false, error: { code: "EMPLOYER_NOT_FOUND", message: "Employer profile missing" } },
-      { status: 404 }
-    );
-  }
-
-  const { data: application, error: applicationError } = await supabase
-    .from("job_applications_v2")
-    .select("id, candidate_id, jobs!inner(employer_id)")
-    .eq("id", parsed.data.applicationId)
-    .eq("jobs.employer_id", employer.id)
-    .single();
-
-  if (applicationError || !application) {
-    return NextResponse.json(
-      { success: false, error: { code: "APPLICATION_NOT_FOUND", message: applicationError?.message ?? "Application missing" } },
-      { status: 404 }
-    );
-  }
-
-  const { data, error } = await supabase
-    .from("interviews")
-    .insert({
-      application_id: parsed.data.applicationId,
-      employer_id: employer.id,
-      candidate_id: application.candidate_id,
-      interview_type: parsed.data.interviewType,
-      scheduled_at: parsed.data.scheduledAt,
-      duration_minutes: parsed.data.durationMinutes,
-      location_or_link: parsed.data.locationOrLink ?? null,
-      notes: parsed.data.notes ?? null,
-      status: "scheduled",
-    })
-    .select("*")
-    .single();
-
-  if (error) {
-    return NextResponse.json(
-      { success: false, error: { code: "INTERVIEW_CREATE_FAILED", message: error.message } },
-      { status: 400 }
-    );
-  }
-
-  await supabase.from("notifications").insert({
-    auth_user_id: (await supabase.from("candidate_profiles").select("auth_user_id").eq("id", application.candidate_id).single()).data?.auth_user_id,
-    category: "interview",
-    title: "Interview Scheduled",
-    body: `Your interview is scheduled for ${parsed.data.scheduledAt}`,
-  });
-
-  return NextResponse.json({ success: true, data }, { status: 201 });
+  return NextResponse.json(
+    {
+      success: false,
+      error: {
+        code: "SUPERVISED_INTERVIEW_REQUIRED",
+        message: "Direct interview creation is disabled. Create interviews from an approved supervised conversation under /api/recruitment/conversations/[conversationId]/interviews.",
+      },
+    },
+    { status: 410 }
+  );
 }
