@@ -1,7 +1,9 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import { createAuditLog } from "@/lib/server/security/audit";
 import { createSupabaseAdminClient } from "@/lib/server/supabase";
 import { readOptionalEnv, readSupabaseUrl } from "@/lib/server/config/env";
+import { generateCandidateProfileDraft } from "@/lib/server/candidates/profile-generation";
 
 const MAX_FILE_SIZE_BYTES = 5 * 1024 * 1024;
 const ALLOWED_MIME_TYPES = new Set([
@@ -16,7 +18,7 @@ const MIME_EXTENSION_MAP: Record<string, "pdf" | "doc" | "docx"> = {
   "application/vnd.openxmlformats-officedocument.wordprocessingml.document": "docx",
 };
 
-const DEFAULT_CV_BUCKET = "prime-global-cv";
+const DEFAULT_CV_BUCKET = "candidate-private-documents";
 
 const applicationPayloadSchema = z.object({
   fullName: z.string().trim().min(2).max(120),
@@ -93,14 +95,14 @@ function parseLegacyCountryAndCity(location: string) {
   return { country: fallback, city: fallback.slice(0, 120) };
 }
 
-function createStoragePath(applicationId: string, fileName: string, mimeType: string) {
+function createPrivateStoragePath(candidateId: string, kind: "cv" | "document", fileName: string, mimeType: string) {
   const extension = inferExtension(fileName, mimeType);
   const safeName = sanitizeFileName(fileName.replace(/\.[^.]+$/, "")) || "cv";
   const now = new Date();
   const year = String(now.getUTCFullYear());
   const month = String(now.getUTCMonth() + 1).padStart(2, "0");
   const timestamp = String(now.getTime());
-  return `job-applications/${year}/${month}/${applicationId}-${timestamp}-${safeName}.${extension}`;
+  return `candidate-private/${candidateId}/${kind}/${year}/${month}/${timestamp}-${safeName}.${extension}`;
 }
 
 function getCvBucketName() {
@@ -198,6 +200,9 @@ export async function POST(request: Request) {
 
     const formData = await request.formData();
     const cvFile = formData.get("cv");
+    const supportingDocuments = ["documents", "supportingDocuments", "certificates"]
+      .flatMap((fieldName) => formData.getAll(fieldName))
+      .filter((entry): entry is File => entry instanceof File);
 
     if (!(cvFile instanceof File)) {
       return NextResponse.json({ error: "CV file is required." }, { status: 400 });
@@ -209,6 +214,16 @@ export async function POST(request: Request) {
 
     if (cvFile.size > MAX_FILE_SIZE_BYTES) {
       return NextResponse.json({ error: "CV file exceeds 5 MB limit." }, { status: 400 });
+    }
+
+    for (const document of supportingDocuments) {
+      if (!ALLOWED_MIME_TYPES.has(document.type)) {
+        return NextResponse.json({ error: "Unsupported supporting document file type." }, { status: 400 });
+      }
+
+      if (document.size > MAX_FILE_SIZE_BYTES) {
+        return NextResponse.json({ error: "Supporting document exceeds 5 MB limit." }, { status: 400 });
+      }
     }
 
     const parseResult = applicationPayloadSchema.safeParse({
@@ -236,22 +251,23 @@ export async function POST(request: Request) {
     const data = parseResult.data;
     const locale = inferLocale(request, data.locale);
     const countryCity = parseCountryCity(data.location);
-    const cvBucket = getCvBucketName();
-    const envSnapshot = getRuntimeEnvSnapshot(cvBucket);
+    const privateDocsBucket = getCvBucketName();
+    const envSnapshot = getRuntimeEnvSnapshot(privateDocsBucket);
+    const applicationId = crypto.randomUUID();
+    const candidateId = crypto.randomUUID();
 
     console.info("[careers:upload] resolved storage bucket", {
-      resolvedUploadBucket: cvBucket,
+      resolvedUploadBucket: privateDocsBucket,
       configuredBucket: envSnapshot.SUPABASE_CV_BUCKET,
       serviceRoleConfigured: envSnapshot.SUPABASE_SERVICE_ROLE_KEY.isSet,
     });
 
     const supabase = createSupabaseAdminClient();
 
-    const applicationId = crypto.randomUUID();
-    const storagePath = createStoragePath(applicationId, cvFile.name, cvFile.type);
+    const cvStoragePath = createPrivateStoragePath(candidateId, "cv", cvFile.name, cvFile.type);
     const fileBuffer = Buffer.from(await cvFile.arrayBuffer());
 
-    const { error: uploadError } = await supabase.storage.from(cvBucket).upload(storagePath, fileBuffer, {
+    const { error: uploadError } = await supabase.storage.from(privateDocsBucket).upload(cvStoragePath, fileBuffer, {
       contentType: cvFile.type,
       upsert: false,
     });
@@ -259,8 +275,7 @@ export async function POST(request: Request) {
     if (uploadError) {
       const parsedUploadError = toObjectError(uploadError);
       console.error("[careers:upload] storage upload failed", {
-        bucket: cvBucket,
-        storagePath,
+        bucket: privateDocsBucket,
         ...parsedUploadError,
       });
 
@@ -273,8 +288,7 @@ export async function POST(request: Request) {
           ...(debugMode
             ? {
                 debug: {
-                  bucket: cvBucket,
-                  storagePath,
+                  bucket: privateDocsBucket,
                   env: envSnapshot,
                 },
               }
@@ -285,10 +299,48 @@ export async function POST(request: Request) {
     }
 
     console.info("[careers:upload] file upload succeeded, proceeding to insert database row", {
-      bucket: cvBucket,
-      storagePath,
+      bucket: privateDocsBucket,
       applicationId,
     });
+
+    const supportingDocumentStoragePaths: string[] = [];
+    for (const [index, document] of supportingDocuments.entries()) {
+      const documentStoragePath = createPrivateStoragePath(candidateId, "document", document.name, document.type);
+      const documentBuffer = Buffer.from(await document.arrayBuffer());
+      const { error: documentUploadError } = await supabase.storage.from(privateDocsBucket).upload(documentStoragePath, documentBuffer, {
+        contentType: document.type,
+        upsert: false,
+      });
+
+      if (documentUploadError) {
+        const parsedDocumentUploadError = toObjectError(documentUploadError);
+        console.error("[careers:upload] supporting document upload failed", {
+          bucket: privateDocsBucket,
+          index,
+          ...parsedDocumentUploadError,
+        });
+        await supabase.storage.from(privateDocsBucket).remove([cvStoragePath, ...supportingDocumentStoragePaths]);
+        return NextResponse.json(
+          {
+            error: "Failed to upload supporting document.",
+            details: parsedDocumentUploadError.message,
+            code: parsedDocumentUploadError.code,
+            statusCode: parsedDocumentUploadError.statusCode,
+            ...(debugMode
+              ? {
+                  debug: {
+                    bucket: privateDocsBucket,
+                    env: envSnapshot,
+                  },
+                }
+              : {}),
+          },
+          { status: 500 }
+        );
+      }
+
+      supportingDocumentStoragePaths.push(documentStoragePath);
+    }
 
     const jobApplicationPayload = {
       id: applicationId,
@@ -299,7 +351,7 @@ export async function POST(request: Request) {
       desired_position: data.desiredPosition,
       years_of_experience: data.yearsOfExperience,
       professional_message: data.coverLetter,
-      cv_storage_path: storagePath,
+      cv_storage_path: cvStoragePath,
       original_cv_filename: cvFile.name.slice(0, 255),
       cv_mime_type: cvFile.type,
       cv_size_bytes: cvFile.size,
@@ -331,7 +383,7 @@ export async function POST(request: Request) {
           position: data.desiredPosition,
           experience: String(data.yearsOfExperience),
           cover_letter: data.coverLetter,
-          cv_url: storagePath,
+          cv_url: cvStoragePath,
           cv_filename: cvFile.name.slice(0, 255),
           status: "pending",
         });
@@ -341,8 +393,7 @@ export async function POST(request: Request) {
           insertedTable = "applications";
           console.warn("[careers:insert] fell back to legacy applications table", {
             applicationId,
-            bucket: cvBucket,
-            storagePath,
+            bucket: privateDocsBucket,
           });
         } else {
           insertError = legacyInsertError;
@@ -354,14 +405,13 @@ export async function POST(request: Request) {
     if (insertError) {
       const parsedInsertError = toObjectError(insertError);
       console.error("[careers:insert] insert failed, removing uploaded file", {
-        bucket: cvBucket,
-        storagePath,
+        bucket: privateDocsBucket,
         applicationId,
         insertedTable,
         ...parsedInsertError,
       });
 
-      await supabase.storage.from(cvBucket).remove([storagePath]);
+      await supabase.storage.from(privateDocsBucket).remove([cvStoragePath, ...supportingDocumentStoragePaths]);
       return NextResponse.json(
         {
           error: "Failed to save application.",
@@ -371,8 +421,7 @@ export async function POST(request: Request) {
           ...(debugMode
             ? {
                 debug: {
-                  bucket: cvBucket,
-                  storagePath,
+                  bucket: privateDocsBucket,
                   env: envSnapshot,
                   insertedTable,
                 },
@@ -385,22 +434,141 @@ export async function POST(request: Request) {
 
     console.info("[careers:insert] application insert succeeded", {
       applicationId,
-      bucket: cvBucket,
-      storagePath,
+      bucket: privateDocsBucket,
       insertedTable,
     });
+
+    let profileReference: string | null = null;
+    try {
+      const profileDraft = await generateCandidateProfileDraft({
+        candidateId,
+        fullName: data.fullName,
+        email: data.email,
+        phone: data.phone,
+        location: data.location,
+        desiredPosition: data.desiredPosition,
+        yearsOfExperience: data.yearsOfExperience,
+        coverLetter: data.coverLetter,
+        originalCvPath: cvStoragePath,
+        originalDocumentPaths: supportingDocumentStoragePaths,
+        locale,
+        supportingNotes: supportingDocumentStoragePaths.length > 0 ? ["Supporting documents uploaded privately"] : [],
+      });
+
+      const { error: privateProfileError } = await supabase.from("candidate_private_profiles").insert({
+        candidate_id: candidateId,
+        full_name: data.fullName,
+        email: data.email,
+        phone: data.phone,
+        address: countryCity,
+        original_cv_path: cvStoragePath,
+        original_documents_paths: supportingDocumentStoragePaths,
+        restricted_to_prime_global: true,
+      });
+
+      if (privateProfileError) {
+        throw privateProfileError;
+      }
+
+      const { data: publicProfile, error: publicProfileError } = await supabase
+        .from("candidate_public_profiles")
+        .insert({
+          candidate_id: candidateId,
+          professional_title: profileDraft.professionalTitle,
+          professional_summary: profileDraft.professionalSummary,
+          years_of_experience: profileDraft.yearsOfExperience,
+          skills: profileDraft.skills,
+          employment_history: profileDraft.employmentHistory,
+          education: profileDraft.education,
+          certifications: profileDraft.certifications,
+          languages: profileDraft.languages,
+          general_location: profileDraft.generalLocation,
+          availability: profileDraft.availability,
+          desired_role: profileDraft.desiredRole,
+          expected_salary: profileDraft.expectedSalary,
+          ai_summary: profileDraft.aiSummary,
+          profile_status: "pending_review",
+          generated_at: new Date().toISOString(),
+        })
+        .select("candidate_reference")
+        .single();
+
+      if (publicProfileError) {
+        throw publicProfileError;
+      }
+
+      profileReference = publicProfile?.candidate_reference ?? null;
+
+      const generatedContent = {
+        ...profileDraft.generatedContent,
+        candidateReference: profileReference ?? profileDraft.generatedContent.candidateReference,
+      };
+
+      const { error: versionError } = await supabase.from("candidate_profile_versions").insert({
+        candidate_id: candidateId,
+        version_number: 1,
+        generated_content: generatedContent,
+        generated_by: profileDraft.generatedBy,
+      });
+
+      if (versionError) {
+        throw versionError;
+      }
+
+      const { error: reviewError } = await supabase.from("candidate_profile_reviews").insert({
+        candidate_id: candidateId,
+        reviewed_by_prime_global_user_id: null,
+        status: "pending",
+        notes: null,
+        reviewed_at: null,
+      });
+
+      if (reviewError) {
+        throw reviewError;
+      }
+
+      await createAuditLog({
+        actorRole: "candidate",
+        action: "candidate.careers_submission.created",
+        targetType: "candidate_public_profile",
+        targetId: candidateId,
+        metadata: {
+          applicationId,
+          locale,
+          profileReference,
+          hasSupportingDocuments: supportingDocumentStoragePaths.length > 0,
+        },
+      });
+    } catch (profileError) {
+      console.error("[careers:profile] candidate profile creation failed", {
+        candidateId,
+        applicationId,
+        error: profileError instanceof Error ? profileError.message : String(profileError),
+      });
+
+      await supabase
+        .from("candidate_profile_reviews")
+        .delete()
+        .eq("candidate_id", candidateId);
+
+      await supabase.from("candidate_profile_versions").delete().eq("candidate_id", candidateId);
+      await supabase.from("candidate_public_profiles").delete().eq("candidate_id", candidateId);
+      await supabase.from("candidate_private_profiles").delete().eq("candidate_id", candidateId);
+    }
 
     return NextResponse.json(
       {
         success: true,
         id: applicationId,
+        ...(profileReference ? { candidateReference: profileReference } : {}),
         ...(debugMode
           ? {
               debug: {
-                bucket: cvBucket,
-                storagePath,
+              bucket: privateDocsBucket,
                 env: envSnapshot,
                 insertedTable,
+              profileReference,
+              profileCreated: Boolean(profileReference),
               },
             }
           : {}),

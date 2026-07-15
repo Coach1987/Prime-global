@@ -64,6 +64,8 @@ export function ApplicationForm() {
   const locale = useLocale();
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [supportingFiles, setSupportingFiles] = useState<File[]>([]);
+  const [supportingUploadError, setSupportingUploadError] = useState<string | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [submitSuccess, setSubmitSuccess] = useState(false);
 
@@ -110,6 +112,9 @@ export function ApplicationForm() {
     }
     formData.append("locale", locale === "ar" ? "ar" : "en");
     formData.append("cv", selectedFile);
+    for (const file of supportingFiles) {
+      formData.append("documents", file);
+    }
 
     try {
       const response = await fetch("/api/careers", {
@@ -124,7 +129,9 @@ export function ApplicationForm() {
 
       reset();
       setSelectedFile(null);
+      setSupportingFiles([]);
       setUploadError(null);
+      setSupportingUploadError(null);
       setSubmitSuccess(true);
     } catch (error) {
       setSubmitSuccess(false);
@@ -149,6 +156,25 @@ export function ApplicationForm() {
     setUploadError(null);
     setSelectedFile(file);
     setValue("coverLetter", watch("coverLetter"), { shouldValidate: true });
+  }
+
+  function handleSelectSupportingFiles(files: FileList | null) {
+    if (!files || files.length === 0) {
+      setSupportingFiles([]);
+      setSupportingUploadError(null);
+      return;
+    }
+
+    const nextFiles = Array.from(files);
+    const invalidFile = nextFiles.find((file) => !validateUploadFile(file).valid);
+    if (invalidFile) {
+      setSupportingFiles([]);
+      setSupportingUploadError(t("upload.errors.type"));
+      return;
+    }
+
+    setSupportingUploadError(null);
+    setSupportingFiles(nextFiles);
   }
 
   return (
@@ -186,6 +212,36 @@ export function ApplicationForm() {
           <UploadZone onSelect={handleSelectFile} />
           <FilePreview file={preview} onClear={() => setSelectedFile(null)} />
           {uploadError && <p className="text-xs text-rose-300">{uploadError}</p>}
+        </div>
+
+        <div className="space-y-3">
+          <h2 className="text-sm font-semibold uppercase tracking-[0.14em] text-blue-200">Certificates and supporting documents</h2>
+          <label className="block rounded-2xl border border-dashed border-blue-300/35 bg-[#101d31]/60 p-5 text-sm text-slate-200">
+            <span className="block text-xs uppercase tracking-[0.14em] text-slate-400">Optional</span>
+            <input
+              type="file"
+              multiple
+              accept=".pdf,.doc,.docx,.png,.jpg,.jpeg,.webp"
+              className="mt-3 block w-full text-sm text-slate-200 file:mr-4 file:rounded-full file:border-0 file:bg-gold file:px-4 file:py-2 file:text-sm file:font-semibold file:text-[#081220]"
+              onChange={(event) => handleSelectSupportingFiles(event.target.files)}
+            />
+          </label>
+
+          {supportingFiles.length > 0 ? (
+            <div className="space-y-2 rounded-xl border border-white/10 bg-white/[0.03] p-4 text-sm text-slate-200">
+              {supportingFiles.map((file) => {
+                const previewFile = toUploadPreview(file);
+                return (
+                  <div key={`${file.name}-${file.size}`} className="flex items-center justify-between gap-3">
+                    <span>{previewFile.name}</span>
+                    <span className="text-xs text-slate-400">{previewFile.sizeLabel}</span>
+                  </div>
+                );
+              })}
+            </div>
+          ) : null}
+
+          {supportingUploadError && <p className="text-xs text-rose-300">{supportingUploadError}</p>}
         </div>
 
         <label className="flex items-start gap-3 rounded-xl border border-white/15 bg-white/[0.02] p-4">

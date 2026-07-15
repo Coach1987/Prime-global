@@ -26,7 +26,7 @@ export async function GET(request: Request) {
   const auth = await requireAuth(request);
   if (auth instanceof NextResponse) return auth;
 
-  const roleCheck = requireRole(auth, ["admin", "super_admin"]);
+  const roleCheck = requireRole(auth, ["prime_global_recruiter", "prime_global_admin", "admin", "super_admin"]);
   if (roleCheck) return roleCheck;
 
   const supabase = createSupabaseAdminClient();
@@ -81,7 +81,7 @@ export async function POST(request: Request) {
   const auth = await requireAuth(request);
   if (auth instanceof NextResponse) return auth;
 
-  const roleCheck = requireRole(auth, ["admin", "super_admin"]);
+  const roleCheck = requireRole(auth, ["prime_global_recruiter", "prime_global_admin", "admin", "super_admin"]);
   if (roleCheck) return roleCheck;
 
   const parsed = await parseJsonBody(request, adminActionSchema);

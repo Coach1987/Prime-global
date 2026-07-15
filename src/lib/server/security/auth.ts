@@ -1,7 +1,13 @@
 import { NextResponse } from "next/server";
 import { createSupabasePublicClient } from "@/lib/server/supabase";
 
-export type AppRole = "candidate" | "employer" | "admin" | "super_admin";
+export type AppRole =
+  | "candidate"
+  | "employer"
+  | "prime_global_recruiter"
+  | "prime_global_admin"
+  | "admin"
+  | "super_admin";
 
 export interface AuthContext {
   userId: string;
@@ -20,6 +26,8 @@ function readBearerToken(request: Request) {
 }
 
 function normalizeRole(value: unknown): AppRole {
+  if (value === "prime_global_admin") return "prime_global_admin";
+  if (value === "prime_global_recruiter") return "prime_global_recruiter";
   if (value === "super_admin") return "super_admin";
   if (value === "admin") return "admin";
   if (value === "employer") return "employer";
