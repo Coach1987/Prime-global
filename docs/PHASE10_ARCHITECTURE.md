@@ -64,6 +64,35 @@ Stage 1 establishes the reusable Prime Global Shield Plus foundation only.
 - No external provider connection.
 - Every Stage 3 entrypoint remains disabled unless explicitly feature-flagged.
 
+## Stage 4 Workflow Kernel (Foundation Only)
+- Adds a reusable orchestration kernel under `src/lib/server/phase10/workflow`.
+- Introduces command and query abstractions with explicit actor/organization/tenant context.
+- Adds generic workflow state machines with explainable transitions and optimistic version checks.
+- Adds execution pipeline ordering for policy, business rules, idempotency, locking, persistence, timeline, notification, and observability.
+- Adds in-memory-only idempotency, locking, and atomic persistence implementations for testing.
+- Adds compensation infrastructure for safe multi-step rollback attempts with human-handover signaling.
+- Adds deterministic workflow event ordering and replay-safe pure state reconstruction support.
+- Adds privacy-safe structured error shaping for kernel failures.
+
+### Stage 4 Feature Flags (Default Disabled)
+- `WORKFLOW_KERNEL_ENABLED`
+- `WORKFLOW_COMMANDS_ENABLED`
+- `WORKFLOW_QUERIES_ENABLED`
+- `WORKFLOW_IDEMPOTENCY_ENABLED`
+- `WORKFLOW_LOCKING_ENABLED`
+- `WORKFLOW_OPTIMISTIC_LOCKING_ENABLED`
+- `WORKFLOW_COMPENSATION_ENABLED`
+- `WORKFLOW_EVENT_REPLAY_ENABLED`
+
+### Stage 4 Non-Goals
+- No production workflow route wiring.
+- No OCR, QR scanning, attachment scanning, progressive enforcement, or risk scoring behavior.
+- No live video provider integration.
+- No payment provider integration.
+- No AI recruiter/candidate assistant behavior.
+- No Governance Center UI.
+- No production migration execution.
+
 ## Phase 10 Import Convention
 - Phase 10 foundation modules use explicit `.ts` import specifiers inside `src/lib/server/phase10/**`.
 - This exists because the foundation is exercised directly by Node-based tests, and the explicit specifiers keep the TS source graph resolvable in that runtime.
