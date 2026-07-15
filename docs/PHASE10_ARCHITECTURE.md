@@ -93,6 +93,44 @@ Stage 1 establishes the reusable Prime Global Shield Plus foundation only.
 - No Governance Center UI.
 - No production migration execution.
 
+## Stage 5 Recruitment Orchestrator (Foundation Only)
+- Adds a durable orchestration layer under `src/lib/server/phase10/orchestrator` above the Stage 4 Workflow Kernel.
+- Introduces orchestration identity/state model, workflow graph validation, and saga execution foundations.
+- Adds long-running execution abstractions: scheduling timestamps, lease state, recovery cursor, retry count, and suspension/resume controls.
+- Adds durable snapshot repository abstraction with integrity hashing, CAS support, and history/migration hooks.
+- Adds recovery service foundation for incomplete orchestration discovery and integrity-aware restore decisions.
+- Adds timeout and retry policy foundations with non-retryable safety categories.
+- Adds scheduler provider abstraction with in-memory claim/lease/complete/fail/retry lifecycle.
+- Adds manual intervention foundation with staff-only controls and justification/evidence requirements.
+- Adds read-only inspector and visualization projection models with role-shaped privacy boundaries.
+- Adds orchestration event ingestion guardrails for deterministic ordering, duplicate detection, and out-of-order detection.
+- Adds atomic orchestration unit-of-work abstraction with rollback semantics for testing.
+
+### Stage 5 Feature Flags (Default Disabled)
+- `RECRUITMENT_ORCHESTRATOR_ENABLED`
+- `ORCHESTRATION_SAGAS_ENABLED`
+- `ORCHESTRATION_GRAPHS_ENABLED`
+- `ORCHESTRATION_SNAPSHOTS_ENABLED`
+- `ORCHESTRATION_RECOVERY_ENABLED`
+- `ORCHESTRATION_TIMEOUTS_ENABLED`
+- `ORCHESTRATION_RETRIES_ENABLED`
+- `ORCHESTRATION_SCHEDULER_ENABLED`
+- `ORCHESTRATION_MANUAL_INTERVENTION_ENABLED`
+- `ORCHESTRATION_INSPECTOR_ENABLED`
+- `ORCHESTRATION_VISUALIZATION_ENABLED`
+
+### Stage 5 Non-Goals
+- No production route integration.
+- No OCR or QR scanning.
+- No attachment scanning.
+- No progressive enforcement or risk scoring activation.
+- No real protected interview workflow activation.
+- No video/payment provider integration.
+- No AI recruiter/candidate assistant behavior.
+- No Governance Center UI.
+- No production migration changes.
+- No external queues or external schedulers.
+
 ## Phase 10 Import Convention
 - Phase 10 foundation modules use explicit `.ts` import specifiers inside `src/lib/server/phase10/**`.
 - This exists because the foundation is exercised directly by Node-based tests, and the explicit specifiers keep the TS source graph resolvable in that runtime.

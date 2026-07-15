@@ -8,4 +8,5 @@ export * from "./organization/index.ts";
 export * from "./security/index.ts";
 export * from "./evidence/index.ts";
 export * from "./workflow/index.ts";
+export * from "./orchestrator/index.ts";
 

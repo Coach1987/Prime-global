@@ -17,6 +17,17 @@ test("phase10 feature flags default to disabled", () => {
   assert.equal(flags.SHIELD_INFRA_FOUNDATION_ENABLED, false);
   assert.equal(flags.SHIELD_INTEGRITY_MONITOR_ENABLED, false);
   assert.equal(flags.SHIELD_EVENT_REPLAY_ENABLED, false);
+  assert.equal(flags.RECRUITMENT_ORCHESTRATOR_ENABLED, false);
+  assert.equal(flags.ORCHESTRATION_SAGAS_ENABLED, false);
+  assert.equal(flags.ORCHESTRATION_GRAPHS_ENABLED, false);
+  assert.equal(flags.ORCHESTRATION_SNAPSHOTS_ENABLED, false);
+  assert.equal(flags.ORCHESTRATION_RECOVERY_ENABLED, false);
+  assert.equal(flags.ORCHESTRATION_TIMEOUTS_ENABLED, false);
+  assert.equal(flags.ORCHESTRATION_RETRIES_ENABLED, false);
+  assert.equal(flags.ORCHESTRATION_SCHEDULER_ENABLED, false);
+  assert.equal(flags.ORCHESTRATION_MANUAL_INTERVENTION_ENABLED, false);
+  assert.equal(flags.ORCHESTRATION_INSPECTOR_ENABLED, false);
+  assert.equal(flags.ORCHESTRATION_VISUALIZATION_ENABLED, false);
   assert.equal(isPhase10FeatureEnabled("GOVERNANCE_CENTER_ENABLED"), false);
 });
 
