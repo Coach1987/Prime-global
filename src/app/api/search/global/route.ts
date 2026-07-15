@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { globalSearchQuerySchema } from "@/features/shared/schemas/search";
 import { enforceRateLimit } from "@/lib/server/http";
 import { createSupabaseAdminClient } from "@/lib/server/supabase";
+import { sanitizeEmployerCandidateProfiles } from "@/lib/server/candidates/employer-profile";
 
 export async function GET(request: Request) {
   const rateLimitResult = enforceRateLimit(request, "global-search", 150);
@@ -61,7 +62,7 @@ export async function GET(request: Request) {
       .limit(20),
     supabase
       .from("candidate_public_profiles")
-      .select("candidate_id, candidate_reference, professional_title, professional_summary, years_of_experience, skills, employment_history, education, certifications, languages, general_location, availability, desired_role, expected_salary, ai_summary, profile_status, generated_at")
+      .select("candidate_id, candidate_reference, professional_title, professional_summary, years_of_experience, skills, employment_history, education, certifications, languages, general_location, availability, desired_role, ai_summary, profile_status, generated_at")
       .eq("profile_status", "approved")
       .limit(50),
   ]);
@@ -83,16 +84,14 @@ export async function GET(request: Request) {
     );
   }
 
-  const candidateResults = (candidatesResult.data ?? []).filter((item) => {
+  const candidateResults = sanitizeEmployerCandidateProfiles((candidatesResult.data ?? []) as Array<Record<string, unknown>>).filter((item) => {
     const skills = (item.skills ?? []).map((entry: unknown) => String(entry).toLowerCase());
     const languages = (item.languages ?? []).map((entry: unknown) => String(entry).toLowerCase());
     const location = String(item.general_location ?? "").toLowerCase();
-    const expectedSalary = Number(item.expected_salary ?? 0);
 
     if (query.skill && !skills.some((value: string) => value.includes(query.skill!.toLowerCase()))) return false;
     if (query.language && !languages.some((value: string) => value.includes(query.language!.toLowerCase()))) return false;
     if (query.country && !location.includes(query.country.toLowerCase())) return false;
-    if (query.salaryMin !== undefined && expectedSalary < query.salaryMin) return false;
 
     return true;
   });

@@ -4,6 +4,7 @@ import { requireAuth, requireRole } from "@/lib/server/security/auth";
 import { enforceCsrf, enforceRateLimit, parseJsonBody } from "@/lib/server/http";
 import { getEmployerByAuthUserId } from "@/lib/server/employers";
 import { createSupabaseAdminClient } from "@/lib/server/supabase";
+import { sanitizeEmployerCandidateProfile } from "@/lib/server/candidates/employer-profile";
 
 const saveCandidateSchema = z.object({
   candidateId: z.string().uuid(),
@@ -29,7 +30,7 @@ export async function GET(request: Request) {
   const supabase = createSupabaseAdminClient();
   const { data, error } = await supabase
     .from("employer_saved_candidates")
-    .select("id, created_at, candidate_public_profiles!inner(candidate_id, candidate_reference, professional_title, professional_summary, years_of_experience, skills, employment_history, education, certifications, languages, general_location, availability, desired_role, expected_salary, ai_summary, profile_status, generated_at)")
+    .select("id, created_at, candidate_public_profiles!inner(candidate_id, candidate_reference, professional_title, professional_summary, years_of_experience, skills, employment_history, education, certifications, languages, general_location, availability, desired_role, ai_summary, profile_status, generated_at)")
     .eq("employer_id", employer.id)
     .eq("candidate_public_profiles.profile_status", "approved")
     .order("created_at", { ascending: false });
@@ -41,7 +42,15 @@ export async function GET(request: Request) {
     );
   }
 
-  return NextResponse.json({ success: true, data });
+  return NextResponse.json({
+    success: true,
+    data: (data ?? []).map((row) => ({
+      ...row,
+      candidate_public_profiles: row.candidate_public_profiles
+        ? sanitizeEmployerCandidateProfile(row.candidate_public_profiles as Record<string, unknown>)
+        : null,
+    })),
+  });
 }
 
 export async function POST(request: Request) {

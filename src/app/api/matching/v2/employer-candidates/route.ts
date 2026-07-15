@@ -4,6 +4,7 @@ import { enforceRateLimit } from "@/lib/server/http";
 import { getEmployerByAuthUserId } from "@/lib/server/employers";
 import { createSupabaseAdminClient } from "@/lib/server/supabase";
 import { buildEmployerMatchInsight } from "@/lib/server/matching/engine-v2";
+import { sanitizeEmployerCandidateProfiles } from "@/lib/server/candidates/employer-profile";
 
 export async function GET(request: Request) {
   const rateLimitResult = enforceRateLimit(request, "employer-matching-v2", 90);
@@ -23,7 +24,7 @@ export async function GET(request: Request) {
   const [{ data: candidates, error: candidatesError }] = await Promise.all([
     supabase
       .from("candidate_public_profiles")
-      .select("candidate_id, candidate_reference, professional_title, professional_summary, years_of_experience, skills, employment_history, education, certifications, languages, general_location, availability, desired_role, expected_salary, ai_summary, profile_status, generated_at")
+      .select("candidate_id, candidate_reference, professional_title, professional_summary, years_of_experience, skills, employment_history, education, certifications, languages, general_location, availability, desired_role, ai_summary, profile_status, generated_at")
       .eq("profile_status", "approved")
       .order("generated_at", { ascending: false })
       .limit(300),
@@ -33,7 +34,7 @@ export async function GET(request: Request) {
     return NextResponse.json({ success: false, error: { code: "CANDIDATES_FETCH_FAILED", message: candidatesError.message } }, { status: 500 });
   }
 
-  const insights = (candidates ?? [])
+  const insights = sanitizeEmployerCandidateProfiles((candidates ?? []) as Array<Record<string, unknown>>)
     .map((candidate) => {
       const candidateAdapter = {
         id: String(candidate.candidate_id),

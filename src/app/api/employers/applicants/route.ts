@@ -3,6 +3,7 @@ import { requireAuth, requireRole } from "@/lib/server/security/auth";
 import { enforceRateLimit } from "@/lib/server/http";
 import { getEmployerByAuthUserId } from "@/lib/server/employers";
 import { createSupabaseAdminClient } from "@/lib/server/supabase";
+import { sanitizeEmployerCandidateProfile } from "@/lib/server/candidates/employer-profile";
 
 export async function GET(request: Request) {
   const rateLimitResult = enforceRateLimit(request, "employer-applicants-get", 120);
@@ -31,7 +32,7 @@ export async function GET(request: Request) {
   let dbQuery = supabase
     .from("job_applications_v2")
     .select(
-      "id, status, applied_at, updated_at, cover_letter, job_id, candidate_id, resume_id, jobs!inner(id, employer_id, title), candidate_public_profiles!inner(candidate_id, candidate_reference, professional_title, professional_summary, years_of_experience, skills, employment_history, education, certifications, languages, general_location, availability, desired_role, expected_salary, ai_summary, profile_status, generated_at)"
+      "id, status, applied_at, updated_at, cover_letter, job_id, candidate_id, resume_id, jobs!inner(id, employer_id, title), candidate_public_profiles!inner(candidate_id, candidate_reference, professional_title, professional_summary, years_of_experience, skills, employment_history, education, certifications, languages, general_location, availability, desired_role, ai_summary, profile_status, generated_at)"
     )
     .eq("jobs.employer_id", employer.id)
     .eq("candidate_public_profiles.profile_status", "approved")
@@ -69,5 +70,16 @@ export async function GET(request: Request) {
       })
     : data;
 
-  return NextResponse.json({ success: true, data: filtered });
+  return NextResponse.json({
+    success: true,
+    data: (filtered ?? []).map((item) => {
+      const candidate = Array.isArray(item.candidate_public_profiles)
+        ? item.candidate_public_profiles[0]
+        : item.candidate_public_profiles;
+      return {
+        ...item,
+        candidate_public_profiles: candidate ? sanitizeEmployerCandidateProfile(candidate as Record<string, unknown>) : null,
+      };
+    }),
+  });
 }

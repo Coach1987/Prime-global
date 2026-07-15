@@ -4,6 +4,7 @@ import { enforceRateLimit } from "@/lib/server/http";
 import { getEmployerByAuthUserId } from "@/lib/server/employers";
 import { createSupabaseAdminClient } from "@/lib/server/supabase";
 import { recommendCandidatesForEmployer } from "@/lib/server/matching/employer-recommendations";
+import { sanitizeEmployerCandidateProfiles } from "@/lib/server/candidates/employer-profile";
 
 export async function GET(request: Request) {
   const rateLimitResult = enforceRateLimit(request, "employer-candidate-matching", 90);
@@ -32,9 +33,9 @@ export async function GET(request: Request) {
       .limit(200),
     supabase
       .from("candidate_public_profiles")
-      .select("candidate_id, candidate_reference, professional_title, professional_summary, years_of_experience, skills, employment_history, education, certifications, languages, general_location, availability, desired_role, expected_salary, ai_summary, profile_status, generated_at")
+      .select("candidate_id, candidate_reference, professional_title, professional_summary, years_of_experience, skills, employment_history, education, certifications, languages, general_location, availability, desired_role, ai_summary, profile_status, generated_at")
       .eq("profile_status", "approved")
-      .order("updated_at", { ascending: false })
+      .order("generated_at", { ascending: false })
       .limit(500),
   ]);
 
@@ -53,7 +54,7 @@ export async function GET(request: Request) {
 
   const recommendations = recommendCandidatesForEmployer(
     jobs ?? [],
-    (candidates ?? []).map((candidate) => ({
+    sanitizeEmployerCandidateProfiles((candidates ?? []) as Array<Record<string, unknown>>).map((candidate) => ({
       id: String(candidate.candidate_id),
       full_name: String(candidate.candidate_reference ?? "PG Candidate"),
       professional_title: candidate.professional_title ?? null,

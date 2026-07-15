@@ -3,6 +3,10 @@ import { requireAuth, requireRole } from "@/lib/server/security/auth";
 import { enforceRateLimit } from "@/lib/server/http";
 import { getEmployerByAuthUserId } from "@/lib/server/employers";
 import { createSupabaseAdminClient } from "@/lib/server/supabase";
+import {
+  EMPLOYER_CANDIDATE_PROFILE_SELECT,
+  sanitizeEmployerCandidateProfiles,
+} from "@/lib/server/candidates/employer-profile";
 
 export async function GET(request: Request) {
   const rateLimitResult = enforceRateLimit(request, "employer-candidate-profiles-get", 90);
@@ -29,11 +33,8 @@ export async function GET(request: Request) {
   const supabase = createSupabaseAdminClient();
 
   let query = supabase
-    .from("candidate_public_profiles")
-    .select(
-      "candidate_id, candidate_reference, professional_title, professional_summary, years_of_experience, skills, employment_history, education, certifications, languages, general_location, availability, desired_role, expected_salary, ai_summary, profile_status, generated_at"
-    )
-    .eq("profile_status", "approved")
+    .from("candidate_public_profiles_employer_view")
+    .select(EMPLOYER_CANDIDATE_PROFILE_SELECT)
     .order("generated_at", { ascending: false });
 
   if (search) {
@@ -50,5 +51,8 @@ export async function GET(request: Request) {
     );
   }
 
-  return NextResponse.json({ success: true, data: data ?? [] });
+  return NextResponse.json({
+    success: true,
+    data: sanitizeEmployerCandidateProfiles((data ?? []) as Array<Record<string, unknown>>),
+  });
 }

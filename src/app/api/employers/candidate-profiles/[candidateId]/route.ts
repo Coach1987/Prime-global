@@ -3,6 +3,10 @@ import { requireAuth, requireRole } from "@/lib/server/security/auth";
 import { enforceRateLimit } from "@/lib/server/http";
 import { getEmployerByAuthUserId } from "@/lib/server/employers";
 import { createSupabaseAdminClient } from "@/lib/server/supabase";
+import {
+  EMPLOYER_CANDIDATE_PROFILE_SELECT,
+  sanitizeEmployerCandidateProfile,
+} from "@/lib/server/candidates/employer-profile";
 
 export async function GET(request: Request, { params }: { params: Promise<{ candidateId: string }> }) {
   const rateLimitResult = enforceRateLimit(request, "employer-candidate-profile-get", 90);
@@ -27,12 +31,9 @@ export async function GET(request: Request, { params }: { params: Promise<{ cand
   const { candidateId } = await params;
   const supabase = createSupabaseAdminClient();
   const { data, error } = await supabase
-    .from("candidate_public_profiles")
-    .select(
-      "candidate_id, candidate_reference, professional_title, professional_summary, years_of_experience, skills, employment_history, education, certifications, languages, general_location, availability, desired_role, expected_salary, ai_summary, profile_status, generated_at"
-    )
+    .from("candidate_public_profiles_employer_view")
+    .select(EMPLOYER_CANDIDATE_PROFILE_SELECT)
     .eq("candidate_id", candidateId)
-    .eq("profile_status", "approved")
     .maybeSingle();
 
   if (error) {
@@ -42,5 +43,8 @@ export async function GET(request: Request, { params }: { params: Promise<{ cand
     );
   }
 
-  return NextResponse.json({ success: true, data: data ?? null });
+  return NextResponse.json({
+    success: true,
+    data: data ? sanitizeEmployerCandidateProfile(data as Record<string, unknown>) : null,
+  });
 }
