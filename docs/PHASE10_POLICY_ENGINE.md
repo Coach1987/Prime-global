@@ -36,3 +36,19 @@ The registry contains the initial Phase 10 policies as disabled foundation defin
 
 ## Stage 1 guarantee
 - The engine is available for future wiring, but no current production route depends on it.
+
+## Candidate Friendly Detection Policy Baseline
+- Detection is observation-first and escalation-aware.
+- Detection outcomes must include confidence and explanation.
+- Low confidence: ignore.
+- Medium confidence: observe and log only.
+- High confidence: show a friendly reminder and allow edit-and-continue.
+- Very high confidence with repeated confirmed attempts: evaluate policy and business rules, append evidence references, and allow governance review.
+- Automatic punishment from a single detection is disallowed.
+
+## Prohibited Automatic Actions
+- Automatic bans.
+- Automatic account suspension.
+- Automatic candidate rejection.
+- Automatic contract blocking.
+- Automatic permanent penalties.

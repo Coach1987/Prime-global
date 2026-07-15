@@ -131,6 +131,21 @@ Stage 1 establishes the reusable Prime Global Shield Plus foundation only.
 - No production migration changes.
 - No external queues or external schedulers.
 
+## Candidate Friendly Shield Philosophy (Adopted Before Detection Engine)
+- Prime Global Shield is observation-first: detect, classify, explain, score confidence, and add evidence references only when needed.
+- The system assumes good intent first and avoids hostile or punitive UX for genuine candidates.
+- Single detections do not trigger automatic bans, suspensions, rejections, contract blocking, or permanent penalties.
+
+### Progressive Experience Levels
+- Level 0 (Normal): no interruption.
+- Level 1 (Soft detection): internal logging only.
+- Level 2 (High confidence): friendly reminder, allow user edit and continue.
+- Level 3 (Repeated intentional attempts with very high confidence): notify Policy Engine and Rule Engine, append evidence reference, and allow governance review.
+
+### UX Language Rule
+- Never accuse users or use threatening language.
+- Preferred wording: "To help protect candidates and employers, contact details can only be exchanged after the recruitment process reaches the appropriate stage."
+
 ## Phase 10 Import Convention
 - Phase 10 foundation modules use explicit `.ts` import specifiers inside `src/lib/server/phase10/**`.
 - This exists because the foundation is exercised directly by Node-based tests, and the explicit specifiers keep the TS source graph resolvable in that runtime.
