@@ -16,6 +16,16 @@ create table if not exists public.candidate_private_access_audit (
 create index if not exists candidate_private_access_audit_created_idx
   on public.candidate_private_access_audit (created_at desc);
 
+alter table public.candidate_private_access_audit enable row level security;
+
+drop policy if exists "candidate_private_access_audit_admin_only" on public.candidate_private_access_audit;
+create policy "candidate_private_access_audit_admin_only"
+on public.candidate_private_access_audit
+for all
+to authenticated
+using (coalesce(auth.jwt() ->> 'app_role', '') in ('prime_global_recruiter', 'prime_global_admin', 'admin', 'super_admin'))
+with check (coalesce(auth.jwt() ->> 'app_role', '') in ('prime_global_recruiter', 'prime_global_admin', 'admin', 'super_admin'));
+
 create or replace view public.candidate_public_profiles_employer_view as
 select
   candidate_id,
