@@ -18,8 +18,6 @@ const MIME_EXTENSION_MAP: Record<string, "pdf" | "doc" | "docx"> = {
   "application/vnd.openxmlformats-officedocument.wordprocessingml.document": "docx",
 };
 
-const DEFAULT_CV_BUCKET = "candidate-private-documents";
-
 const applicationPayloadSchema = z.object({
   fullName: z.string().trim().min(2).max(120),
   email: z.string().trim().email().max(320),
@@ -106,7 +104,7 @@ function createPrivateStoragePath(candidateId: string, kind: "cv" | "document", 
 }
 
 function getCvBucketName() {
-  return readOptionalEnv("SUPABASE_CV_BUCKET") ?? DEFAULT_CV_BUCKET;
+  return readOptionalEnv("SUPABASE_CV_BUCKET");
 }
 
 function maskSecret(value?: string) {
@@ -155,7 +153,7 @@ function getDebugMode(request: Request) {
   return debugParam === "1" || debugHeader === "1";
 }
 
-function getRuntimeEnvSnapshot(cvBucket: string) {
+function getRuntimeEnvSnapshot(cvBucket?: string) {
   const nextPublicSupabaseUrl = readOptionalEnv("NEXT_PUBLIC_SUPABASE_URL");
   const nextPublicSupabaseAnonKey = readOptionalEnv("NEXT_PUBLIC_SUPABASE_ANON_KEY");
   const serviceRoleKey = readOptionalEnv("SUPABASE_SERVICE_ROLE_KEY");
@@ -172,7 +170,7 @@ function getRuntimeEnvSnapshot(cvBucket: string) {
       length: serviceRoleKey?.length ?? 0,
     },
     SUPABASE_CV_BUCKET: configuredBucket ?? null,
-    resolvedUploadBucket: cvBucket,
+    resolvedUploadBucket: cvBucket ?? null,
   };
 }
 
@@ -183,9 +181,9 @@ export async function GET() {
 export async function POST(request: Request) {
   try {
     const debugMode = getDebugMode(request);
+    const cvBucket = getCvBucketName();
 
-    if (!readSupabaseUrl() || !readOptionalEnv("SUPABASE_SERVICE_ROLE_KEY")) {
-      const cvBucket = getCvBucketName();
+    if (!readSupabaseUrl() || !readOptionalEnv("SUPABASE_SERVICE_ROLE_KEY") || !cvBucket) {
       const envSnapshot = getRuntimeEnvSnapshot(cvBucket);
       console.error("[careers:config] missing Supabase server configuration", envSnapshot);
 
@@ -251,7 +249,7 @@ export async function POST(request: Request) {
     const data = parseResult.data;
     const locale = inferLocale(request, data.locale);
     const countryCity = parseCountryCity(data.location);
-    const privateDocsBucket = getCvBucketName();
+    const privateDocsBucket = cvBucket;
     const envSnapshot = getRuntimeEnvSnapshot(privateDocsBucket);
     const applicationId = crypto.randomUUID();
     const candidateId = crypto.randomUUID();

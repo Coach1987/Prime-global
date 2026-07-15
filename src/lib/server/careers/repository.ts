@@ -1,5 +1,5 @@
 import { createSupabaseAdminClient } from "@/lib/server/supabase";
-import { readOptionalEnv } from "@/lib/server/config/env";
+import { readRequiredEnv } from "@/lib/server/config/env";
 
 export const JOB_APPLICATION_STATUSES = ["new", "reviewing", "interview", "accepted", "rejected"] as const;
 
@@ -25,10 +25,8 @@ export interface JobApplicationRecord {
   updated_at: string;
 }
 
-const DEFAULT_CV_BUCKET = "candidate-cvs";
-
 function getCvBucketName() {
-  return readOptionalEnv("SUPABASE_CV_BUCKET") ?? DEFAULT_CV_BUCKET;
+  return readRequiredEnv("SUPABASE_CV_BUCKET");
 }
 
 export async function listJobApplications(filters?: {
