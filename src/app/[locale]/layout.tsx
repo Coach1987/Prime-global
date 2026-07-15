@@ -131,6 +131,9 @@ export default async function LocaleLayout({
       className={cn(displaySerif.variable, inter.variable, tajawal.variable)}
       style={
         {
+          "--font-display-serif": '"Iowan Old Style", "Palatino Linotype", "Book Antiqua", Georgia, serif',
+          "--font-inter": 'Inter, "Segoe UI", Arial, sans-serif',
+          "--font-tajawal": 'Tajawal, "Noto Sans Arabic", "Segoe UI", sans-serif',
           "--font-heading-active":
             locale === "ar" ? "var(--font-tajawal)" : "var(--font-display-serif)",
         } as React.CSSProperties

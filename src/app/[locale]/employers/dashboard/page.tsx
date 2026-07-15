@@ -178,6 +178,9 @@ export default function EmployerDashboardPage() {
         <a href={`/${locale}/enterprise`} className="mt-6 inline-flex rounded-full border border-gold/30 px-5 py-2 text-sm font-semibold text-gold transition hover:bg-gold/10">
           Open Enterprise Center
         </a>
+        <a href={`/${locale}/employers/supervised-conversations`} className="ml-3 mt-6 inline-flex rounded-full border border-gold/30 px-5 py-2 text-sm font-semibold text-gold transition hover:bg-gold/10">
+          Supervised Conversations
+        </a>
 
         {stats ? (
           <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
