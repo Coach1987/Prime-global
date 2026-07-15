@@ -9,4 +9,5 @@ export * from "./security/index.ts";
 export * from "./evidence/index.ts";
 export * from "./workflow/index.ts";
 export * from "./orchestrator/index.ts";
+export * from "./protected-interview/index.ts";
 

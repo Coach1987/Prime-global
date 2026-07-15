@@ -28,6 +28,10 @@ test("phase10 feature flags default to disabled", () => {
   assert.equal(flags.ORCHESTRATION_MANUAL_INTERVENTION_ENABLED, false);
   assert.equal(flags.ORCHESTRATION_INSPECTOR_ENABLED, false);
   assert.equal(flags.ORCHESTRATION_VISUALIZATION_ENABLED, false);
+  assert.equal(flags.PROTECTED_INTERVIEW_ENABLED, false);
+  assert.equal(flags.VIDEO_ROOM_PROVIDER_ENABLED, false);
+  assert.equal(flags.INTERVIEW_TOKEN_ENABLED, false);
+  assert.equal(flags.INTERVIEW_LIFECYCLE_ENABLED, false);
   assert.equal(isPhase10FeatureEnabled("GOVERNANCE_CENTER_ENABLED"), false);
 });
 

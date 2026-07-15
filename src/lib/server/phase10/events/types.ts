@@ -18,7 +18,15 @@ export type Phase10DomainEventType =
   | "PaymentVerified"
   | "ContractUnlocked"
   | "ContractSigned"
-  | "CandidateHired";
+  | "CandidateHired"
+  | "InterviewReserved"
+  | "ParticipantJoined"
+  | "ParticipantLeft"
+  | "InterviewCancelled"
+  | "InterviewExpired"
+  | "InterviewRescheduled"
+  | "RoomClosed"
+  | "RoomExpired";
 
 export interface Phase10DomainEvent {
   eventId: string;
