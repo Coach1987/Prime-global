@@ -39,3 +39,9 @@ Stage 1 establishes the reusable Prime Global Shield Plus foundation only.
 ## Notes
 - New policies and business rules exist as foundation objects only.
 - Existing production routes keep their current behavior until later stages explicitly wire Phase 10 services in.
+
+## Phase 10 Import Convention
+- Phase 10 foundation modules use explicit `.ts` import specifiers inside `src/lib/server/phase10/**`.
+- This exists because the foundation is exercised directly by Node-based tests, and the explicit specifiers keep the TS source graph resolvable in that runtime.
+- Use this convention only inside the Phase 10 foundation until reviewed for broader adoption.
+- Do not expand this pattern into unrelated modules without a separate review, because the rest of the repository should continue to follow the existing import style unless a future change explicitly needs the same runtime constraint.

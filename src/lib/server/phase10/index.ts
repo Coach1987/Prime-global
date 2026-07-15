@@ -6,3 +6,5 @@ export * from "./providers/index.ts";
 export * from "./observability/index.ts";
 export * from "./organization/index.ts";
 export * from "./security/index.ts";
+export * from "./evidence/index.ts";
+
