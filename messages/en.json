@@ -502,6 +502,24 @@
       }
     }
   },
+  "candidateJobAlerts": {
+    "settings": {
+      "title": "Job Alert Settings",
+      "subtitle": "Choose your preferences to receive matching job alerts in-app and by email.",
+      "save": "Save Settings",
+      "saved": "Settings saved successfully.",
+      "failed": "Unable to save settings."
+    },
+    "unsubscribe": {
+      "title": "Unsubscribe from Job Alerts",
+      "button": "Confirm Unsubscribe",
+      "success": "You have been unsubscribed from job alerts.",
+      "failed": "Unable to unsubscribe. The link may be invalid or expired."
+    },
+    "email": {
+      "subject": "New Fitness Trainer Opportunity Matching Your Profile"
+    }
+  },
   "serviceDetails": {
     "logistics": {
       "eyebrow": "Logistics Support",
