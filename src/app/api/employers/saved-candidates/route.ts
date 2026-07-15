@@ -47,7 +47,9 @@ export async function GET(request: Request) {
     data: (data ?? []).map((row) => ({
       ...row,
       candidate_public_profiles: row.candidate_public_profiles
-        ? sanitizeEmployerCandidateProfile(row.candidate_public_profiles as Record<string, unknown>)
+        ? sanitizeEmployerCandidateProfile(
+            row.candidate_public_profiles as unknown as Record<string, unknown>
+          )
         : null,
     })),
   });

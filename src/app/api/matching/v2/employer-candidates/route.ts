@@ -36,18 +36,27 @@ export async function GET(request: Request) {
 
   const insights = sanitizeEmployerCandidateProfiles((candidates ?? []) as Array<Record<string, unknown>>)
     .map((candidate) => {
+      const professionalTitle =
+        typeof candidate.professional_title === "string" ? candidate.professional_title : null;
+      const generalLocation =
+        typeof candidate.general_location === "string" ? candidate.general_location : null;
+      const availability =
+        typeof candidate.availability === "string" ? candidate.availability : null;
+      const yearsOfExperience =
+        typeof candidate.years_of_experience === "number" ? candidate.years_of_experience : null;
+
       const candidateAdapter = {
         id: String(candidate.candidate_id),
         full_name: String(candidate.candidate_reference ?? "PG Candidate"),
-        professional_title: candidate.professional_title ?? null,
-        country: candidate.general_location ?? null,
-        city: candidate.general_location ?? null,
+        professional_title: professionalTitle,
+        country: generalLocation,
+        city: generalLocation,
         settings: {
-          skills: candidate.skills ?? [],
-          languages: candidate.languages ?? [],
-          certifications: candidate.certifications ?? [],
-          availability: candidate.availability ?? null,
-          experience: candidate.years_of_experience ?? null,
+          skills: Array.isArray(candidate.skills) ? candidate.skills : [],
+          languages: Array.isArray(candidate.languages) ? candidate.languages : [],
+          certifications: Array.isArray(candidate.certifications) ? candidate.certifications : [],
+          availability,
+          experience: yearsOfExperience,
         },
       };
 
