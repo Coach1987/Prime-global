@@ -3,6 +3,7 @@ import { requireAuth, requireRole } from "@/lib/server/security/auth";
 import { enforceRateLimit } from "@/lib/server/http";
 import { getEmployerByAuthUserId } from "@/lib/server/employers";
 import { createAuditLog } from "@/lib/server/security/audit";
+import { logBlockedPrivateCandidateAccess } from "@/lib/server/security/privacy-audit";
 
 export async function GET(
   request: Request,
@@ -33,6 +34,18 @@ export async function GET(
     action: "employer.blocked_original_cv_access",
     targetType: "job_application",
     targetId: applicationId,
+  });
+
+  await logBlockedPrivateCandidateAccess({
+    actorAuthUserId: auth.userId,
+    actorRole: auth.role,
+    attemptChannel: "api",
+    targetType: "original_cv",
+    targetId: applicationId,
+    reason: "Employer attempted to access original CV endpoint",
+    metadata: {
+      endpoint: "/api/employers/applicants/[applicationId]/cv",
+    },
   });
 
   return NextResponse.json(

@@ -17,9 +17,9 @@ type CandidateDetail = {
   general_location: string | null;
   availability: string | null;
   desired_role: string | null;
-  expected_salary: number | null;
   ai_summary: string | null;
   profile_status: string;
+  prime_global_verification_status?: string | null;
 };
 
 export default function EmployerCandidateProfileDetailPage() {
@@ -41,6 +41,7 @@ export default function EmployerCandidateProfileDetailPage() {
             requestConversation: "طلب محادثة خاضعة للإشراف",
             openConversations: "فتح مركز المحادثات",
             requestInterview: "طلب مقابلة عبر برايم جلوبال",
+            downloadPdf: "تحميل ملف المرشح المعتمد",
             contactNote: "معلومات الاتصال محمية، وجميع الخطوات تتم عبر برايم جلوبال.",
           }
         : {
@@ -48,6 +49,7 @@ export default function EmployerCandidateProfileDetailPage() {
             requestConversation: "Request Supervised Conversation",
             openConversations: "Open Conversation Center",
             requestInterview: "Request Interview Through Prime Global",
+            downloadPdf: "Download Prime Global Candidate Profile",
             contactNote: "Contact information is protected. All steps are managed through Prime Global.",
           },
     [locale]
@@ -143,7 +145,7 @@ export default function EmployerCandidateProfileDetailPage() {
             <div className="mt-5 space-y-2 text-sm text-text-secondary">
               <p><span className="text-text-tertiary">Experience:</span> {profile?.years_of_experience ?? "-"}</p>
               <p><span className="text-text-tertiary">Availability:</span> {profile?.availability ?? "-"}</p>
-              <p><span className="text-text-tertiary">Expected salary:</span> {profile?.expected_salary ?? "Private"}</p>
+              <p><span className="text-text-tertiary">Prime Global verification:</span> {profile?.prime_global_verification_status ?? "verified"}</p>
             </div>
           </article>
         </div>
@@ -171,6 +173,12 @@ export default function EmployerCandidateProfileDetailPage() {
             <button onClick={requestInterview} className="rounded-full border border-gold/30 px-5 py-3 text-sm font-semibold text-gold">
               {copy.requestInterview}
             </button>
+            <a
+              href={`/api/employers/candidate-profiles/${candidateId}/pdf`}
+              className="rounded-full border border-gold/30 px-5 py-3 text-sm font-semibold text-gold transition hover:bg-gold/10"
+            >
+              {copy.downloadPdf}
+            </a>
             <a href={`/${locale}/employers/supervised-conversations`} className="rounded-full border border-gold/30 px-5 py-3 text-sm font-semibold text-gold transition hover:bg-gold/10">
               {copy.openConversations}
             </a>
