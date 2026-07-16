@@ -16,7 +16,7 @@ export function PrimeCard<T extends ElementType = "article">({
   return (
     <Component
       className={cn(
-        "rounded-[1.35rem] border border-blue-200/20 bg-[#081223]/82 shadow-[0_0_0_1px_rgba(120,177,242,0.12),0_18px_42px_rgba(2,10,22,0.52),0_0_24px_rgba(63,138,230,0.18)] backdrop-blur-xl",
+        "rounded-[28px] border border-white/10 bg-[linear-gradient(135deg,rgba(255,255,255,0.08),rgba(255,255,255,0.03))] shadow-[0_24px_70px_rgba(3,8,20,0.35),0_0_0_1px_rgba(98,161,232,0.14),0_0_26px_rgba(58,126,212,0.18)] backdrop-blur-[18px]",
         className
       )}
       {...props}
