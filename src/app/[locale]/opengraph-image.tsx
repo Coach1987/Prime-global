@@ -39,13 +39,13 @@ export default async function OpengraphImage({
               width: 64,
               height: 64,
               borderRadius: "50%",
-              background: "linear-gradient(135deg, #C9A24B, #1A1F28)",
-              border: "2px solid rgba(224,193,121,0.4)",
+              background: "linear-gradient(135deg, #4fa8ff, #1a2a45)",
+              border: "2px solid rgba(170,214,255,0.45)",
               display: "flex",
             }}
           />
           <span style={{ fontSize: 40, fontWeight: 800, color: "#F7F5F1" }}>
-            PRIME <span style={{ color: "#C9A24B" }}>GLOBAL</span>
+            PRIME <span style={{ color: "#7ec4ff" }}>GLOBAL</span>
           </span>
         </div>
         <div

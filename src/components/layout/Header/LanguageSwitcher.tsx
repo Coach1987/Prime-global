@@ -33,7 +33,7 @@ export function LanguageSwitcher() {
           className={cn(
             "rounded-full px-3.5 py-[7px] uppercase tracking-wide transition-colors duration-200",
             locale === loc
-              ? "bg-accent-primary text-charcoal"
+              ? "bg-accent-primary text-white"
               : "text-text-secondary hover:text-text-primary"
           )}
         >

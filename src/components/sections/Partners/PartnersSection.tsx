@@ -33,7 +33,7 @@ export function PartnersSection() {
               transition={{ duration: 0.4, delay: index * 0.07, ease: [0.22, 1, 0.36, 1] }}
               className="rounded-[24px] border border-white/10 bg-gradient-to-br from-white/[0.05] to-white/[0.02] p-6 shadow-[0_18px_45px_rgba(0,0,0,0.2)] backdrop-blur-xl"
             >
-              <div className="flex h-11 w-11 items-center justify-center rounded-full border border-gold/25 bg-gold/[0.08] text-gold">
+              <div className="flex h-11 w-11 items-center justify-center rounded-full border border-blue-300/28 bg-blue-400/[0.1] text-blue-200">
                 <span className="text-sm font-semibold">✦</span>
               </div>
               <h3 className="mt-5 font-heading text-[20px] text-text-primary">

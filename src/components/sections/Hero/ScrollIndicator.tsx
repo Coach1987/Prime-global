@@ -12,7 +12,7 @@ export function ScrollIndicator() {
       </span>
 
       <div className="flex items-center gap-2 rounded-full border border-white/12 bg-white/[0.03] px-3 py-2 backdrop-blur-sm">
-        <span className="h-1.5 w-1.5 rounded-full bg-gold shadow-[0_0_8px_rgba(201,162,75,0.7)]" />
+        <span className="h-1.5 w-1.5 rounded-full bg-blue-300 shadow-[0_0_8px_rgba(87,164,255,0.68)]" />
         <span className="h-1.5 w-1.5 rounded-full bg-slate-500/70" />
         <span className="h-1.5 w-1.5 rounded-full bg-slate-500/70" />
       </div>

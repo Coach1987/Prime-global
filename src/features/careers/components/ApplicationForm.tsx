@@ -222,7 +222,7 @@ export function ApplicationForm() {
               type="file"
               multiple
               accept=".pdf,.doc,.docx,.png,.jpg,.jpeg,.webp"
-              className="mt-3 block w-full text-sm text-slate-200 file:mr-4 file:rounded-full file:border-0 file:bg-gold file:px-4 file:py-2 file:text-sm file:font-semibold file:text-[#081220]"
+              className="mt-3 block w-full text-sm text-slate-200 file:mr-4 file:rounded-full file:border-0 file:bg-blue-500 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-white"
               onChange={(event) => handleSelectSupportingFiles(event.target.files)}
             />
           </label>
@@ -258,7 +258,7 @@ export function ApplicationForm() {
           <button
             type="submit"
             disabled={isSubmitting}
-            className="inline-flex min-h-[50px] items-center justify-center rounded-full border border-gold/40 bg-gradient-to-r from-[#C9A24B] via-[#D6B66A] to-[#A77F2F] px-7 py-3 text-sm font-semibold text-[#081220] transition-all duration-300 hover:-translate-y-1 disabled:cursor-not-allowed disabled:opacity-65"
+            className="inline-flex min-h-[50px] items-center justify-center rounded-full border border-blue-100/45 bg-gradient-to-r from-[#2a85eb] via-[#4fa8ff] to-[#1d66c8] px-7 py-3 text-sm font-semibold text-white shadow-[0_14px_34px_rgba(67,149,246,0.3)] transition-all duration-300 hover:-translate-y-1 disabled:cursor-not-allowed disabled:opacity-65"
           >
             {isSubmitting ? t("submitting") : t("submit")}
           </button>

@@ -11,7 +11,7 @@ export default async function EmployersLandingPage({
 
   return (
     <main className="relative isolate mx-auto min-h-[calc(100vh-120px)] w-full max-w-[1260px] px-4 pb-20 pt-[124px] sm:px-6 md:px-8">
-      <div className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(60%_35%_at_50%_10%,rgba(201,162,75,0.18),rgba(10,14,20,0))]" />
+      <div className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(60%_35%_at_50%_10%,rgba(86,163,255,0.2),rgba(10,14,20,0))]" />
       <section className="rounded-3xl border border-gold/20 bg-bg-secondary/70 p-8 shadow-[0_18px_80px_rgba(0,0,0,0.45)] backdrop-blur-xl md:p-12">
         <p className="text-xs font-semibold uppercase tracking-[0.24em] text-gold">Employer Portal</p>
         <h1 className="mt-4 font-heading text-4xl leading-tight text-text-primary md:text-5xl">
@@ -25,7 +25,7 @@ export default async function EmployersLandingPage({
         <div className="mt-10 flex flex-wrap gap-4">
           <Link
             href={`/${locale}/employers/register`}
-            className="rounded-full bg-gold px-7 py-3 text-sm font-semibold text-bg-primary transition hover:bg-gold-bright"
+            className="rounded-full border border-blue-100/45 bg-gradient-to-r from-[#2a85eb] via-[#4fa8ff] to-[#1d66c8] px-7 py-3 text-sm font-semibold text-white shadow-[0_14px_34px_rgba(67,149,246,0.3)] transition hover:-translate-y-0.5"
           >
             Register Company
           </Link>

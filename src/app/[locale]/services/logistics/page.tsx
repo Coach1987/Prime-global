@@ -60,7 +60,7 @@ export default async function LogisticsServicePage({
           <div className="mt-10 flex flex-wrap gap-3">
             <Link
               href="/contact"
-              className="inline-flex min-h-[50px] items-center justify-center rounded-full border border-gold/40 bg-gradient-to-r from-[#C9A24B] via-[#D6B66A] to-[#A77F2F] px-7 py-3 text-sm font-semibold text-[#081220] transition-all duration-300 hover:-translate-y-1"
+              className="inline-flex min-h-[50px] items-center justify-center rounded-full border border-blue-100/45 bg-gradient-to-r from-[#2a85eb] via-[#4fa8ff] to-[#1d66c8] px-7 py-3 text-sm font-semibold text-white shadow-[0_14px_34px_rgba(67,149,246,0.3)] transition-all duration-300 hover:-translate-y-1"
             >
               {t("cta")}
             </Link>

@@ -2,6 +2,16 @@
 @tailwind components;
 @tailwind utilities;
 
+:root {
+  --pg-accent-rgb: 56 145 255;
+  --pg-accent-bright-rgb: 126 196 255;
+  --pg-accent-muted-rgb: 26 94 188;
+  --pg-metallic-1-rgb: 232 237 244;
+  --pg-metallic-2-rgb: 150 165 184;
+  --pg-text-primary-rgb: 247 249 252;
+  --pg-text-secondary-rgb: 175 184 198;
+}
+
 @layer base {
   /* No `scroll-behavior: smooth` here — Lenis (via SmoothScrollProvider)
      now owns smooth-scroll physics site-wide with custom easing/duration.
@@ -30,7 +40,7 @@
 
   /* Visible focus ring for keyboard navigation, site-wide */
   :focus-visible {
-    outline: 2px solid #C9A24B;
+    outline: 2px solid rgb(var(--pg-accent-rgb));
     outline-offset: 2px;
   }
 }

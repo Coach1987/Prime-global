@@ -23,11 +23,11 @@ export function ServiceCard({
   return (
     <Link
       href="/services"
-      className="group relative flex h-full flex-col overflow-hidden rounded-[28px] border border-white/10 bg-[linear-gradient(135deg,rgba(255,255,255,0.09),rgba(255,255,255,0.03))] p-7 shadow-[0_24px_70px_rgba(3,8,20,0.35)] backdrop-blur-[18px] transition-all duration-500 hover:-translate-y-2 hover:border-gold/30 hover:bg-[linear-gradient(135deg,rgba(255,255,255,0.13),rgba(255,255,255,0.05))] hover:shadow-[0_32px_90px_rgba(11,31,65,0.35)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold/70 focus-visible:ring-offset-2 focus-visible:ring-offset-[#030814]"
+      className="group relative flex h-full flex-col overflow-hidden rounded-[28px] border border-white/10 bg-[linear-gradient(135deg,rgba(255,255,255,0.09),rgba(255,255,255,0.03))] p-7 shadow-[0_24px_70px_rgba(3,8,20,0.35)] backdrop-blur-[18px] transition-all duration-500 hover:-translate-y-2 hover:border-blue-300/35 hover:bg-[linear-gradient(135deg,rgba(255,255,255,0.13),rgba(255,255,255,0.05))] hover:shadow-[0_32px_90px_rgba(11,31,65,0.35)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-300/70 focus-visible:ring-offset-2 focus-visible:ring-offset-[#030814]"
     >
       <div
         aria-hidden="true"
-        className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(201,162,75,0.14),transparent_42%)] opacity-0 transition-all duration-500 group-hover:opacity-100"
+        className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(90,166,255,0.14),transparent_42%)] opacity-0 transition-all duration-500 group-hover:opacity-100"
       />
       <div
         aria-hidden="true"
@@ -54,7 +54,7 @@ export function ServiceCard({
         {t("description")}
       </p>
 
-      <div className="relative z-10 mt-7 h-px bg-gradient-to-r from-blue-400/30 via-gold/20 to-transparent" />
+      <div className="relative z-10 mt-7 h-px bg-gradient-to-r from-blue-400/30 via-blue-200/25 to-transparent" />
 
       <div className="relative z-10 mt-6 inline-flex items-center gap-3 text-[13px] font-semibold uppercase tracking-[0.18em] text-blue-300">
         {common("learnMore")}

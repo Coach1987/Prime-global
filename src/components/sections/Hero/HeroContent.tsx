@@ -12,7 +12,7 @@ export function HeroContent() {
         className="mb-4 inline-flex animate-fade-up items-center gap-2 rounded-full border border-white/12 bg-white/[0.04] px-3.5 py-2 opacity-0 shadow-[0_8px_30px_rgba(3,8,20,0.2)] backdrop-blur-xl sm:mb-5"
         style={{ animationDelay: "0.1s" }}
       >
-        <span aria-hidden="true" className="h-1.5 w-1.5 rounded-full bg-gold shadow-[0_0_8px_rgba(201,162,75,0.8)]" />
+        <span aria-hidden="true" className="h-1.5 w-1.5 rounded-full bg-blue-300 shadow-[0_0_8px_rgba(87,164,255,0.75)]" />
         <span className="text-[11px] font-semibold uppercase tracking-[0.22em] text-blue-200/90 sm:text-[12px]">
           {t("eyebrow")}
         </span>
@@ -42,7 +42,7 @@ export function HeroContent() {
       <div className="mt-8 flex animate-fade-up flex-col items-center gap-3 opacity-0 sm:mt-9 sm:flex-row" style={{ animationDelay: "0.42s" }}>
         <Link
           href="/services"
-          className="group relative inline-flex min-h-[52px] w-full items-center justify-center gap-3 overflow-hidden rounded-full border border-gold/35 bg-gradient-to-r from-[#C9A24B] via-[#D9B86B] to-[#A77F2F] px-7 py-3.5 text-[15px] font-semibold text-[#07111D] shadow-[0_16px_42px_rgba(201,162,75,0.24)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_20px_48px_rgba(201,162,75,0.32)] active:translate-y-0 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold/70 focus-visible:ring-offset-2 focus-visible:ring-offset-[#030814] sm:w-auto"
+          className="group relative inline-flex min-h-[52px] w-full items-center justify-center gap-3 overflow-hidden rounded-full border border-blue-100/45 bg-gradient-to-r from-[#2a85eb] via-[#4fa8ff] to-[#1d66c8] px-7 py-3.5 text-[15px] font-semibold text-white shadow-[0_16px_42px_rgba(57,138,239,0.28)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_20px_48px_rgba(70,152,255,0.36)] active:translate-y-0 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-300/75 focus-visible:ring-offset-2 focus-visible:ring-offset-[#030814] sm:w-auto"
         >
           <span aria-hidden="true" className="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/35 to-transparent transition-transform duration-700 group-hover:translate-x-full" />
           <span className="relative z-10">{t("ctaPrimary")}</span>

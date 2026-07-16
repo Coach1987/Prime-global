@@ -24,7 +24,7 @@ export function StatsSection() {
 
   return (
     <section id="stats" className="relative overflow-hidden bg-[#040914] py-24 md:py-36">
-      <div aria-hidden="true" className="absolute inset-0 -z-10 bg-[radial-gradient(circle_at_top_right,rgba(201,162,75,0.12),transparent_40%)]" />
+      <div aria-hidden="true" className="absolute inset-0 -z-10 bg-[radial-gradient(circle_at_top_right,rgba(86,163,255,0.12),transparent_40%)]" />
 
       <div className="mx-auto max-w-[1380px] px-5 md:px-10">
         <div className="mx-auto max-w-3xl text-center">
@@ -43,7 +43,7 @@ export function StatsSection() {
                 key={key}
                 className="rounded-[24px] border border-white/10 bg-white/[0.04] p-7 shadow-[0_18px_45px_rgba(0,0,0,0.2)] backdrop-blur-xl"
               >
-                <div className="font-heading text-4xl text-gold sm:text-5xl">
+                <div className="font-heading text-4xl text-blue-300 sm:text-5xl">
                   {value === null ? (
                     suffix
                   ) : (

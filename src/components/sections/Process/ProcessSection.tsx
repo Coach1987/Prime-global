@@ -34,7 +34,7 @@ export function ProcessSection() {
               className="rounded-[24px] border border-white/10 bg-white/[0.035] p-6 shadow-[0_18px_45px_rgba(0,0,0,0.24)] backdrop-blur-xl"
             >
               <div className="flex items-center justify-between">
-                <span className="text-[13px] font-semibold uppercase tracking-[0.24em] text-gold">
+                <span className="text-[13px] font-semibold uppercase tracking-[0.24em] text-blue-300">
                   {t(`steps.${key}.phase`)}
                 </span>
                 <span className="text-[12px] uppercase tracking-[0.24em] text-text-tertiary">

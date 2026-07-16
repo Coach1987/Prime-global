@@ -137,10 +137,10 @@ export function IconBadge({ icon, size = "md", className }: IconBadgeProps) {
     <span
       className={cn(
         "relative flex shrink-0 items-center justify-center rounded-full",
-        "bg-gradient-to-br from-[#3A2F1A] to-bg-secondary",
+        "bg-gradient-to-br from-[#12375d] to-bg-secondary",
         "border border-accent-bright/30 text-accent-bright",
-        "shadow-[0_0_0_rgba(201,162,75,0)] transition-all duration-300 ease-premium-out",
-        "group-hover:scale-[1.08] group-hover:border-accent-bright/60 group-hover:shadow-[0_0_24px_rgba(201,162,75,0.35)]",
+        "shadow-[0_0_0_rgba(56,145,255,0)] transition-all duration-300 ease-premium-out",
+        "group-hover:scale-[1.08] group-hover:border-accent-bright/60 group-hover:shadow-[0_0_24px_rgba(74,163,255,0.36)]",
         wrapper,
         className
       )}
