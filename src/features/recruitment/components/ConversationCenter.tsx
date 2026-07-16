@@ -11,11 +11,11 @@ function getCopy(locale: string, role: "employer" | "candidate") {
     title:
       role === "employer"
         ? isArabic
-          ? "محادثات التوظيف الخاضعة للإشراف"
-          : "Supervised Recruitment Conversations"
+          ? "مركز المقابلات"
+          : "Interview Center"
         : isArabic
-          ? "دعوات ومحادثات التوظيف الخاضعة للإشراف"
-          : "Supervised Recruitment Invitations and Conversations",
+          ? "مقابلاتي"
+          : "My Interviews",
     subtitle:
       role === "employer"
         ? isArabic
@@ -37,6 +37,12 @@ function getCopy(locale: string, role: "employer" | "candidate") {
     employer: isArabic ? "صاحب العمل" : "Employer",
     status: isArabic ? "الحالة" : "Status",
     stage: isArabic ? "المرحلة" : "Stage",
+    interviewInvites: isArabic ? "دعوات المقابلات" : "Interview invitations",
+    nextInterview: isArabic ? "الموعد القادم" : "Next interview",
+    unread: isArabic ? "غير مقروء" : "Unread",
+    roles: isArabic ? "الأدوار" : "Participant roles",
+    recruiterPresence: isArabic ? "حضور الممثل" : "Recruiter presence",
+    lastMessage: isArabic ? "آخر رسالة" : "Last message",
   };
 }
 
@@ -50,6 +56,7 @@ export function ConversationCenter({
   detailBasePath: string;
 }) {
   const [token, setToken] = useState("");
+  const [isAuthorized, setIsAuthorized] = useState(false);
   const [requests, setRequests] = useState<ConversationRow[]>([]);
   const [conversations, setConversations] = useState<ConversationRow[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -58,10 +65,32 @@ export function ConversationCenter({
   useEffect(() => {
     const accessToken = localStorage.getItem("prime_auth_token") ?? "";
     setToken(accessToken);
-  }, []);
+    if (!accessToken) {
+      setError(locale === "ar" ? "يرجى تسجيل الدخول للوصول." : "Please sign in to continue.");
+      return;
+    }
+
+    fetch("/api/auth/me", {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    })
+      .then((response) => response.json())
+      .then((payload) => {
+        const currentRole = String(payload?.data?.role ?? "");
+        if (!payload?.success) {
+          setError(locale === "ar" ? "فشل التحقق من الجلسة." : "Session verification failed.");
+          return;
+        }
+        if ((role === "candidate" && currentRole !== "candidate") || (role === "employer" && currentRole !== "employer")) {
+          setError(locale === "ar" ? "صلاحيات غير كافية." : "Insufficient role privileges.");
+          return;
+        }
+        setIsAuthorized(true);
+      })
+      .catch(() => setError(locale === "ar" ? "تعذر التحقق من الجلسة." : "Unable to verify session."));
+  }, [locale, role]);
 
   useEffect(() => {
-    if (!token) return;
+    if (!token || !isAuthorized) return;
 
     Promise.all([
       fetch(`/api/recruitment/conversation-requests?locale=${locale}`, { headers: { Authorization: `Bearer ${token}` } }),
@@ -79,7 +108,7 @@ export function ConversationCenter({
         setConversations(conversationsPayload?.data ?? []);
       })
       .catch(() => setError(locale === "ar" ? "تعذر تحميل البيانات." : "Unable to load data."));
-  }, [locale, token]);
+  }, [locale, token, isAuthorized]);
 
   return (
     <main className="mx-auto w-full max-w-[1180px] px-4 pb-20 pt-[124px] sm:px-6 md:px-8">
@@ -126,6 +155,24 @@ export function ConversationCenter({
                     <p>{copy.stage}: {String(conversation.recruitment_stage ?? "-")}</p>
                     <p>{copy.assignedStaff}: {String((conversation.assignedStaff as Record<string, unknown> | undefined)?.label ?? "Prime Global")}</p>
                     <p>{copy.employer}: {String((conversation.employer as Record<string, unknown> | undefined)?.company_name ?? "-")}</p>
+                    <p>
+                      {copy.interviewInvites}: {String((conversation.interviewSummary as Record<string, unknown> | undefined)?.pendingInvitations ?? 0)}
+                    </p>
+                    <p>
+                      {copy.nextInterview}: {String((conversation.interviewSummary as Record<string, unknown> | undefined)?.nextInterviewAt ?? "-")}
+                    </p>
+                    <p>
+                      {copy.unread}: {String(((conversation.unread as Record<string, unknown> | undefined)?.unreadCount ?? 0))}
+                    </p>
+                    <p>
+                      {copy.recruiterPresence}: {String(conversation.recruiterPresence ?? "offline")}
+                    </p>
+                    <p>
+                      {copy.roles}: {Array.isArray(conversation.participantRoles) ? conversation.participantRoles.join(", ") : "-"}
+                    </p>
+                    <p>
+                      {copy.lastMessage}: {String(conversation.lastMessageAt ?? "-")}
+                    </p>
                   </div>
                   <a href={`${detailBasePath}/${String(conversation.id)}`} className="mt-4 inline-flex rounded-full border border-gold/30 px-4 py-2 text-sm font-semibold text-gold transition hover:bg-gold/10">
                     {copy.open}

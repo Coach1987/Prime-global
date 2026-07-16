@@ -17,6 +17,7 @@ function getCopy(locale: string, role: "employer" | "candidate" | "staff") {
     title: isArabic ? "المحادثة الخاضعة للإشراف" : "Supervised Conversation",
     send: isArabic ? "إرسال الرسالة" : "Send message",
     requestInterview: isArabic ? "طلب مقابلة عبر برايم جلوبال" : "Request interview through Prime Global",
+    openMeetingCenter: isArabic ? "فتح مركز المقابلة" : "Open Interview Center",
     internalNotes: isArabic ? "ملاحظات داخلية لبرايم جلوبال" : "Prime Global internal notes",
     addNote: isArabic ? "إضافة ملاحظة" : "Add note",
     scheduleInterview: isArabic ? "جدولة مقابلة" : "Schedule interview",
@@ -85,6 +86,13 @@ export function ConversationDetail({
     }
     setData(payload.data);
   }, [conversationId, locale]);
+
+  const interviewCenterBasePath =
+    role === "staff"
+      ? `/${locale}/admin/recruitment/${conversationId}/interviews`
+      : role === "candidate"
+        ? `/${locale}/candidate/supervised-conversations/${conversationId}/interviews`
+        : `/${locale}/employers/supervised-conversations/${conversationId}/interviews`;
 
   useEffect(() => {
     const accessToken = localStorage.getItem("prime_auth_token") ?? "";
@@ -209,6 +217,27 @@ export function ConversationDetail({
     }
     setScheduledAt("");
     setInterviewNotes("");
+    await loadConversation(token);
+  }
+
+  async function requestInterview() {
+    if (!token) return;
+
+    const response = await fetch(`/api/recruitment/conversations/${conversationId}/interviews/request`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+        "x-csrf-token": csrfToken,
+      },
+      body: JSON.stringify({ locale }),
+    });
+    const payload = await response.json();
+    if (!response.ok || !payload.success) {
+      setError(payload?.error?.message ?? "Failed to request interview");
+      return;
+    }
+
     await loadConversation(token);
   }
 
@@ -342,8 +371,9 @@ export function ConversationDetail({
                   <button onClick={() => sendMessage(message)} className="rounded-full bg-gold px-5 py-3 text-sm font-semibold text-bg-primary">
                     {copy.send}
                   </button>
-                  {role !== "staff" ? (
-                    <button onClick={() => sendMessage(locale === "ar" ? "أرغب في طلب مقابلة عبر برايم جلوبال ضمن هذه المحادثة الخاضعة للإشراف." : "I would like to request an interview through Prime Global within this supervised conversation.")}
+                  {role === "employer" && permissions.canRequestInterview ? (
+                    <button
+                      onClick={requestInterview}
                       className="rounded-full border border-gold/30 px-5 py-3 text-sm font-semibold text-gold">
                       {copy.requestInterview}
                     </button>
@@ -387,6 +417,12 @@ export function ConversationDetail({
                   <article key={String(item.id)} className="rounded-2xl border border-gold/10 bg-bg-secondary/60 p-4 text-sm text-text-secondary">
                     <p className="font-medium text-text-primary">{String(item.status ?? "scheduled")}</p>
                     <p className="mt-2">{String(item.scheduled_at ?? "")}</p>
+                    <a
+                      href={`${interviewCenterBasePath}/${String(item.id)}`}
+                      className="mt-3 inline-flex rounded-full border border-gold/30 px-3 py-1 text-xs font-semibold text-gold"
+                    >
+                      {copy.openMeetingCenter}
+                    </a>
                     {role === "staff" ? (
                       <div className="mt-3 flex flex-wrap gap-2">
                         <button onClick={() => updateInterview(String(item.id), "start")} className="rounded-full border border-gold/30 px-3 py-1 text-xs font-semibold text-gold">

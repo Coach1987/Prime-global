@@ -38,13 +38,13 @@ export default function EmployerLoginPage() {
     setError(null);
 
     try {
-      const response = await fetch("/api/employers/auth/login", {
+      const response = await fetch("/api/auth/login", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           "x-csrf-token": csrfToken,
         },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ email, password, role: "employer" }),
       });
 
       const payload = (await response.json()) as LoginResult;
@@ -54,7 +54,7 @@ export default function EmployerLoginPage() {
       }
 
       localStorage.setItem("prime_auth_token", payload.data.session.accessToken);
-      router.push(`/${params.locale}/employers/dashboard`);
+      router.push(`/${params.locale}/employers/interview-center`);
     } catch {
       setError("Unexpected error while logging in");
     } finally {
