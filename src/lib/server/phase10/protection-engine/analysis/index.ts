@@ -16,3 +16,4 @@ export * from "./rules/index.ts";
 export * from "./providers/index.ts";
 export * from "./repositories/index.ts";
 export * from "./testing/index.ts";
+export * from "./contact-protection/index.ts";

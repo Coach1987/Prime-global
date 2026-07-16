@@ -25,7 +25,17 @@ export type AnalysisEventType =
   | "ProtectionRuleDisabled"
   | "ProtectionRuleResolved"
   | "ProtectionRuleFallbackApplied"
-  | "ProtectionRuleValidationFailed";
+  | "ProtectionRuleValidationFailed"
+  | "ContactProtectionAnalysisStarted"
+  | "ContactProtectionFindingCreated"
+  | "ContactInformationProtected"
+  | "ExternalLinkNeutralized"
+  | "MeetingLinkProtected"
+  | "SocialHandleProtected"
+  | "CrossMessageProtectionFindingCreated"
+  | "ContactProtectionReviewRequested"
+  | "ContactProtectionFalsePositiveRecorded"
+  | "ProtectedMessageProjectionCreated";
 
 export interface AnalysisEvent {
   eventType: AnalysisEventType;
