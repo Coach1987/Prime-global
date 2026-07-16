@@ -11,4 +11,5 @@ export * from "./workflow/index.ts";
 export * from "./orchestrator/index.ts";
 export * from "./protected-interview/index.ts";
 export * from "./protection-engine/index.ts";
+export * from "./trust-intelligence/index.ts";
 

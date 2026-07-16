@@ -39,6 +39,15 @@ test("phase10 feature flags default to disabled", () => {
   assert.equal(flags.PROTECTION_EVENTS_ENABLED, false);
   assert.equal(flags.PROTECTION_AUDIT_ENABLED, false);
   assert.equal(flags.PROTECTION_TIMELINE_ENABLED, false);
+  assert.equal(flags.TRUST_INTELLIGENCE_FOUNDATION_ENABLED, false);
+  assert.equal(flags.TRUST_SIGNAL_MODEL_ENABLED, false);
+  assert.equal(flags.CIRCUMVENTION_SIGNAL_MODEL_ENABLED, false);
+  assert.equal(flags.PROGRESSIVE_CONFIDENCE_SCORING_ENABLED, false);
+  assert.equal(flags.TRUST_EVIDENCE_EXPLAINABILITY_ENABLED, false);
+  assert.equal(flags.TRUST_GRAPH_FOUNDATION_ENABLED, false);
+  assert.equal(flags.CANDIDATE_RECOMMENDATION_ENGINE_ENABLED, false);
+  assert.equal(flags.RISK_AGGREGATION_ENABLED, false);
+  assert.equal(flags.HUMAN_REVIEW_OVERRIDE_ENABLED, false);
   assert.equal(isPhase10FeatureEnabled("GOVERNANCE_CENTER_ENABLED"), false);
 });
 
