@@ -16,7 +16,16 @@ export type AnalysisEventType =
   | "FieldRevealDenied"
   | "FieldRevealRevoked"
   | "DisclosureStateChanged"
-  | "ProtectionPolicyReevaluated";
+  | "ProtectionPolicyReevaluated"
+  | "ProtectionRuleDrafted"
+  | "ProtectionRuleValidated"
+  | "ProtectionRulePublished"
+  | "ProtectionRuleDeprecated"
+  | "ProtectionRuleReplaced"
+  | "ProtectionRuleDisabled"
+  | "ProtectionRuleResolved"
+  | "ProtectionRuleFallbackApplied"
+  | "ProtectionRuleValidationFailed";
 
 export interface AnalysisEvent {
   eventType: AnalysisEventType;

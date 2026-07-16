@@ -4,6 +4,7 @@ import { createPhase10OrganizationContext } from "../../organization/index.ts";
 import { evaluateAdaptiveProtectionLevel } from "./adaptive-protection.ts";
 import { createDisclosureManifest, toEmployerSafeDisclosureProjection, updateManifestField } from "./disclosure-manifest.ts";
 import { transitionDisclosureState } from "./disclosure-state-machine.ts";
+import type { ResolvedRuleDecisionReference, ProtectionRuleResolutionInput } from "./rules/types.ts";
 import type {
   AdaptiveProtectionContext,
   DisclosureFieldCategory,
@@ -70,6 +71,7 @@ export interface ProtectionControlDependencies {
   emitDomainEvent: (eventType: string, metadata: Record<string, unknown>) => Promise<void>;
   workflowHook: (commandName: string, metadata: Record<string, unknown>) => Promise<void>;
   orchestratorHook: (commandName: string, metadata: Record<string, unknown>) => Promise<void>;
+  resolveRuleDecisionReference?: (input: ProtectionRuleResolutionInput) => Promise<ResolvedRuleDecisionReference>;
 }
 
 export function createInMemoryProtectionPlanStore(initial: ProtectionPlan[] = []): ProtectionPlanStore {
@@ -111,6 +113,29 @@ function assertOrganizationScope(plan: ProtectionPlan, context: AdaptiveProtecti
   if (plan.organizationScope !== context.organizationScope) {
     throw new Error("cross_organization_denied");
   }
+}
+
+function createResolutionInput(command: {
+  fieldCategory: DisclosureFieldCategory;
+  context: AdaptiveProtectionContext;
+}): ProtectionRuleResolutionInput {
+  return {
+    findingType: null,
+    fieldCategory: command.fieldCategory,
+    workflowStage: command.context.recruitmentWorkflowStage,
+    actorRole: command.context.actorRole,
+    organizationId: command.context.organizationScope,
+    tenantId: command.context.tenantScope,
+    policyVersion: command.context.policyVersion,
+    consentVersion: command.context.candidateConsentVersion,
+    employerVerificationStatus: command.context.employerVerificationStatus,
+    interviewStatus: command.context.interviewStatus,
+    paymentStatus: command.context.paymentStatus,
+    contractState: command.context.contractState,
+    freezeState: command.context.activeFreezeState,
+    criticalViolationState: command.context.activeCriticalViolationState,
+    evaluationTimestamp: new Date().toISOString(),
+  };
 }
 
 export async function evaluateProtectionLevelCommand(
@@ -175,6 +200,15 @@ export async function requestFieldRevealCommand(
     actorId: command.requestedByActorId,
   });
 
+  if (dependencies.resolveRuleDecisionReference) {
+    transition.decision.ruleDecisionReference = await dependencies.resolveRuleDecisionReference(
+      createResolutionInput({
+        fieldCategory: command.fieldCategory,
+        context: command.context,
+      })
+    );
+  }
+
   const decision = transition.decision;
   await dependencies.decisionStore.save(decision);
   await dependencies.emitDomainEvent("FieldRevealRequested", {
@@ -230,6 +264,15 @@ export async function approveFieldRevealCommand(
     ruleId: "PG-CONTRACT-REVEAL-001",
     actorId: command.approvedByStaffId,
   });
+
+  if (dependencies.resolveRuleDecisionReference) {
+    transition.decision.ruleDecisionReference = await dependencies.resolveRuleDecisionReference(
+      createResolutionInput({
+        fieldCategory: command.fieldCategory,
+        context: command.context,
+      })
+    );
+  }
 
   if (!transition.allowed) {
     await dependencies.emitDomainEvent("FieldRevealDenied", {
@@ -300,6 +343,15 @@ export async function revokeFieldRevealCommand(
     ruleId: "PG-ID-DOCUMENT-001",
     actorId: command.revokedByStaffId,
   });
+
+  if (dependencies.resolveRuleDecisionReference) {
+    transition.decision.ruleDecisionReference = await dependencies.resolveRuleDecisionReference(
+      createResolutionInput({
+        fieldCategory: command.fieldCategory,
+        context: command.context,
+      })
+    );
+  }
 
   if (!transition.allowed) throw new Error(transition.errorCode ?? "revoke_denied");
 
@@ -392,5 +444,20 @@ export function createNoopProtectionControlDependencies(planStore: ProtectionPla
     async emitDomainEvent() {},
     async workflowHook() {},
     async orchestratorHook() {},
+    async resolveRuleDecisionReference() {
+      return {
+        ruleId: "PG-STRICT-PRIVACY-FALLBACK",
+        ruleVersion: "1.0.0",
+        registryVersion: "stage8_75.stub.v1",
+        policyIds: ["phase10.protection.level.evaluate"],
+        businessRuleIds: ["Unlock Contract"],
+        ruleSnapshotHash: "stub",
+        resolutionTimestamp: new Date().toISOString(),
+        effectiveDateUsed: new Date().toISOString(),
+        fallbackApplied: true,
+        deprecatedRuleWarning: false,
+        humanReviewRequirement: true,
+      };
+    },
   };
 }

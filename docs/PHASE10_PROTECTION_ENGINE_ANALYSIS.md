@@ -254,6 +254,20 @@ The following fields remain employer-hidden regardless of reveal requests:
 ### Command and Query Foundations
 Added typed command/query foundations for adaptive level evaluation and reveal lifecycle controls, with integration hooks for workflow, policy, business rule, orchestrator, evidence, audit, timeline, and domain events.
 
+## Stage 8.75 Protection Rules Registry
+
+### Centralized Rules
+Stage 8.75 adds a centralized protection rules registry with versioned rules, lifecycle states, and explainable resolution behavior.
+
+### Validation and Resolution
+Rules are validated for immutable privacy constraints, disclosure-state conflicts, effective windows, and candidate-friendly wording. Resolver output includes selected rule metadata, rejected candidates, fallback status, and required actions.
+
+### Decision References
+Explainable decisions can include rule decision references with exact rule version, registry version, policy/business links, snapshot hash, resolution timestamp, and fallback/deprecation metadata.
+
+### Immutable Guarantees
+Registry defaults enforce that original CV and private documents are never employer-visible.
+
 ## Contributor Rules
 - Keep candidate-facing language friendly and non-technical.
 - Never add automatic punishment for single findings.

@@ -238,6 +238,29 @@ Stage 1 establishes the reusable Prime Global Shield Plus foundation only.
 - No original CV or private-document reveal path to employers.
 - No override path for immutable privacy restrictions.
 
+## Stage 8.75 Protection Rules Registry (Foundation Only)
+- Adds a centralized, versioned protection rules registry under `src/lib/server/phase10/protection-engine/analysis/rules`.
+- Introduces typed rule model with lifecycle, scope, explainability, policy links, and reveal constraints.
+- Adds registry lookup and active-version resolution primitives with deterministic ordering.
+- Adds rule validator for disclosure conflicts, immutable privacy guarantees, and candidate-friendly wording.
+- Adds rule resolver for context-aware rule selection and strict privacy fallback.
+- Adds privacy-safe rule snapshot model and rule decision reference metadata.
+- Adds governance command/query foundations for future staff-only rule administration.
+
+### Stage 8.75 Feature Flags (Default Disabled)
+- `PROTECTION_RULES_REGISTRY_ENABLED`
+- `PROTECTION_RULE_VERSIONING_ENABLED`
+- `PROTECTION_RULE_RESOLUTION_ENABLED`
+- `PROTECTION_RULE_GOVERNANCE_ENABLED`
+- `PROTECTION_RULE_SNAPSHOTS_ENABLED`
+
+### Stage 8.75 Guardrails
+- No production route integration.
+- No production migrations.
+- No external provider integration.
+- No original CV reveal rule.
+- No private document reveal rule.
+
 ## Phase 10 Import Convention
 - Phase 10 foundation modules use explicit `.ts` import specifiers inside `src/lib/server/phase10/**`.
 - This exists because the foundation is exercised directly by Node-based tests, and the explicit specifiers keep the TS source graph resolvable in that runtime.

@@ -298,6 +298,21 @@ export interface ExplainableProtectionDecision {
   createdTimestamp: string;
   schemaVersion: string;
   feedbackStatus: DecisionFeedbackStatus;
+  ruleDecisionReference: ProtectionRuleDecisionReference | null;
+}
+
+export interface ProtectionRuleDecisionReference {
+  ruleId: string;
+  ruleVersion: string;
+  registryVersion: string;
+  policyIds: string[];
+  businessRuleIds: string[];
+  ruleSnapshotHash: string;
+  resolutionTimestamp: string;
+  effectiveDateUsed: string;
+  fallbackApplied: boolean;
+  deprecatedRuleWarning: boolean;
+  humanReviewRequirement: boolean;
 }
 
 export interface DocumentAnalysisQuarantine {

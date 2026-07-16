@@ -6,8 +6,11 @@ import type {
   DisclosureFieldCategory,
   DisclosureState,
   ExplainableProtectionDecision,
+  ProtectionFindingType,
+  ProtectionRuleDecisionReference,
   ProtectionLevel,
 } from "./types.ts";
+import type { ProtectionRuleResolver } from "./rules/resolver.ts";
 
 export const CANDIDATE_FRIENDLY_PROTECTION_EXPLANATION =
   "Prime Global protects your personal information and shares only the professional details required at each stage.";
@@ -95,6 +98,7 @@ export function createExplainableProtectionDecision(input: {
   humanReviewRequirement?: boolean;
   staffOverrideEligibility?: boolean;
   decisionOrigin?: ExplainableProtectionDecision["decisionOrigin"];
+  ruleDecisionReference?: ProtectionRuleDecisionReference | null;
 }): ExplainableProtectionDecision {
   const protectionLevel = evaluateAdaptiveProtectionLevel(input.context);
 
@@ -146,9 +150,42 @@ export function createExplainableProtectionDecision(input: {
     createdTimestamp: nowIso(),
     schemaVersion: "stage8_5.decision.v1",
     feedbackStatus: "confirmed",
+    ruleDecisionReference: input.ruleDecisionReference ?? null,
   };
 }
 
 export function getFieldDefaultDisclosureState(field: DisclosureFieldCategory): DisclosureState {
   return baseStateForField(field);
+}
+
+export function evaluateAdaptiveProtectionLevelWithRules(input: {
+  context: AdaptiveProtectionContext;
+  resolver: ProtectionRuleResolver;
+  fieldCategory: DisclosureFieldCategory;
+  findingType: ProtectionFindingType | null;
+}): { protectionLevel: ProtectionLevel; ruleDecisionReference: ProtectionRuleDecisionReference } {
+  const resolution = input.resolver.resolve({
+    findingType: input.findingType,
+    fieldCategory: input.fieldCategory,
+    workflowStage: input.context.recruitmentWorkflowStage,
+    actorRole: input.context.actorRole,
+    organizationId: input.context.organizationScope,
+    tenantId: input.context.tenantScope,
+    policyVersion: input.context.policyVersion,
+    consentVersion: input.context.candidateConsentVersion,
+    employerVerificationStatus: input.context.employerVerificationStatus,
+    interviewStatus: input.context.interviewStatus,
+    paymentStatus: input.context.paymentStatus,
+    contractState: input.context.contractState,
+    freezeState: input.context.activeFreezeState,
+    criticalViolationState: input.context.activeCriticalViolationState,
+    evaluationTimestamp: new Date().toISOString(),
+  });
+
+  const protectionLevel = resolution.fallbackRuleUsed ? "strict_private" : evaluateAdaptiveProtectionLevel(input.context);
+
+  return {
+    protectionLevel,
+    ruleDecisionReference: input.resolver.createDecisionReference(resolution),
+  };
 }

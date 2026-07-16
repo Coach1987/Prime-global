@@ -12,6 +12,7 @@ export * from "./disclosure-manifest.ts";
 export * from "./disclosure-state-machine.ts";
 export * from "./commands-queries.ts";
 export * from "./decision-feedback.ts";
+export * from "./rules/index.ts";
 export * from "./providers/index.ts";
 export * from "./repositories/index.ts";
 export * from "./testing/index.ts";

@@ -138,6 +138,12 @@ Employer projection returns only policy-authorized field categories and disclosu
 - no external providers
 - no AI training or adaptive model learning
 
+## Stage 8.75 Rules Registry Integration
+- Adaptive context evaluation now supports centralized rule-resolution inputs.
+- Explainable decisions support rule decision references with rule version and snapshot hash metadata.
+- Disclosure transitions can attach policy-linked rule references when resolver integration is enabled.
+- Strict privacy fallback remains the default when no valid rule matches.
+
 ## Contributor Rules
 - keep candidate messaging simple and non-technical
 - never expose original CV/private documents to employers
