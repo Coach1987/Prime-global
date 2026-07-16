@@ -1193,9 +1193,9 @@ export async function createConversationInterview(auth: AuthContext, conversatio
       meeting_room_reference: `pg-room-${conversationId}`,
       meeting_metadata: {
         ui: {
-          camera: true,
-          microphone: true,
-          screenSharing: true,
+          camera: input.cameraEnabled,
+          microphone: input.microphoneEnabled,
+          screenSharing: input.screenSharingEnabled,
           chat: true,
           participants: true,
           timer: true,
@@ -1383,6 +1383,7 @@ export async function getInterviewMeetingCenter(auth: AuthContext, interviewId: 
   return {
     interview,
     conversationId: conversation.id,
+    assignedStaffUserId: conversation.assigned_staff_id,
     meetingCenter: {
       provider: "prime_global_meeting_center",
       externalMeetingLinksAllowed: false,
@@ -1504,7 +1505,7 @@ export async function postInterviewMeetingChatMessage(auth: AuthContext, intervi
     await supabase.from("recruitment_interview_chat_messages").insert({
       interview_id: interviewId,
       conversation_id: detail.conversationId,
-      sender_auth_user_id: auth.userId,
+      sender_auth_user_id: String(detail.assignedStaffUserId ?? auth.userId),
       sender_role: "prime_global_staff",
       body:
         input.locale === "ar"

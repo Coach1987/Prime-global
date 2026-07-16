@@ -97,6 +97,13 @@ export function InterviewMeetingCenter({
     return () => window.clearInterval(id);
   }, [token, loadCenter]);
 
+  useEffect(() => {
+    if (!data?.interview) return;
+    setCameraOn(Boolean(data.interview.camera_enabled));
+    setMicOn(Boolean(data.interview.microphone_enabled));
+    setScreenSharingOn(Boolean(data.interview.screen_sharing_enabled));
+  }, [data]);
+
   async function joinMeeting() {
     if (!token) return;
     const response = await fetch(`/api/recruitment/interviews/${interviewId}/meeting-center/join`, {
