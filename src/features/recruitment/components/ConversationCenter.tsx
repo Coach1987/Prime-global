@@ -37,6 +37,8 @@ function getCopy(locale: string, role: "employer" | "candidate") {
     employer: isArabic ? "صاحب العمل" : "Employer",
     status: isArabic ? "الحالة" : "Status",
     stage: isArabic ? "المرحلة" : "Stage",
+    interviewInvites: isArabic ? "دعوات المقابلات" : "Interview invitations",
+    nextInterview: isArabic ? "الموعد القادم" : "Next interview",
   };
 }
 
@@ -126,6 +128,12 @@ export function ConversationCenter({
                     <p>{copy.stage}: {String(conversation.recruitment_stage ?? "-")}</p>
                     <p>{copy.assignedStaff}: {String((conversation.assignedStaff as Record<string, unknown> | undefined)?.label ?? "Prime Global")}</p>
                     <p>{copy.employer}: {String((conversation.employer as Record<string, unknown> | undefined)?.company_name ?? "-")}</p>
+                    <p>
+                      {copy.interviewInvites}: {String((conversation.interviewSummary as Record<string, unknown> | undefined)?.pendingInvitations ?? 0)}
+                    </p>
+                    <p>
+                      {copy.nextInterview}: {String((conversation.interviewSummary as Record<string, unknown> | undefined)?.nextInterviewAt ?? "-")}
+                    </p>
                   </div>
                   <a href={`${detailBasePath}/${String(conversation.id)}`} className="mt-4 inline-flex rounded-full border border-gold/30 px-4 py-2 text-sm font-semibold text-gold transition hover:bg-gold/10">
                     {copy.open}

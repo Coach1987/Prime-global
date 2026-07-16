@@ -5,6 +5,9 @@ import { createSupabaseAdminClient } from "@/lib/server/supabase";
 import { getCandidateByAuthUserId } from "@/lib/server/candidates";
 import { getEmployerByAuthUserId } from "@/lib/server/employers";
 import {
+  canEmployerRequestInterview,
+  enforceInPlatformMeetingOnly,
+  getInterviewCenterPermissions,
   canActivateSupervisedConversation,
   getConversationParticipantRole,
   getModerationHoldMessage,
@@ -572,10 +575,34 @@ export async function listConversationsForActor(auth: AuthContext, locale: strin
   const { data, error } = await query;
   if (error) throw new Error(error.message);
 
+  const conversationIds = (data ?? []).map((row) => String(row.id));
+  const { data: interviews, error: interviewsError } = await supabase
+    .from("recruitment_interviews")
+    .select("id, conversation_id, status, scheduled_at")
+    .in("conversation_id", conversationIds.length > 0 ? conversationIds : ["00000000-0000-0000-0000-000000000000"]);
+  if (interviewsError) throw new Error(interviewsError.message);
+
+  const interviewSummaryByConversation = new Map<string, { pendingInvitations: number; nextInterviewAt: string | null }>();
+  for (const row of interviews ?? []) {
+    const conversationId = String(row.conversation_id);
+    const existing = interviewSummaryByConversation.get(conversationId) ?? { pendingInvitations: 0, nextInterviewAt: null };
+    if (["scheduled", "waiting"].includes(String(row.status ?? ""))) {
+      existing.pendingInvitations += 1;
+      const scheduledAt = String(row.scheduled_at ?? "");
+      if (!existing.nextInterviewAt || scheduledAt < existing.nextInterviewAt) {
+        existing.nextInterviewAt = scheduledAt;
+      }
+    }
+    interviewSummaryByConversation.set(conversationId, existing);
+  }
+
   const candidateProfiles = await loadCandidatePublicProfiles(Array.from(new Set((data ?? []).map((row) => String(row.candidate_id ?? "")))));
   const employers = await loadEmployers(Array.from(new Set((data ?? []).map((row) => String(row.employer_id ?? "")))));
 
-  return (data ?? []).map((row) => mapConversationSummary(row, locale, candidateProfiles, employers));
+  return (data ?? []).map((row) => ({
+    ...mapConversationSummary(row, locale, candidateProfiles, employers),
+    interviewSummary: interviewSummaryByConversation.get(String(row.id)) ?? { pendingInvitations: 0, nextInterviewAt: null },
+  }));
 }
 
 export async function getConversationDetail(auth: AuthContext, conversationId: string, locale: string) {
@@ -657,6 +684,10 @@ export async function getConversationDetail(auth: AuthContext, conversationId: s
       canModerate: actor.scope === "staff",
       canAddInternalNotes: actor.scope === "staff",
       canScheduleInterview: actor.scope === "staff" && conversation.status === "active",
+      canRequestInterview:
+        actor.scope === "employer" &&
+        ["active", "paused"].includes(String(conversation.status ?? "")) &&
+        Boolean(conversation.related_application_id),
     },
   };
 }
@@ -1157,6 +1188,19 @@ export async function createConversationInterview(auth: AuthContext, conversatio
       microphone_enabled: input.microphoneEnabled,
       screen_sharing_enabled: input.screenSharingEnabled,
       interview_notes: input.interviewNotes ?? null,
+      meeting_provider: "prime_global_meeting_center",
+      external_meeting_links_blocked: true,
+      meeting_room_reference: `pg-room-${conversationId}`,
+      meeting_metadata: {
+        ui: {
+          camera: true,
+          microphone: true,
+          screenSharing: true,
+          chat: true,
+          participants: true,
+          timer: true,
+        },
+      },
       status: "scheduled",
     })
     .select("*")
@@ -1171,6 +1215,18 @@ export async function createConversationInterview(auth: AuthContext, conversatio
   ];
   const { error: participantsError } = await supabase.from("recruitment_interview_participants").insert(participants);
   if (participantsError) throw new Error(participantsError.message);
+
+  await supabase.from("recruitment_interview_events").insert({
+    interview_id: interview.id,
+    conversation_id: conversationId,
+    actor_auth_user_id: auth.userId,
+    actor_role: "prime_global_staff",
+    event_type: "interview_scheduled",
+    details: {
+      scheduledAt: input.scheduledAt,
+      durationMinutes: input.durationMinutes,
+    },
+  });
 
   await supabase.from("recruitment_messages").insert({
     conversation_id: conversationId,
@@ -1208,6 +1264,266 @@ export async function createConversationInterview(auth: AuthContext, conversatio
   return interview;
 }
 
+export async function requestInterviewByEmployer(auth: AuthContext, conversationId: string, input: { note?: string; locale: string }) {
+  const { actor, conversation } = await loadConversationForActor(auth, conversationId);
+  if (actor.scope !== "employer") {
+    throw new Error("Only employers may submit interview requests from this endpoint");
+  }
+
+  const eligibility = canEmployerRequestInterview({
+    role: "employer",
+    conversationStatus: String(conversation.status ?? ""),
+    hasRelatedApplication: Boolean(conversation.related_application_id),
+  });
+
+  if (!eligibility.allowed) {
+    throw new Error(eligibility.reason);
+  }
+
+  const supabase = createSupabaseAdminClient();
+  const now = new Date().toISOString();
+
+  await supabase.from("recruitment_messages").insert({
+    conversation_id: conversationId,
+    sender_auth_user_id: auth.userId,
+    sender_role: "system",
+    message_type: "interview",
+    body:
+      input.note?.trim() ||
+      (input.locale === "ar"
+        ? "قدم صاحب العمل طلب مقابلة داخل مركز المقابلات في برايم جلوبال. بانتظار مراجعة موظف برايم جلوبال."
+        : "Employer submitted an interview request inside Prime Global Interview Center. Waiting for Prime Global staff review."),
+    moderation_state: "approved",
+    visible_to_employer: true,
+    visible_to_candidate: true,
+    visible_to_staff: true,
+    created_at: now,
+  });
+
+  await supabase
+    .from("recruitment_conversations")
+    .update({ recruitment_stage: "interview_planning", updated_at: now })
+    .eq("id", conversationId);
+
+  await insertNotifications(
+    supabase,
+    [conversation.candidate_auth_user_id, conversation.assigned_staff_id]
+      .filter(Boolean)
+      .map((userId) => ({
+        authUserId: String(userId),
+        category: "interview",
+        title: input.locale === "ar" ? "طلب مقابلة جديد" : "New interview request",
+        body:
+          input.locale === "ar"
+            ? "تم إرسال طلب مقابلة داخل المنصة. ستتم المتابعة من خلال مركز المقابلات في برايم جلوبال."
+            : "An in-platform interview request was sent. Follow-up will happen through Prime Global Interview Center.",
+        entityType: "recruitment_conversation",
+        entityId: conversationId,
+      }))
+  );
+
+  await createAuditLog({
+    actorAuthUserId: auth.userId,
+    actorRole: auth.role,
+    action: "recruitment.interview.requested_by_employer",
+    targetType: "recruitment_conversation",
+    targetId: conversationId,
+    metadata: {
+      hasRelatedApplication: Boolean(conversation.related_application_id),
+      noteProvided: Boolean(input.note?.trim()),
+    },
+  });
+
+  return {
+    conversationId,
+    status: "requested",
+    message: input.locale === "ar" ? "تم إرسال طلب المقابلة داخل المنصة." : "Interview request submitted in-platform.",
+  };
+}
+
+export async function getInterviewMeetingCenter(auth: AuthContext, interviewId: string, locale: string) {
+  const supabase = createSupabaseAdminClient();
+  const { data: interview, error: interviewError } = await supabase
+    .from("recruitment_interviews")
+    .select("*")
+    .eq("id", interviewId)
+    .maybeSingle();
+
+  if (interviewError) throw new Error(interviewError.message);
+  if (!interview) throw new Error("Interview not found");
+
+  const { actor, conversation } = await loadConversationForActor(auth, String(interview.conversation_id));
+  const role = actor.scope === "staff" ? "staff" : actor.scope;
+  const permissions = getInterviewCenterPermissions({ role, interviewStatus: String(interview.status ?? "scheduled") });
+
+  const [participantsResult, chatResult, historyResult] = await Promise.all([
+    supabase.from("recruitment_interview_participants").select("*").eq("interview_id", interviewId).order("created_at", { ascending: true }),
+    supabase.from("recruitment_interview_chat_messages").select("*").eq("interview_id", interviewId).order("created_at", { ascending: true }),
+    supabase.from("recruitment_interview_events").select("*").eq("interview_id", interviewId).order("created_at", { ascending: true }),
+  ]);
+
+  if (participantsResult.error) throw new Error(participantsResult.error.message);
+  if (chatResult.error) throw new Error(chatResult.error.message);
+  if (historyResult.error) throw new Error(historyResult.error.message);
+
+  const visibleChat = (chatResult.data ?? []).filter((item) => {
+    if (role === "staff") return true;
+    return item.moderation_state === "approved";
+  });
+
+  await createAuditLog({
+    actorAuthUserId: auth.userId,
+    actorRole: auth.role,
+    action: "recruitment.interview.meeting_center.accessed",
+    targetType: "recruitment_interview",
+    targetId: interviewId,
+    metadata: { conversationId: conversation.id },
+  });
+
+  return {
+    interview,
+    conversationId: conversation.id,
+    meetingCenter: {
+      provider: "prime_global_meeting_center",
+      externalMeetingLinksAllowed: false,
+      features: {
+        camera: true,
+        microphone: true,
+        screenSharing: true,
+        chat: true,
+        participants: true,
+        meetingTimer: true,
+      },
+      supervisionNotice:
+        locale === "ar"
+          ? "تتم المقابلة داخل مركز برايم جلوبال فقط. يمنع تبادل بيانات التواصل المباشر أو الروابط الخارجية."
+          : "The interview runs only inside Prime Global Meeting Center. Direct contacts and external links are blocked.",
+    },
+    permissions,
+    participants: participantsResult.data ?? [],
+    chatMessages: visibleChat,
+    history: historyResult.data ?? [],
+  };
+}
+
+export async function joinInterviewMeeting(auth: AuthContext, interviewId: string) {
+  const supabase = createSupabaseAdminClient();
+  const detail = await getInterviewMeetingCenter(auth, interviewId, "en");
+  if (!detail.permissions.canJoinMeeting) {
+    throw new Error("You cannot join this meeting in the current state");
+  }
+
+  const role = getConversationParticipantRole(auth.role);
+  const now = new Date().toISOString();
+  const { error } = await supabase
+    .from("recruitment_interview_participants")
+    .update({ presence_status: "joined", joined_at: now })
+    .eq("interview_id", interviewId)
+    .eq("participant_role", role);
+
+  if (error) throw new Error(error.message);
+
+  await supabase.from("recruitment_interview_events").insert({
+    interview_id: interviewId,
+    conversation_id: detail.conversationId,
+    actor_auth_user_id: auth.userId,
+    actor_role: role,
+    event_type: "participant_joined",
+    details: {},
+  });
+
+  return { interviewId, joined: true };
+}
+
+export async function leaveInterviewMeeting(auth: AuthContext, interviewId: string) {
+  const supabase = createSupabaseAdminClient();
+  const detail = await getInterviewMeetingCenter(auth, interviewId, "en");
+  const role = getConversationParticipantRole(auth.role);
+  const now = new Date().toISOString();
+
+  const { error } = await supabase
+    .from("recruitment_interview_participants")
+    .update({ presence_status: "left", left_at: now })
+    .eq("interview_id", interviewId)
+    .eq("participant_role", role);
+
+  if (error) throw new Error(error.message);
+
+  await supabase.from("recruitment_interview_events").insert({
+    interview_id: interviewId,
+    conversation_id: detail.conversationId,
+    actor_auth_user_id: auth.userId,
+    actor_role: role,
+    event_type: "participant_left",
+    details: {},
+  });
+
+  return { interviewId, left: true };
+}
+
+export async function postInterviewMeetingChatMessage(auth: AuthContext, interviewId: string, input: { body: string; locale: string }) {
+  const detail = await getInterviewMeetingCenter(auth, interviewId, input.locale);
+  if (!detail.permissions.canSendChat) {
+    throw new Error("Chat is disabled for this interview state");
+  }
+
+  const supabase = createSupabaseAdminClient();
+  const role = getConversationParticipantRole(auth.role);
+  const moderation = enforceInPlatformMeetingOnly({ body: input.body });
+  const moderationState = moderation.allowed ? "approved" : "requires_review";
+
+  const { data: chatMessage, error } = await supabase
+    .from("recruitment_interview_chat_messages")
+    .insert({
+      interview_id: interviewId,
+      conversation_id: detail.conversationId,
+      sender_auth_user_id: auth.userId,
+      sender_role: role,
+      body: input.body,
+      moderation_state: moderationState,
+      contains_contact_attempt: !moderation.allowed,
+      visible_to_employer: moderation.allowed,
+      visible_to_candidate: moderation.allowed,
+      visible_to_staff: true,
+    })
+    .select("*")
+    .single();
+
+  if (error) throw new Error(error.message);
+
+  await supabase.from("recruitment_interview_events").insert({
+    interview_id: interviewId,
+    conversation_id: detail.conversationId,
+    actor_auth_user_id: auth.userId,
+    actor_role: role,
+    event_type: moderation.allowed ? "chat_message_posted" : "chat_message_held_for_review",
+    details: { moderationState },
+  });
+
+  if (!moderation.allowed) {
+    await supabase.from("recruitment_interview_chat_messages").insert({
+      interview_id: interviewId,
+      conversation_id: detail.conversationId,
+      sender_auth_user_id: auth.userId,
+      sender_role: "prime_global_staff",
+      body:
+        input.locale === "ar"
+          ? "تم تعليق الرسالة لأنها تضمنت بيانات تواصل مباشرة أو رابطًا خارجيًا. استخدم مركز المقابلات داخل برايم جلوبال فقط."
+          : "Message held because it included direct contact data or an external link. Use Prime Global Interview Center only.",
+      moderation_state: "approved",
+      contains_contact_attempt: false,
+      visible_to_employer: true,
+      visible_to_candidate: true,
+      visible_to_staff: true,
+    });
+  }
+
+  return {
+    chatMessage,
+    moderationState,
+  };
+}
+
 export async function updateRecruitmentInterview(auth: AuthContext, interviewId: string, input: {
   status?: "scheduled" | "waiting" | "live" | "completed" | "cancelled" | "no_show";
   interviewResult?: string | null;
@@ -1238,7 +1554,14 @@ export async function updateRecruitmentInterview(auth: AuthContext, interviewId:
   }
   if (input.hostAction === "end") {
     patch.status = "completed";
-    patch.host_ended_at = new Date().toISOString();
+    const endedAt = new Date().toISOString();
+    patch.host_ended_at = endedAt;
+
+    const startedAt = interview.host_started_at ? new Date(String(interview.host_started_at)).getTime() : NaN;
+    const endedAtTs = new Date(endedAt).getTime();
+    if (Number.isFinite(startedAt) && Number.isFinite(endedAtTs) && endedAtTs >= startedAt) {
+      patch.meeting_duration_seconds = Math.floor((endedAtTs - startedAt) / 1000);
+    }
   }
 
   const { data, error: updateError } = await supabase
@@ -1257,6 +1580,20 @@ export async function updateRecruitmentInterview(auth: AuthContext, interviewId:
     targetType: "recruitment_interview",
     targetId: interviewId,
     metadata: patch,
+  });
+
+  await supabase.from("recruitment_interview_events").insert({
+    interview_id: interviewId,
+    conversation_id: String(interview.conversation_id),
+    actor_auth_user_id: auth.userId,
+    actor_role: getConversationParticipantRole(auth.role),
+    event_type:
+      input.hostAction === "start"
+        ? "interview_started"
+        : input.hostAction === "end"
+          ? "interview_ended"
+          : "interview_updated",
+    details: patch,
   });
 
   return data;

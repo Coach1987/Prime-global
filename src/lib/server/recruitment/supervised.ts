@@ -6,6 +6,11 @@ import {
   ModerationReason,
   PRIME_GLOBAL_STAFF_ROLE_VALUES,
 } from "@/features/recruitment/utils/guardrails";
+import {
+  canEmployerRequestInterview as canEmployerRequestInterviewRule,
+  enforceInPlatformMeetingOnly as enforceInPlatformMeetingOnlyRule,
+  getInterviewCenterPermissions as getInterviewCenterPermissionsRule,
+} from "@/features/recruitment/utils/interview-center";
 
 export const PRIME_GLOBAL_STAFF_ROLES = PRIME_GLOBAL_STAFF_ROLE_VALUES;
 
@@ -35,3 +40,6 @@ export function getModerationHoldMessage(locale: string) {
 }
 
 export { canActivateSupervisedConversation, type MessageModerationResult, type ModerationReason };
+export const canEmployerRequestInterview = canEmployerRequestInterviewRule;
+export const enforceInPlatformMeetingOnly = enforceInPlatformMeetingOnlyRule;
+export const getInterviewCenterPermissions = getInterviewCenterPermissionsRule;
