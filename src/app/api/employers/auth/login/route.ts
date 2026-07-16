@@ -28,6 +28,15 @@ export async function POST(request: Request) {
     );
   }
 
+  const role = String(data.user.app_metadata?.app_role ?? data.user.user_metadata?.app_role ?? "candidate");
+  if (role !== "employer") {
+    await supabase.auth.signOut();
+    return NextResponse.json(
+      { success: false, error: { code: "LOGIN_ROLE_DENIED", message: "Employer account required for this endpoint" } },
+      { status: 403 }
+    );
+  }
+
   await createAuditLog({
     actorAuthUserId: data.user.id,
     actorRole: String(data.user.app_metadata?.app_role ?? "candidate"),
@@ -44,7 +53,7 @@ export async function POST(request: Request) {
       user: {
         id: data.user.id,
         email: data.user.email,
-        role: data.user.app_metadata?.app_role ?? data.user.user_metadata?.app_role ?? "candidate",
+        role,
       },
       session: {
         accessToken: data.session.access_token,

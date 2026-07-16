@@ -10,6 +10,7 @@ export const NAV_ITEMS: NavItem[] = [
   { href: "/services", labelKey: "services" },
   { href: "/about", labelKey: "about" },
   { href: "/careers", labelKey: "careers" },
+  { href: "/portal", labelKey: "portal" },
   { href: "/contact", labelKey: "contact" },
 ];
 

@@ -172,11 +172,14 @@ export default function EmployerDashboardPage() {
   return (
     <main className="mx-auto w-full max-w-[1260px] px-4 pb-16 pt-[124px] sm:px-6 md:px-8">
       <section className="rounded-3xl border border-gold/20 bg-bg-secondary/80 p-7 backdrop-blur-xl md:p-10">
-        <h1 className="font-heading text-4xl text-text-primary">Employer Dashboard</h1>
-        <p className="mt-2 text-sm text-text-secondary">Verification, jobs, and applicants in one command center.</p>
+        <h1 className="font-heading text-4xl text-text-primary">Interview Center</h1>
+        <p className="mt-2 text-sm text-text-secondary">Manage protected interview invitations, scheduling flow, and supervised communication.</p>
 
         <a href={`/${locale}/enterprise`} className="mt-6 inline-flex rounded-full border border-gold/30 px-5 py-2 text-sm font-semibold text-gold transition hover:bg-gold/10">
           Open Enterprise Center
+        </a>
+        <a href={`/${locale}/employers/interview-center`} className="ml-3 mt-6 inline-flex rounded-full border border-gold/30 px-5 py-2 text-sm font-semibold text-gold transition hover:bg-gold/10">
+          Open Interview Center
         </a>
         <a href={`/${locale}/employers/supervised-conversations`} className="ml-3 mt-6 inline-flex rounded-full border border-gold/30 px-5 py-2 text-sm font-semibold text-gold transition hover:bg-gold/10">
           Supervised Conversations

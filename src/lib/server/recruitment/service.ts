@@ -6,6 +6,8 @@ import { createSupabaseAdminClient } from "@/lib/server/supabase";
 import { getCandidateByAuthUserId } from "@/lib/server/candidates";
 import { getEmployerByAuthUserId } from "@/lib/server/employers";
 import { protectRecruitmentMessage } from "@/lib/server/recruitment/message-protection";
+import { authorizeParticipantRole as protectedAuthorizeParticipantRole, enforceInterviewPolicy as enforceProtectedInterviewPolicy } from "@/lib/server/phase10/protected-interview/policy";
+import type { InterviewParticipantRole as ProtectedInterviewParticipantRole, InterviewRecord as ProtectedInterviewRecord } from "@/lib/server/phase10/protected-interview/types";
 import {
   canEmployerRequestInterview,
   enforceInPlatformMeetingOnly,
@@ -1432,6 +1434,58 @@ function hashJoinToken(token: string) {
   return createHash("sha256").update(token).digest("hex");
 }
 
+function toProtectedParticipantRole(role: "candidate" | "employer" | "prime_global_staff"): ProtectedInterviewParticipantRole {
+  if (role === "candidate") return "Candidate";
+  if (role === "employer") return "Employer";
+  return "Prime Recruiter";
+}
+
+function toProtectedInterviewRecord(input: {
+  interview: Record<string, unknown>;
+  conversation: Record<string, unknown>;
+}): ProtectedInterviewRecord {
+  const status = String(input.interview.status ?? "scheduled");
+  const state =
+    status === "live"
+      ? "interview_activated"
+      : status === "completed"
+        ? "closed"
+        : status === "cancelled"
+          ? "cancelled"
+          : "interview_scheduled";
+
+  return {
+    interviewId: String(input.interview.id),
+    organizationId: "prime-global",
+    tenantId: null,
+    candidateId: String(input.conversation.candidate_id ?? ""),
+    employerId: String(input.conversation.employer_id ?? ""),
+    createdBy: String(input.interview.created_by_staff_user_id ?? ""),
+    state,
+    roomId: String(input.interview.meeting_room_reference ?? `pg-room-${String(input.interview.id)}`),
+    roomSessionVersion: 1,
+    invitationAccepted: true,
+    termsAcceptedVersion: "PG-INTERVIEW-TERMS-2026-07",
+    latestTermsVersion: "PG-INTERVIEW-TERMS-2026-07",
+    policyApproved: true,
+    ruleApproved: true,
+    hasActiveFreeze: String(input.conversation.status ?? "") === "paused",
+    hasCriticalViolation: Boolean((input.interview.meeting_metadata as Record<string, unknown> | null)?.protection),
+    scheduledAt: String(input.interview.scheduled_at ?? ""),
+    startedAt: input.interview.host_started_at ? String(input.interview.host_started_at) : null,
+    completedAt: input.interview.host_ended_at ? String(input.interview.host_ended_at) : null,
+    closedAt: input.interview.host_ended_at ? String(input.interview.host_ended_at) : null,
+    cancelledAt: status === "cancelled" ? new Date().toISOString() : null,
+    expiredAt: null,
+    rescheduleCount: 0,
+    version: 1,
+    createdAt: String(input.interview.created_at ?? new Date().toISOString()),
+    updatedAt: String(input.interview.updated_at ?? new Date().toISOString()),
+    participants: [],
+    metadata: (input.interview.meeting_metadata as Record<string, unknown> | null) ?? {},
+  };
+}
+
 async function hasAcceptedInterviewInvitation(
   supabase: ReturnType<typeof createSupabaseAdminClient>,
   interviewId: string,
@@ -1759,6 +1813,25 @@ export async function joinInterviewMeeting(auth: AuthContext, interviewId: strin
   }
 
   const role = getConversationParticipantRole(auth.role);
+  const protectedRole = toProtectedParticipantRole(role);
+  if (!protectedAuthorizeParticipantRole(protectedRole)) {
+    throw new Error("Unauthorized participant role");
+  }
+
+  const protectedRecord = toProtectedInterviewRecord({
+    interview: detail.interview,
+    conversation: { id: detail.conversationId, status: detail.interview.status },
+  });
+  const joinPolicy = enforceProtectedInterviewPolicy({
+    interview: protectedRecord,
+    participantRole: protectedRole,
+    action: "join",
+    metadata: detail.interview.meeting_metadata as Record<string, unknown> | undefined,
+  });
+  if (!joinPolicy.allowed) {
+    throw new Error(joinPolicy.reasons.join(" "));
+  }
+
   await ensureInterviewParticipant(auth, interviewId);
 
   const metadata = (detail.interview.meeting_metadata as Record<string, unknown> | null) ?? {};
@@ -1970,6 +2043,19 @@ export async function updateRecruitmentInterview(auth: AuthContext, interviewId:
       throw new Error("Critical unresolved protection issue blocks activation");
     }
     if (!isScheduleValid) throw new Error("Interview schedule is invalid");
+
+    const protectedRecord = toProtectedInterviewRecord({
+      interview,
+      conversation,
+    });
+    const activationPolicy = enforceProtectedInterviewPolicy({
+      interview: protectedRecord,
+      action: "activate",
+      metadata: interview.meeting_metadata as Record<string, unknown> | undefined,
+    });
+    if (!activationPolicy.allowed) {
+      throw new Error(activationPolicy.reasons.join(" "));
+    }
 
     patch.status = "live";
     patch.host_started_at = new Date().toISOString();

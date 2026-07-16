@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { createMockVideoTransport } from "@/features/recruitment/utils/mock-video-transport";
 
 type MeetingCenterPayload = {
   interview: Record<string, unknown>;
@@ -67,6 +68,7 @@ export function InterviewMeetingCenter({
   interviewId: string;
 }) {
   const [token, setToken] = useState("");
+  const [isAuthorized, setIsAuthorized] = useState(false);
   const [csrfToken, setCsrfToken] = useState("");
   const [data, setData] = useState<MeetingCenterPayload | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -76,7 +78,9 @@ export function InterviewMeetingCenter({
   const [micOn, setMicOn] = useState(true);
   const [screenSharingOn, setScreenSharingOn] = useState(false);
   const [tokenNotice, setTokenNotice] = useState<string | null>(null);
+  const [deviceCheckResult, setDeviceCheckResult] = useState<{ cameraReady: boolean; microphoneReady: boolean; checkedAt: string } | null>(null);
   const copy = useMemo(() => getCopy(locale), [locale]);
+  const videoTransport = useMemo(() => createMockVideoTransport(), []);
 
   const loadCenter = useCallback(async (accessToken: string) => {
     const response = await fetch(`/api/recruitment/interviews/${interviewId}/meeting-center?locale=${locale}`, {
@@ -94,6 +98,36 @@ export function InterviewMeetingCenter({
     const accessToken = localStorage.getItem("prime_auth_token") ?? "";
     setToken(accessToken);
 
+    if (!accessToken) {
+      setError(locale === "ar" ? "يرجى تسجيل الدخول للوصول." : "Please sign in to continue.");
+      return;
+    }
+
+    fetch("/api/auth/me", {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    })
+      .then((response) => response.json())
+      .then((payload) => {
+        if (!payload?.success) {
+          setError(locale === "ar" ? "فشل التحقق من الجلسة." : "Session verification failed.");
+          return;
+        }
+
+        const userRole = String(payload?.data?.role ?? "");
+        const roleAllowed =
+          (role === "candidate" && userRole === "candidate") ||
+          (role === "employer" && userRole === "employer") ||
+          (role === "staff" && (userRole === "prime_global_recruiter" || userRole === "prime_global_admin" || userRole === "admin" || userRole === "super_admin"));
+
+        if (!roleAllowed) {
+          setError(locale === "ar" ? "صلاحيات غير كافية." : "Insufficient role privileges.");
+          return;
+        }
+
+        setIsAuthorized(true);
+      })
+      .catch(() => setError(locale === "ar" ? "تعذر التحقق من الجلسة." : "Unable to verify session."));
+
     fetch("/api/security/csrf")
       .then((response) => response.json())
       .then((payload) => setCsrfToken(payload?.data?.csrfToken ?? ""))
@@ -101,15 +135,15 @@ export function InterviewMeetingCenter({
 
     if (!accessToken) return;
     loadCenter(accessToken).catch(() => setError(locale === "ar" ? "تعذر تحميل المركز." : "Unable to load center."));
-  }, [interviewId, locale, loadCenter]);
+  }, [interviewId, locale, role, loadCenter]);
 
   useEffect(() => {
-    if (!token) return;
+    if (!token || !isAuthorized) return;
     const id = window.setInterval(() => {
       loadCenter(token).catch(() => undefined);
     }, 5000);
     return () => window.clearInterval(id);
-  }, [token, loadCenter]);
+  }, [token, isAuthorized, loadCenter]);
 
   useEffect(() => {
     if (!data?.interview) return;
@@ -209,6 +243,14 @@ export function InterviewMeetingCenter({
     await loadCenter(token);
   }
 
+  async function runDeviceCheck() {
+    const result = await videoTransport.runDeviceCheck({
+      cameraEnabled: cameraOn,
+      microphoneEnabled: micOn,
+    });
+    setDeviceCheckResult(result);
+  }
+
   async function leaveMeeting() {
     if (!token) return;
     const response = await fetch(`/api/recruitment/interviews/${interviewId}/meeting-center/leave`, {
@@ -305,6 +347,17 @@ export function InterviewMeetingCenter({
   }
 
   const permissions = data.permissions ?? {};
+  const schedule = String(data.interview?.scheduled_at ?? "-");
+  const invitationState = data.invitationState ?? {};
+  const termsState = data.coordinationTerms ?? {};
+
+  const workflowSteps = [
+    { id: "invitation", label: "Invitation", done: Boolean(invitationState.candidateAccepted) && Boolean(invitationState.employerAccepted) },
+    { id: "schedule", label: "Schedule", done: Boolean(data.interview?.scheduled_at) },
+    { id: "waiting-room", label: "Waiting Room", done: String(data.interview?.status ?? "") === "waiting" || String(data.interview?.status ?? "") === "live" },
+    { id: "device-check", label: "Camera/Microphone Check", done: Boolean(deviceCheckResult?.cameraReady) && Boolean(deviceCheckResult?.microphoneReady) },
+    { id: "join", label: "Join Meeting", done: String(data.interview?.status ?? "") === "live" },
+  ];
 
   return (
     <main className="mx-auto w-full max-w-[1260px] px-4 pb-20 pt-[124px] sm:px-6 md:px-8">
@@ -330,6 +383,22 @@ export function InterviewMeetingCenter({
           </div>
         </section>
 
+        <section className="mt-5 rounded-2xl border border-gold/15 bg-bg-primary/70 p-4">
+          <p className="text-sm font-semibold text-text-primary">Interview Workflow</p>
+          <p className="mt-2 text-xs text-text-secondary">Scheduled at: {schedule}</p>
+          <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-5">
+            {workflowSteps.map((step) => (
+              <article key={step.id} className="rounded-xl border border-gold/10 bg-bg-secondary/60 p-3 text-xs">
+                <p className="font-semibold text-text-primary">{step.label}</p>
+                <p className="mt-1 text-text-secondary">{step.done ? "complete" : "pending"}</p>
+              </article>
+            ))}
+          </div>
+          <p className="mt-3 text-xs text-text-secondary">
+            Terms accepted: candidate {String(Boolean(termsState.candidateAcceptedLatest))} / employer {String(Boolean(termsState.employerAcceptedLatest))}
+          </p>
+        </section>
+
         <section className="mt-7 grid gap-5 xl:grid-cols-[1.8fr_1fr]">
           <article className="rounded-2xl border border-gold/15 bg-bg-primary/70 p-5">
             <p className="text-xs uppercase tracking-[0.18em] text-text-tertiary">{copy.placeholder}</p>
@@ -344,7 +413,16 @@ export function InterviewMeetingCenter({
                 <button onClick={() => setScreenSharingOn((v) => !v)} className="rounded-full border border-gold/30 px-4 py-2 text-xs font-semibold text-gold">
                   {copy.share}: {screenSharingOn ? "on" : "off"}
                 </button>
+                <button onClick={runDeviceCheck} className="rounded-full border border-gold/30 px-4 py-2 text-xs font-semibold text-gold">
+                  Camera/Microphone check
+                </button>
               </div>
+
+              {deviceCheckResult ? (
+                <p className="mb-4 text-xs text-text-secondary">
+                  Device check: camera {String(deviceCheckResult.cameraReady)} / microphone {String(deviceCheckResult.microphoneReady)}
+                </p>
+              ) : null}
 
               <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                 {(data.participants ?? []).map((participant) => (

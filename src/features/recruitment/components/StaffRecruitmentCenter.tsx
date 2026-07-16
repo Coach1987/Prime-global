@@ -12,7 +12,7 @@ type StaffOverview = {
 function getCopy(locale: string) {
   const isArabic = locale === "ar";
   return {
-    title: isArabic ? "مركز إشراف التوظيف" : "Recruitment Supervision Center",
+    title: isArabic ? "مركز التحكم" : "Control Center",
     subtitle: isArabic
       ? "إدارة طلبات المحادثات، الإسناد، الإشراف، المراجعة، وجدولة المقابلات من مكان واحد."
       : "Manage conversation requests, assignments, supervision, moderation, and interview scheduling from one place.",
@@ -34,6 +34,7 @@ function getCopy(locale: string) {
 
 export function StaffRecruitmentCenter({ locale }: { locale: string }) {
   const [token, setToken] = useState("");
+  const [isAuthorized, setIsAuthorized] = useState(false);
   const [csrfToken, setCsrfToken] = useState("");
   const [data, setData] = useState<StaffOverview | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -55,6 +56,31 @@ export function StaffRecruitmentCenter({ locale }: { locale: string }) {
     const accessToken = localStorage.getItem("prime_auth_token") ?? "";
     setToken(accessToken);
 
+    if (!accessToken) {
+      setError(locale === "ar" ? "يرجى تسجيل الدخول للوصول." : "Please sign in to continue.");
+      return;
+    }
+
+    fetch("/api/auth/me", {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    })
+      .then((response) => response.json())
+      .then((payload) => {
+        const currentRole = String(payload?.data?.role ?? "");
+        if (!payload?.success) {
+          setError(locale === "ar" ? "فشل التحقق من الجلسة." : "Session verification failed.");
+          return;
+        }
+
+        const isStaff = currentRole === "prime_global_recruiter" || currentRole === "prime_global_admin" || currentRole === "admin" || currentRole === "super_admin";
+        if (!isStaff) {
+          setError(locale === "ar" ? "هذه الصفحة مخصصة لفريق برايم جلوبال." : "This page is restricted to Prime Global staff.");
+          return;
+        }
+        setIsAuthorized(true);
+      })
+      .catch(() => setError(locale === "ar" ? "تعذر التحقق من الجلسة." : "Unable to verify session."));
+
     fetch("/api/security/csrf")
       .then((response) => response.json())
       .then((payload) => setCsrfToken(payload?.data?.csrfToken ?? ""))
@@ -63,6 +89,11 @@ export function StaffRecruitmentCenter({ locale }: { locale: string }) {
     if (!accessToken) return;
     loadOverview(accessToken).catch(() => setError(locale === "ar" ? "تعذر تحميل البيانات." : "Unable to load data."));
   }, [loadOverview, locale]);
+
+  useEffect(() => {
+    if (!token || !isAuthorized) return;
+    loadOverview(token).catch(() => setError(locale === "ar" ? "تعذر تحميل البيانات." : "Unable to load data."));
+  }, [token, isAuthorized, loadOverview, locale]);
 
   async function reviewRequest(requestId: string, action: "assign" | "approve" | "reject") {
     if (!token) return;
