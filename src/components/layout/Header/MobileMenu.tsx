@@ -9,6 +9,7 @@ import { useIsHome } from "@/lib/hooks/useIsHome";
 import { cn } from "@/lib/utils/cn";
 import { smoothScrollTo } from "@/lib/utils/smoothScroll";
 import { LanguageSwitcher } from "./LanguageSwitcher";
+import { AuthActions } from "./AuthActions";
 
 interface MobileMenuProps {
   open: boolean;
@@ -167,6 +168,8 @@ export function MobileMenu({ open, onClose }: MobileMenuProps) {
             </motion.ul>
 
             <div className="mt-14 h-px w-20 bg-gradient-to-r from-transparent via-blue-400 to-transparent" />
+
+            <AuthActions mobile onNavigate={onClose} />
 
             <p className="mt-6 text-xs uppercase tracking-[0.3em] text-slate-500">
               PRIME GLOBAL

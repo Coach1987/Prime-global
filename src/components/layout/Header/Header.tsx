@@ -12,6 +12,7 @@ import { NavMenu } from "./NavMenu";
 import { LanguageSwitcher } from "./LanguageSwitcher";
 import { MenuToggle } from "./MenuToggle";
 import { MobileMenu } from "./MobileMenu";
+import { AuthActions } from "./AuthActions";
 
 export function Header() {
   const t = useTranslations("nav");
@@ -61,6 +62,8 @@ export function Header() {
           <NavMenu />
 
           <div className="flex items-center gap-4">
+
+            <AuthActions />
 
             <div className="hidden md:block">
               <LanguageSwitcher />

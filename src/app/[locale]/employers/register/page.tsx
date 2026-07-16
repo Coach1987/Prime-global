@@ -1,7 +1,8 @@
 "use client";
 
 import { FormEvent, useEffect, useMemo, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { Link, useRouter } from "@/i18n/routing";
+import { useLocale } from "next-intl";
 
 const companySizes = ["1-10", "11-50", "51-200", "201-500", "501-1000", "1000+"];
 
@@ -11,12 +12,15 @@ type RegisterResult = {
 };
 
 export default function EmployerRegisterPage() {
-  const params = useParams<{ locale: string }>();
+  const locale = useLocale();
+  const isArabic = locale === "ar";
   const router = useRouter();
 
   const [csrfToken, setCsrfToken] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [acceptTerms, setAcceptTerms] = useState(false);
 
   const [form, setForm] = useState({
     email: "",
@@ -47,6 +51,16 @@ export default function EmployerRegisterPage() {
 
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (form.password !== confirmPassword) {
+      setError(isArabic ? "كلمتا المرور غير متطابقتين." : "Passwords do not match.");
+      return;
+    }
+
+    if (!acceptTerms) {
+      setError(isArabic ? "يجب الموافقة على الشروط وسياسة الخصوصية." : "You must accept the Terms and Privacy Policy.");
+      return;
+    }
+
     setLoading(true);
     setError(null);
 
@@ -62,13 +76,13 @@ export default function EmployerRegisterPage() {
 
       const payload = (await response.json()) as RegisterResult;
       if (!response.ok || !payload.success) {
-        setError(payload.error?.message ?? "Unable to register company");
+        setError(payload.error?.message ?? (isArabic ? "تعذر تسجيل الشركة." : "Unable to register company"));
         return;
       }
 
-      router.push(`/${params.locale}/employers/login?registered=1`);
+      router.push("/employer/pending-approval");
     } catch {
-      setError("Unexpected error while submitting registration");
+      setError(isArabic ? "حدث خطأ غير متوقع أثناء إرسال التسجيل." : "Unexpected error while submitting registration");
     } finally {
       setLoading(false);
     }
@@ -77,24 +91,24 @@ export default function EmployerRegisterPage() {
   return (
     <main className="mx-auto w-full max-w-[920px] px-4 pb-20 pt-[124px] sm:px-6 md:px-8">
       <section className="rounded-3xl border border-gold/20 bg-bg-secondary/80 p-8 backdrop-blur-xl md:p-10">
-        <h1 className="font-heading text-4xl text-text-primary">Company Registration</h1>
-        <p className="mt-3 text-sm text-text-secondary">Submit your company profile. Verification is required before publishing jobs.</p>
+        <h1 className="font-heading text-4xl text-text-primary">{isArabic ? "إنشاء حساب صاحب عمل" : "Employer Create Account"}</h1>
+        <p className="mt-3 text-sm text-text-secondary">{isArabic ? "أنشئ حساب شركتك. تبقى الشركة في حالة pending_review حتى يعتمدها فريق برايم جلوبال قبل نشر الوظائف أو الوصول إلى بيانات المرشحين." : "Create your company account. The company stays in pending_review until Prime Global approves it before publishing jobs or accessing candidate data."}</p>
 
         <form className="mt-8 grid gap-5 md:grid-cols-2" onSubmit={onSubmit}>
           {[
-            ["email", "Login Email", "email"],
-            ["password", "Password", "password"],
-            ["companyName", "Company Name", "text"],
-            ["commercialRegistrationNumber", "Commercial Registration Number", "text"],
-            ["taxNumber", "Tax Number", "text"],
-            ["country", "Country", "text"],
-            ["city", "City", "text"],
-            ["address", "Address", "text"],
-            ["website", "Website", "url"],
-            ["companyEmail", "Company Email", "email"],
-            ["hrContact", "HR Contact", "text"],
-            ["phoneNumber", "Phone Number", "text"],
-            ["industry", "Industry", "text"],
+            ["email", isArabic ? "بريد الدخول" : "Login Email", "email"],
+            ["password", isArabic ? "كلمة المرور" : "Password", "password"],
+            ["companyName", isArabic ? "اسم الشركة" : "Company Name", "text"],
+            ["commercialRegistrationNumber", isArabic ? "رقم السجل التجاري" : "Company Registration Number", "text"],
+            ["taxNumber", isArabic ? "الرقم الجبائي" : "Tax Number", "text"],
+            ["country", isArabic ? "الدولة" : "Country", "text"],
+            ["city", isArabic ? "المدينة" : "City", "text"],
+            ["address", isArabic ? "العنوان" : "Address", "text"],
+            ["website", isArabic ? "الموقع الإلكتروني" : "Website", "url"],
+            ["companyEmail", isArabic ? "بريد الشركة" : "Company Email", "email"],
+            ["hrContact", isArabic ? "الشخص المسؤول" : "Contact Person", "text"],
+            ["phoneNumber", isArabic ? "رقم الهاتف" : "Phone Number", "text"],
+            ["industry", isArabic ? "القطاع" : "Industry", "text"],
           ].map(([key, label, type]) => (
             <label key={key} className="block text-sm text-text-secondary">
               <span className="mb-2 block">{label}</span>
@@ -111,7 +125,18 @@ export default function EmployerRegisterPage() {
           ))}
 
           <label className="block text-sm text-text-secondary">
-            <span className="mb-2 block">Company Size</span>
+            <span className="mb-2 block">{isArabic ? "تأكيد كلمة المرور" : "Confirm Password"}</span>
+            <input
+              type="password"
+              required
+              value={confirmPassword}
+              onChange={(event) => setConfirmPassword(event.target.value)}
+              className="w-full rounded-xl border border-gold/20 bg-bg-primary px-4 py-3 text-text-primary"
+            />
+          </label>
+
+          <label className="block text-sm text-text-secondary">
+            <span className="mb-2 block">{isArabic ? "حجم الشركة" : "Company Size"}</span>
             <select
               value={form.companySize}
               onChange={(event) => setForm((prev) => ({ ...prev, companySize: event.target.value }))}
@@ -126,7 +151,7 @@ export default function EmployerRegisterPage() {
           </label>
 
           <label className="block text-sm text-text-secondary md:col-span-2">
-            <span className="mb-2 block">Company Description</span>
+            <span className="mb-2 block">{isArabic ? "وصف الشركة" : "Company Description"}</span>
             <textarea
               required
               rows={5}
@@ -138,6 +163,16 @@ export default function EmployerRegisterPage() {
             />
           </label>
 
+          <label className="md:col-span-2 flex min-h-12 items-start gap-3 rounded-2xl border border-gold/15 bg-bg-primary/40 px-4 py-3 text-sm text-text-secondary">
+            <input
+              type="checkbox"
+              checked={acceptTerms}
+              onChange={(event) => setAcceptTerms(event.target.checked)}
+              className="mt-1 h-4 w-4 rounded border-gold/30"
+            />
+            <span>{isArabic ? "أوافق على الشروط وسياسة الخصوصية ومتطلبات التحقق من الشركة." : "I accept the Terms, Privacy Policy, and company verification requirements."}</span>
+          </label>
+
           {error ? <p className="text-sm text-red-300 md:col-span-2">{error}</p> : null}
 
           <div className="md:col-span-2">
@@ -146,9 +181,16 @@ export default function EmployerRegisterPage() {
               disabled={disabled}
               className="rounded-full bg-gold px-8 py-3 text-sm font-semibold text-bg-primary transition hover:bg-gold-bright disabled:opacity-60"
             >
-              {loading ? "Submitting..." : "Create Employer Account"}
+              {loading ? (isArabic ? "جارٍ الإرسال..." : "Submitting...") : isArabic ? "إنشاء الحساب" : "Create Employer Account"}
             </button>
           </div>
+
+          <p className="md:col-span-2 text-sm text-text-secondary">
+            {isArabic ? "لديك حساب بالفعل؟" : "Already have an account?"}{" "}
+            <Link href="/employers/login" className="font-semibold text-gold hover:text-gold-bright">
+              {isArabic ? "تسجيل الدخول" : "Sign In"}
+            </Link>
+          </p>
         </form>
       </section>
     </main>

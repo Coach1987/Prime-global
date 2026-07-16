@@ -1,4 +1,5 @@
 import { createSupabaseAdminClient } from "@/lib/server/supabase";
+import { forbiddenResponse } from "@/lib/server/security/auth";
 
 export async function getEmployerByAuthUserId(authUserId: string) {
   const supabase = createSupabaseAdminClient();
@@ -13,4 +14,11 @@ export async function getEmployerByAuthUserId(authUserId: string) {
   }
 
   return data;
+}
+
+export function requireVerifiedEmployerStatus(verificationStatus: string | null | undefined) {
+  if (verificationStatus !== "verified") {
+    return forbiddenResponse("Employer verification pending review");
+  }
+  return null;
 }

@@ -1,0 +1,1 @@
+export { default } from "../../employers/register/page";

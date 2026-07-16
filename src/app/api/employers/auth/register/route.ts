@@ -23,10 +23,11 @@ export async function POST(request: Request) {
     email: payload.email,
     password: payload.password,
     email_confirm: true,
-    app_metadata: { app_role: "employer" },
+    app_metadata: { app_role: "employer", account_status: "pending_review" },
     user_metadata: {
       company_name: payload.companyName,
       app_role: "employer",
+      account_status: "pending_review",
     },
   });
 
@@ -80,6 +81,7 @@ export async function POST(request: Request) {
       data: {
         userId: userData.user.id,
         email: userData.user.email,
+        accountStatus: "pending_review",
         verificationStatus: "pending",
       },
     },

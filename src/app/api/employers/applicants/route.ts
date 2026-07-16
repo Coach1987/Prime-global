@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireAuth, requireRole } from "@/lib/server/security/auth";
 import { enforceRateLimit } from "@/lib/server/http";
-import { getEmployerByAuthUserId } from "@/lib/server/employers";
+import { getEmployerByAuthUserId, requireVerifiedEmployerStatus } from "@/lib/server/employers";
 import { createSupabaseAdminClient } from "@/lib/server/supabase";
 import { sanitizeEmployerCandidateProfile } from "@/lib/server/candidates/employer-profile";
 
@@ -22,6 +22,9 @@ export async function GET(request: Request) {
       { status: 404 }
     );
   }
+
+  const verificationGate = requireVerifiedEmployerStatus(employer.verification_status as string | null | undefined);
+  if (verificationGate) return verificationGate;
 
   const url = new URL(request.url);
   const query = (url.searchParams.get("q") ?? "").trim().toLowerCase();

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import { getEmployerByAuthUserId } from "@/lib/server/employers";
 import { createSupabasePublicClient } from "@/lib/server/supabase";
 import { enforceCsrf, enforceRateLimit, parseJsonBody } from "@/lib/server/http";
 
@@ -67,6 +68,15 @@ export async function POST(request: Request) {
     );
   }
 
+  let verificationStatus: string | null = null;
+  let accountStatus: string | null = null;
+
+  if (actualRole === "employer") {
+    const employer = await getEmployerByAuthUserId(data.user.id);
+    verificationStatus = (employer?.verification_status as string | null) ?? null;
+    accountStatus = verificationStatus === "verified" ? "active" : "pending_review";
+  }
+
   return NextResponse.json({
     success: true,
     data: {
@@ -74,6 +84,8 @@ export async function POST(request: Request) {
         id: data.user.id,
         email: data.user.email,
         role: actualRole,
+        verificationStatus,
+        accountStatus,
       },
       session: {
         accessToken: data.session.access_token,

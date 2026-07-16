@@ -12,6 +12,7 @@ const candidateRegistrationSchema = z
     phoneNumber: z.string().trim().min(6).max(32).optional().or(z.literal("")),
     country: z.string().trim().min(2).max(120).optional().or(z.literal("")),
     city: z.string().trim().min(2).max(120).optional().or(z.literal("")),
+    acceptTerms: z.literal(true),
   })
   .strict();
 
@@ -32,34 +33,40 @@ export async function POST(request: Request) {
   const payload = parsed.data;
   const { ipAddress, userAgent } = getRequestContext(request);
 
-  const publicClient = createSupabasePublicClient();
   const adminClient = createSupabaseAdminClient();
+  const publicClient = createSupabasePublicClient();
 
-  const { data: signUpData, error: signUpError } = await publicClient.auth.signUp({
+  const { data: userData, error: userError } = await adminClient.auth.admin.createUser({
     email: payload.email,
     password: payload.password,
-    options: {
-      data: {
-        app_role: "candidate",
-        full_name: payload.fullName,
-      },
+    email_confirm: true,
+    app_metadata: {
+      app_role: "candidate",
+      terms_accepted: true,
+      terms_accepted_at: new Date().toISOString(),
+    },
+    user_metadata: {
+      app_role: "candidate",
+      full_name: payload.fullName,
+      registration_country: payload.country || null,
+      recruitment_coordination_accepted: true,
     },
   });
 
-  if (signUpError || !signUpData.user?.id) {
+  if (userError || !userData.user?.id) {
     return NextResponse.json(
       {
         success: false,
         error: {
           code: "CANDIDATE_REGISTER_FAILED",
-          message: "Unable to create account with provided details.",
+          message: userError?.message ?? "Unable to create account with provided details.",
         },
       },
       { status: 400 }
     );
   }
 
-  const userId = signUpData.user.id;
+  const userId = userData.user.id;
 
   const { error: profileError } = await adminClient.from("candidate_profiles").insert({
     auth_user_id: userId,
@@ -97,12 +104,35 @@ export async function POST(request: Request) {
     userAgent,
   });
 
+  const { data: sessionData, error: sessionError } = await publicClient.auth.signInWithPassword({
+    email: payload.email,
+    password: payload.password,
+  });
+
+  if (sessionError || !sessionData.session) {
+    return NextResponse.json(
+      {
+        success: false,
+        error: {
+          code: "CANDIDATE_REGISTER_SESSION_FAILED",
+          message: "Account created but automatic sign-in failed.",
+        },
+      },
+      { status: 201 }
+    );
+  }
+
   return NextResponse.json(
     {
       success: true,
       data: {
         userId,
-        email: signUpData.user.email,
+        email: userData.user.email,
+        session: {
+          accessToken: sessionData.session.access_token,
+          refreshToken: sessionData.session.refresh_token,
+          expiresAt: sessionData.session.expires_at,
+        },
       },
     },
     { status: 201 }
