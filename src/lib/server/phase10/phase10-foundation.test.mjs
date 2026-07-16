@@ -11,6 +11,13 @@ import { createPhase10Logger, sanitizePhase10LogEntry } from "./observability/in
 test("phase10 feature flags default to disabled", () => {
   const flags = getPhase10FeatureFlags();
 
+  assert.equal(flags.CHAT_CENTER_ENABLED, false);
+  assert.equal(flags.PROTECTED_MESSAGE_COMPOSER_ENABLED, false);
+  assert.equal(flags.CHAT_STAFF_SUPERVISION_ENABLED, false);
+  assert.equal(flags.INTERVIEW_CENTER_ENABLED, false);
+  assert.equal(flags.INTERVIEW_WAITING_ROOM_ENABLED, false);
+  assert.equal(flags.INTERVIEW_STAFF_ACTIVATION_ENABLED, false);
+  assert.equal(flags.MOCK_VIDEO_ROOM_UI_ENABLED, false);
   assert.equal(flags.PRIME_SHIELD_ENABLED, false);
   assert.equal(flags.PROTECTED_INTERVIEWS_ENABLED, false);
   assert.equal(flags.VIDEO_ROOMS_ENABLED, false);

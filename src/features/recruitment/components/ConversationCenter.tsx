@@ -39,6 +39,10 @@ function getCopy(locale: string, role: "employer" | "candidate") {
     stage: isArabic ? "المرحلة" : "Stage",
     interviewInvites: isArabic ? "دعوات المقابلات" : "Interview invitations",
     nextInterview: isArabic ? "الموعد القادم" : "Next interview",
+    unread: isArabic ? "غير مقروء" : "Unread",
+    roles: isArabic ? "الأدوار" : "Participant roles",
+    recruiterPresence: isArabic ? "حضور الممثل" : "Recruiter presence",
+    lastMessage: isArabic ? "آخر رسالة" : "Last message",
   };
 }
 
@@ -133,6 +137,18 @@ export function ConversationCenter({
                     </p>
                     <p>
                       {copy.nextInterview}: {String((conversation.interviewSummary as Record<string, unknown> | undefined)?.nextInterviewAt ?? "-")}
+                    </p>
+                    <p>
+                      {copy.unread}: {String(((conversation.unread as Record<string, unknown> | undefined)?.unreadCount ?? 0))}
+                    </p>
+                    <p>
+                      {copy.recruiterPresence}: {String(conversation.recruiterPresence ?? "offline")}
+                    </p>
+                    <p>
+                      {copy.roles}: {Array.isArray(conversation.participantRoles) ? conversation.participantRoles.join(", ") : "-"}
+                    </p>
+                    <p>
+                      {copy.lastMessage}: {String(conversation.lastMessageAt ?? "-")}
                     </p>
                   </div>
                   <a href={`${detailBasePath}/${String(conversation.id)}`} className="mt-4 inline-flex rounded-full border border-gold/30 px-4 py-2 text-sm font-semibold text-gold transition hover:bg-gold/10">
