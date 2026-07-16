@@ -3,6 +3,10 @@
 import { FormEvent, useEffect, useState } from "react";
 import { Link, useRouter } from "@/i18n/routing";
 import { useLocale } from "next-intl";
+import { PrimeCard } from "@/components/ui/prime/PrimeCard";
+import { PrimeCheckbox, PrimeInput, PrimeLabel } from "@/components/ui/prime/PrimeInput";
+import { primeButtonClasses } from "@/components/ui/prime/PrimeButton";
+import { PrimePageTitle } from "@/components/ui/prime/PrimePageTitle";
 
 type RegisterResponse = {
   success: boolean;
@@ -91,8 +95,8 @@ export default function CandidateRegisterPage() {
 
   return (
     <main className="mx-auto w-full max-w-[760px] px-4 pb-20 pt-[124px] sm:px-6 md:px-8">
-      <section className="rounded-3xl border border-gold/20 bg-bg-secondary/80 p-8 backdrop-blur-xl md:p-10">
-        <h1 className="font-heading text-4xl text-text-primary">{isArabic ? "إنشاء حساب مرشح" : "Candidate Create Account"}</h1>
+      <PrimeCard as="section" className="p-8 md:p-10">
+        <PrimePageTitle>{isArabic ? "إنشاء حساب مرشح" : "Candidate Create Account"}</PrimePageTitle>
         <p className="mt-3 text-sm leading-7 text-text-secondary">
           {isArabic
             ? "أنشئ حسابك أولاً، ثم أكمل إعداد ملفك المهني بشكل خاص داخل برايم جلوبال."
@@ -100,79 +104,72 @@ export default function CandidateRegisterPage() {
         </p>
 
         <form className="mt-8 space-y-5" onSubmit={onSubmit}>
-          <label className="block text-sm text-text-secondary">
+          <PrimeLabel>
             <span className="mb-2 block">{isArabic ? "الاسم الكامل" : "Full name"}</span>
-            <input
+            <PrimeInput
               required
               value={form.fullName}
               onChange={(event) => setForm((prev) => ({ ...prev, fullName: event.target.value }))}
-              className="w-full rounded-xl border border-gold/20 bg-bg-primary px-4 py-3 text-text-primary"
             />
-          </label>
+          </PrimeLabel>
 
-          <label className="block text-sm text-text-secondary">
+          <PrimeLabel>
             <span className="mb-2 block">{isArabic ? "البريد الإلكتروني" : "Email"}</span>
-            <input
+            <PrimeInput
               type="email"
               required
               value={form.email}
               onChange={(event) => setForm((prev) => ({ ...prev, email: event.target.value }))}
-              className="w-full rounded-xl border border-gold/20 bg-bg-primary px-4 py-3 text-text-primary"
             />
-          </label>
+          </PrimeLabel>
 
           <div className="grid gap-5 sm:grid-cols-2">
-            <label className="block text-sm text-text-secondary">
+            <PrimeLabel>
               <span className="mb-2 block">{isArabic ? "كلمة المرور" : "Password"}</span>
-              <input
+              <PrimeInput
                 type="password"
                 required
                 value={form.password}
                 onChange={(event) => setForm((prev) => ({ ...prev, password: event.target.value }))}
-                className="w-full rounded-xl border border-gold/20 bg-bg-primary px-4 py-3 text-text-primary"
               />
-            </label>
+            </PrimeLabel>
 
-            <label className="block text-sm text-text-secondary">
+            <PrimeLabel>
               <span className="mb-2 block">{isArabic ? "تأكيد كلمة المرور" : "Confirm password"}</span>
-              <input
+              <PrimeInput
                 type="password"
                 required
                 value={form.confirmPassword}
                 onChange={(event) => setForm((prev) => ({ ...prev, confirmPassword: event.target.value }))}
-                className="w-full rounded-xl border border-gold/20 bg-bg-primary px-4 py-3 text-text-primary"
               />
-            </label>
+            </PrimeLabel>
           </div>
 
           <div className="grid gap-5 sm:grid-cols-2">
-            <label className="block text-sm text-text-secondary">
+            <PrimeLabel>
               <span className="mb-2 block">{isArabic ? "الدولة" : "Country"}</span>
-              <input
+              <PrimeInput
                 required
                 value={form.country}
                 onChange={(event) => setForm((prev) => ({ ...prev, country: event.target.value }))}
-                className="w-full rounded-xl border border-gold/20 bg-bg-primary px-4 py-3 text-text-primary"
               />
-            </label>
+            </PrimeLabel>
 
-            <label className="block text-sm text-text-secondary">
+            <PrimeLabel>
               <span className="mb-2 block">{isArabic ? "رقم الهاتف" : "Phone number"}</span>
-              <input
+              <PrimeInput
                 required
                 value={form.phoneNumber}
                 onChange={(event) => setForm((prev) => ({ ...prev, phoneNumber: event.target.value }))}
-                className="w-full rounded-xl border border-gold/20 bg-bg-primary px-4 py-3 text-text-primary"
               />
-            </label>
+            </PrimeLabel>
           </div>
 
-          <label className="flex min-h-12 items-start gap-3 rounded-2xl border border-gold/15 bg-bg-primary/40 px-4 py-3 text-sm text-text-secondary">
-            <input
+          <label className="flex min-h-12 items-start gap-3 rounded-2xl border border-blue-200/20 bg-[#071428]/75 px-4 py-3 text-sm text-text-secondary">
+            <PrimeCheckbox
               type="checkbox"
               checked={form.acceptTerms}
               onChange={(event) => setForm((prev) => ({ ...prev, acceptTerms: event.target.checked }))}
-              className="mt-1 h-4 w-4 rounded border-gold/30"
             />
             <span>
               {isArabic ? "أوافق على الشروط وسياسة الخصوصية وإجراءات التنسيق الخاصة بالتوظيف." : "I accept the Terms, Privacy Policy, and recruitment coordination process."}
@@ -184,19 +181,19 @@ export default function CandidateRegisterPage() {
           <button
             type="submit"
             disabled={loading || !csrfToken}
-            className="prime-auth-pill"
+            className={primeButtonClasses("primary")}
           >
             {loading ? (isArabic ? "جارٍ إنشاء الحساب..." : "Creating account...") : isArabic ? "إنشاء الحساب" : "Create Account"}
           </button>
 
           <p className="text-sm text-text-secondary">
             {isArabic ? "لديك حساب بالفعل؟" : "Already have an account?"}{" "}
-            <Link href="/candidate/login" className="font-semibold text-gold hover:text-gold-bright">
+            <Link href="/candidate/login" className="font-semibold text-blue-200 hover:text-blue-100">
               {isArabic ? "تسجيل الدخول" : "Sign In"}
             </Link>
           </p>
         </form>
-      </section>
+      </PrimeCard>
     </main>
   );
 }

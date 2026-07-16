@@ -1,6 +1,10 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { primeButtonClasses } from "@/components/ui/prime/PrimeButton";
+import { PrimeCard } from "@/components/ui/prime/PrimeCard";
+import { PrimeInput, PrimeTextarea } from "@/components/ui/prime/PrimeInput";
+import { PrimePageTitle } from "@/components/ui/prime/PrimePageTitle";
 
 type DetailPayload = {
   conversation: Record<string, unknown>;
@@ -286,7 +290,7 @@ export function ConversationDetail({
   if (!data) {
     return (
       <main className="mx-auto w-full max-w-[1180px] px-4 pb-20 pt-[124px] sm:px-6 md:px-8">
-        <section className="rounded-3xl border border-gold/20 bg-bg-secondary/80 p-7 text-sm text-text-secondary backdrop-blur-xl md:p-10">
+        <section className="rounded-3xl border border-blue-200/20 bg-[#081223]/82 p-7 text-sm text-text-secondary backdrop-blur-xl md:p-10">
           {error ?? (locale === "ar" ? "جارٍ تحميل المحادثة..." : "Loading conversation...")}
         </section>
       </main>
@@ -301,13 +305,13 @@ export function ConversationDetail({
 
   return (
     <main className="mx-auto w-full max-w-[1180px] px-4 pb-20 pt-[124px] sm:px-6 md:px-8">
-      <section className="rounded-3xl border border-gold/20 bg-bg-secondary/80 p-7 backdrop-blur-xl md:p-10">
-        <h1 className="font-heading text-4xl text-text-primary">{copy.title}</h1>
-        <p className="prime-auth-card mt-3 rounded-2xl border border-gold/25 bg-bg-primary/60 p-4 text-sm leading-7 text-text-secondary">
+      <PrimeCard as="section" className="p-7 md:p-10">
+        <PrimePageTitle>{copy.title}</PrimePageTitle>
+        <p className="prime-auth-card mt-3 p-4 text-sm leading-7 text-text-secondary">
           {copy.conversationNotice}
         </p>
         {String(conversation.conversationMode ?? conversation.conversation_mode ?? "staff_active") !== "staff_active" ? (
-          <p className="prime-auth-card mt-3 rounded-2xl border border-gold/25 bg-bg-primary/60 p-4 text-sm leading-7 text-gold">
+          <p className="prime-auth-card mt-3 p-4 text-sm leading-7 text-blue-200">
             {copy.aiAssistNotice}
           </p>
         ) : null}
@@ -322,16 +326,16 @@ export function ConversationDetail({
             [copy.representative, String(assignedStaff.label ?? "Prime Global")],
             [locale === "ar" ? "المرجع" : "Reference", String(candidateProfile.candidate_reference ?? employer.company_name ?? "-")],
           ].map(([label, value]) => (
-            <article key={String(label)} className="prime-auth-card rounded-2xl border border-gold/15 bg-bg-primary/70 p-4">
+            <PrimeCard key={String(label)} className="p-4">
               <p className="text-xs uppercase tracking-[0.18em] text-text-tertiary">{label}</p>
               <p className="mt-2 text-sm font-medium text-text-primary">{value}</p>
-            </article>
+            </PrimeCard>
           ))}
         </div>
 
         {permissions.canRespondToInvitation ? (
           <div className="mt-6 flex flex-wrap gap-3">
-            <button onClick={() => respond("accept")} className="prime-auth-pill">
+            <button onClick={() => respond("accept")} className={primeButtonClasses("primary")}>
               {copy.accept}
             </button>
             <button onClick={() => respond("decline")} className="rounded-full border border-red-400/30 px-5 py-3 text-sm font-semibold text-red-200">
@@ -341,165 +345,162 @@ export function ConversationDetail({
         ) : null}
 
         <section className="mt-8 grid gap-6 xl:grid-cols-[1.6fr_1fr]">
-          <article className="prime-auth-card rounded-2xl border border-gold/15 bg-bg-primary/70 p-5">
+          <PrimeCard className="p-5">
             <div className="space-y-3">
               {data.messages.length === 0 ? <p className="text-sm text-text-tertiary">{copy.noMessages}</p> : null}
               {data.messages.map((item) => (
-                <article key={String(item.id)} className="prime-auth-card rounded-2xl border border-gold/10 bg-bg-secondary/60 p-4">
+                <PrimeCard key={String(item.id)} className="p-4">
                   <div className="flex flex-wrap items-center justify-between gap-3 text-xs text-text-tertiary">
                     <span>{String(item.sender_role ?? "message")}</span>
                     <span>{String(item.created_at ?? "")}</span>
                   </div>
                   <p className="mt-3 text-sm leading-7 text-text-primary">{String(item.body ?? "")}</p>
                   {String(item.moderation_state ?? "approved") !== "approved" ? (
-                    <p className="mt-2 text-xs font-semibold text-gold">{copy.held}</p>
+                    <p className="mt-2 text-xs font-semibold text-blue-200">{copy.held}</p>
                   ) : null}
-                </article>
+                </PrimeCard>
               ))}
             </div>
 
             <div className="mt-6 space-y-3">
-              <textarea
+              <PrimeTextarea
                 value={message}
                 onChange={(event) => setMessage(event.target.value)}
                 rows={4}
                 placeholder={copy.messagePlaceholder}
-                className="w-full rounded-2xl border border-gold/15 bg-bg-secondary px-4 py-3 text-sm text-text-primary"
               />
               {permissions.canSendMessages ? (
                 <div className="flex flex-wrap gap-3">
-                  <button onClick={() => sendMessage(message)} className="prime-auth-pill">
+                  <button onClick={() => sendMessage(message)} className={primeButtonClasses("primary")}>
                     {copy.send}
                   </button>
                   {role === "employer" && permissions.canRequestInterview ? (
                     <button
                       onClick={requestInterview}
-                      className="prime-auth-pill-outline">
+                      className={primeButtonClasses("secondary")}>
                       {copy.requestInterview}
                     </button>
                   ) : null}
                 </div>
               ) : null}
             </div>
-          </article>
+          </PrimeCard>
 
           <div className="space-y-6">
             {role === "staff" ? (
-              <article className="prime-auth-card rounded-2xl border border-gold/15 bg-bg-primary/70 p-5">
+              <PrimeCard className="p-5">
                 <h2 className="font-heading text-2xl text-text-primary">{copy.internalNotes}</h2>
                 <div className="mt-4 space-y-3">
                   {data.internalNotes.length === 0 ? <p className="text-sm text-text-tertiary">{copy.noNotes}</p> : null}
                   {data.internalNotes.map((item) => (
-                    <article key={String(item.id)} className="prime-auth-card rounded-2xl border border-gold/10 bg-bg-secondary/60 p-4 text-sm text-text-secondary">
+                    <PrimeCard key={String(item.id)} className="p-4 text-sm text-text-secondary">
                       <p>{String(item.note ?? "")}</p>
                       <p className="mt-2 text-xs text-text-tertiary">{String(item.created_at ?? "")}</p>
-                    </article>
+                    </PrimeCard>
                   ))}
                 </div>
-                <textarea
+                <PrimeTextarea
                   value={note}
                   onChange={(event) => setNote(event.target.value)}
                   rows={3}
                   placeholder={copy.notePlaceholder}
-                  className="mt-4 w-full rounded-2xl border border-gold/15 bg-bg-secondary px-4 py-3 text-sm text-text-primary"
+                  className="mt-4"
                 />
-                <button onClick={submitInternalNote} className="prime-auth-pill mt-3">
+                <button onClick={submitInternalNote} className={`${primeButtonClasses("primary")} mt-3`}>
                   {copy.addNote}
                 </button>
-              </article>
+              </PrimeCard>
             ) : null}
 
-            <article className="prime-auth-card rounded-2xl border border-gold/15 bg-bg-primary/70 p-5">
+            <PrimeCard className="p-5">
               <h2 className="font-heading text-2xl text-text-primary">{copy.interviews}</h2>
               <div className="mt-4 space-y-3">
                 {data.interviews.length === 0 ? <p className="text-sm text-text-tertiary">{copy.noInterviews}</p> : null}
                 {data.interviews.map((item) => (
-                  <article key={String(item.id)} className="prime-auth-card rounded-2xl border border-gold/10 bg-bg-secondary/60 p-4 text-sm text-text-secondary">
+                  <PrimeCard key={String(item.id)} className="p-4 text-sm text-text-secondary">
                     <p className="font-medium text-text-primary">{String(item.status ?? "scheduled")}</p>
                     <p className="mt-2">{String(item.scheduled_at ?? "")}</p>
                     <a
                       href={`${interviewCenterBasePath}/${String(item.id)}`}
-                      className="prime-auth-pill-outline prime-auth-pill-sm mt-3"
+                      className={`${primeButtonClasses("secondary", "sm")} mt-3`}
                     >
                       {copy.openMeetingCenter}
                     </a>
                     {role === "staff" ? (
                       <div className="mt-3 flex flex-wrap gap-2">
-                        <button onClick={() => updateInterview(String(item.id), "start")} className="prime-auth-pill-outline prime-auth-pill-sm">
+                        <button onClick={() => updateInterview(String(item.id), "start")} className={primeButtonClasses("secondary", "sm")}>
                           {copy.startInterview}
                         </button>
-                        <button onClick={() => updateInterview(String(item.id), "end")} className="prime-auth-pill-outline prime-auth-pill-sm">
+                        <button onClick={() => updateInterview(String(item.id), "end")} className={primeButtonClasses("secondary", "sm")}>
                           {copy.endInterview}
                         </button>
                       </div>
                     ) : null}
-                  </article>
+                  </PrimeCard>
                 ))}
               </div>
 
               {role === "staff" ? (
                 <div className="mt-5 space-y-3">
-                  <input
+                  <PrimeInput
                     type="datetime-local"
                     value={scheduledAt}
                     onChange={(event) => setScheduledAt(event.target.value)}
-                    className="w-full rounded-2xl border border-gold/15 bg-bg-secondary px-4 py-3 text-sm text-text-primary"
                   />
-                  <textarea
+                  <PrimeTextarea
                     value={interviewNotes}
                     onChange={(event) => setInterviewNotes(event.target.value)}
                     rows={3}
                     placeholder={copy.interviewPlaceholder}
-                    className="w-full rounded-2xl border border-gold/15 bg-bg-secondary px-4 py-3 text-sm text-text-primary"
                   />
-                  <button onClick={scheduleInterview} className="prime-auth-pill">
+                  <button onClick={scheduleInterview} className={primeButtonClasses("primary")}>
                     {copy.scheduleInterview}
                   </button>
                 </div>
               ) : null}
-            </article>
+            </PrimeCard>
 
             {role === "staff" ? (
-              <article className="prime-auth-card rounded-2xl border border-gold/15 bg-bg-primary/70 p-5">
+              <PrimeCard className="p-5">
                 <div className="flex flex-wrap gap-3">
-                  <button onClick={() => updateConversation({ status: "paused", pausedReason: "staff_pause" })} className="prime-auth-pill-outline prime-auth-pill-sm">
+                  <button onClick={() => updateConversation({ status: "paused", pausedReason: "staff_pause" })} className={primeButtonClasses("secondary", "sm")}>
                     {copy.pause}
                   </button>
-                  <button onClick={() => updateConversation({ status: "active" })} className="prime-auth-pill-outline prime-auth-pill-sm">
+                  <button onClick={() => updateConversation({ status: "active" })} className={primeButtonClasses("secondary", "sm")}>
                     {copy.reopen}
                   </button>
-                  <button onClick={() => updateConversation({ status: "closed", closureReason: "staff_closed" })} className="prime-auth-pill-outline prime-auth-pill-sm">
+                  <button onClick={() => updateConversation({ status: "closed", closureReason: "staff_closed" })} className={primeButtonClasses("secondary", "sm")}>
                     {copy.close}
                   </button>
-                  <button onClick={() => updateConversation({ status: "archived" })} className="prime-auth-pill-outline prime-auth-pill-sm">
+                  <button onClick={() => updateConversation({ status: "archived" })} className={primeButtonClasses("secondary", "sm")}>
                     {copy.archive}
                   </button>
-                  <button onClick={() => runAiAction("assist")} className="prime-auth-pill-outline prime-auth-pill-sm">
+                  <button onClick={() => runAiAction("assist")} className={primeButtonClasses("secondary", "sm")}>
                     {copy.activateAi}
                   </button>
-                  <button onClick={() => runAiAction("set_awaiting_staff")} className="prime-auth-pill-outline prime-auth-pill-sm">
+                  <button onClick={() => runAiAction("set_awaiting_staff")} className={primeButtonClasses("secondary", "sm")}>
                     {copy.awaitStaff}
                   </button>
-                  <button onClick={() => runAiAction("set_staff_active")} className="prime-auth-pill-outline prime-auth-pill-sm">
+                  <button onClick={() => runAiAction("set_staff_active")} className={primeButtonClasses("secondary", "sm")}>
                     {copy.resumeStaff}
                   </button>
                 </div>
                 <div className="mt-4 flex flex-col gap-3 sm:flex-row">
-                  <input
+                  <PrimeInput
                     value={reassignUserId}
                     onChange={(event) => setReassignUserId(event.target.value)}
                     placeholder="Prime Global staff user id"
-                    className="flex-1 rounded-2xl border border-gold/15 bg-bg-secondary px-4 py-3 text-sm text-text-primary"
+                    className="flex-1"
                   />
-                  <button onClick={() => updateConversation({ assignedStaffUserId: reassignUserId || undefined, escalatedToAdmin: true })} className="prime-auth-pill">
+                  <button onClick={() => updateConversation({ assignedStaffUserId: reassignUserId || undefined, escalatedToAdmin: true })} className={primeButtonClasses("primary")}>
                     {copy.reassign}
                   </button>
                 </div>
-              </article>
+              </PrimeCard>
             ) : null}
           </div>
         </section>
-      </section>
+      </PrimeCard>
     </main>
   );
 }

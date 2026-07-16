@@ -1,6 +1,10 @@
 "use client";
 
 import { FormEvent, useEffect, useState } from "react";
+import { PrimeButton } from "@/components/ui/prime/PrimeButton";
+import { PrimeCard } from "@/components/ui/prime/PrimeCard";
+import { PrimeInput, PrimeLabel } from "@/components/ui/prime/PrimeInput";
+import { PrimePageTitle } from "@/components/ui/prime/PrimePageTitle";
 
 export default function CompanyVerificationPage() {
   const [token, setToken] = useState("");
@@ -36,8 +40,8 @@ export default function CompanyVerificationPage() {
 
   return (
     <main className="mx-auto w-full max-w-[980px] px-4 pb-20 pt-[124px] sm:px-6 md:px-8">
-      <section className="rounded-3xl border border-gold/20 bg-bg-secondary/80 p-7 backdrop-blur-xl md:p-10">
-        <h1 className="font-heading text-4xl text-text-primary">Company Verification</h1>
+      <PrimeCard as="section" className="p-7 md:p-10">
+        <PrimePageTitle>Company Verification</PrimePageTitle>
         <p className="mt-3 text-sm text-text-secondary">Pending, approved, rejected, and suspended verification flow.</p>
 
         <form className="mt-8 grid gap-4 md:grid-cols-2" onSubmit={submit}>
@@ -52,24 +56,24 @@ export default function CompanyVerificationPage() {
             ["phoneNumber", "Phone Number"],
             ["responsiblePerson", "Responsible Person"],
           ].map(([name, label]) => (
-            <label key={name} className="block text-sm text-text-secondary">
+            <PrimeLabel key={name}>
               <span className="mb-2 block">{label}</span>
-              <input name={name} className="w-full rounded-xl border border-gold/20 bg-bg-primary px-4 py-3 text-text-primary" />
-            </label>
+              <PrimeInput name={name} />
+            </PrimeLabel>
           ))}
-          <input name="documents" type="file" multiple className="md:col-span-2 rounded-xl border border-gold/20 bg-bg-primary px-4 py-3 text-text-primary" />
-          <button type="submit" className="prime-auth-pill md:col-span-2">Submit Verification</button>
+          <PrimeInput name="documents" type="file" multiple className="md:col-span-2 file:mr-3 file:rounded-full file:border-0 file:bg-[#2E8FFF] file:px-3 file:py-1 file:text-white" />
+          <PrimeButton type="submit" className="md:col-span-2">Submit Verification</PrimeButton>
         </form>
 
         <div className="mt-8 space-y-3">
           {status.map((item) => (
-            <article key={String(item.id)} className="prime-auth-card rounded-2xl border border-gold/15 bg-bg-primary/70 p-4">
+            <PrimeCard key={String(item.id)} className="p-4">
               <p className="font-medium text-text-primary">{String(item.company_name ?? item.companyName ?? "Verification Request")}</p>
               <p className="mt-1 text-sm text-text-secondary">Status: {String(item.status ?? "pending")}</p>
-            </article>
+            </PrimeCard>
           ))}
         </div>
-      </section>
+      </PrimeCard>
     </main>
   );
 }

@@ -1,6 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { primeButtonClasses } from "@/components/ui/prime/PrimeButton";
+import { PrimeCard } from "@/components/ui/prime/PrimeCard";
+import { PrimePageTitle } from "@/components/ui/prime/PrimePageTitle";
 
 type StaffOverview = {
   requests: Array<Record<string, unknown>>;
@@ -138,75 +141,75 @@ export function StaffRecruitmentCenter({ locale }: { locale: string }) {
 
   return (
     <main className="mx-auto w-full max-w-[1260px] px-4 pb-20 pt-[124px] sm:px-6 md:px-8">
-      <section className="rounded-3xl border border-gold/20 bg-bg-secondary/80 p-7 backdrop-blur-xl md:p-10">
-        <h1 className="font-heading text-4xl text-text-primary">{copy.title}</h1>
+      <PrimeCard as="section" className="p-7 md:p-10">
+        <PrimePageTitle>{copy.title}</PrimePageTitle>
         <p className="mt-3 text-sm text-text-secondary">{copy.subtitle}</p>
-        <div className="mt-6 rounded-2xl border border-gold/25 bg-bg-primary/60 p-5 text-sm leading-7 text-text-secondary">
+        <div className="prime-auth-card mt-6 p-5 text-sm leading-7 text-text-secondary">
           {copy.notice}
         </div>
         {error ? <p className="mt-5 text-sm text-red-300">{error}</p> : null}
 
         <section className="mt-8 grid gap-6 xl:grid-cols-2">
-          <article className="rounded-2xl border border-gold/15 bg-bg-primary/70 p-5">
+          <PrimeCard className="p-5">
             <h2 className="font-heading text-2xl text-text-primary">{copy.requests}</h2>
             <div className="mt-4 space-y-3">
               {(data?.requests ?? []).map((request) => (
-                <article key={String(request.id)} className="rounded-2xl border border-gold/10 bg-bg-secondary/60 p-4">
+                <PrimeCard key={String(request.id)} className="p-4">
                   <p className="text-sm font-medium text-text-primary">{String((request.candidateProfile as Record<string, unknown> | undefined)?.candidate_reference ?? "PG Candidate")}</p>
                   <p className="mt-2 text-sm text-text-secondary">{String(request.status ?? "pending")}</p>
                   <div className="mt-3 flex flex-wrap gap-2">
-                    <button onClick={() => reviewRequest(String(request.id), "assign")} className="rounded-full border border-gold/30 px-3 py-1 text-xs font-semibold text-gold">{copy.assign}</button>
-                    <button onClick={() => reviewRequest(String(request.id), "approve")} className="rounded-full border border-gold/30 px-3 py-1 text-xs font-semibold text-gold">{copy.approve}</button>
+                    <button onClick={() => reviewRequest(String(request.id), "assign")} className={primeButtonClasses("secondary", "sm")}>{copy.assign}</button>
+                    <button onClick={() => reviewRequest(String(request.id), "approve")} className={primeButtonClasses("secondary", "sm")}>{copy.approve}</button>
                     <button onClick={() => reviewRequest(String(request.id), "reject")} className="rounded-full border border-red-400/30 px-3 py-1 text-xs font-semibold text-red-200">{copy.reject}</button>
                   </div>
-                </article>
+                </PrimeCard>
               ))}
             </div>
-          </article>
+          </PrimeCard>
 
-          <article className="rounded-2xl border border-gold/15 bg-bg-primary/70 p-5">
+          <PrimeCard className="p-5">
             <h2 className="font-heading text-2xl text-text-primary">{copy.moderation}</h2>
             <div className="mt-4 space-y-3">
               {(data?.moderationQueue ?? []).map((item) => (
-                <article key={String(item.id)} className="rounded-2xl border border-gold/10 bg-bg-secondary/60 p-4">
+                <PrimeCard key={String(item.id)} className="p-4">
                   <p className="text-sm text-text-primary">{String(item.body ?? "")}</p>
                   <div className="mt-3 flex flex-wrap gap-2">
-                    <button onClick={() => moderate(String(item.id), "approve")} className="rounded-full border border-gold/30 px-3 py-1 text-xs font-semibold text-gold">{copy.approveMessage}</button>
+                    <button onClick={() => moderate(String(item.id), "approve")} className={primeButtonClasses("secondary", "sm")}>{copy.approveMessage}</button>
                     <button onClick={() => moderate(String(item.id), "reject")} className="rounded-full border border-red-400/30 px-3 py-1 text-xs font-semibold text-red-200">{copy.rejectMessage}</button>
                   </div>
-                </article>
+                </PrimeCard>
               ))}
             </div>
-          </article>
+          </PrimeCard>
         </section>
 
         <section className="mt-8 grid gap-6 xl:grid-cols-2">
-          <article className="rounded-2xl border border-gold/15 bg-bg-primary/70 p-5">
+          <PrimeCard className="p-5">
             <h2 className="font-heading text-2xl text-text-primary">{copy.conversations}</h2>
             <div className="mt-4 space-y-3">
               {(data?.conversations ?? []).map((conversation) => (
-                <article key={String(conversation.id)} className="rounded-2xl border border-gold/10 bg-bg-secondary/60 p-4">
+                <PrimeCard key={String(conversation.id)} className="p-4">
                   <p className="text-sm font-medium text-text-primary">{String((conversation.employer as Record<string, unknown> | undefined)?.company_name ?? "Employer")}</p>
                   <p className="mt-2 text-sm text-text-secondary">{String((conversation.candidateProfile as Record<string, unknown> | undefined)?.candidate_reference ?? "PG Candidate")}</p>
-                  <a href={`/${locale}/admin/recruitment/${String(conversation.id)}`} className="mt-4 inline-flex rounded-full border border-gold/30 px-4 py-2 text-sm font-semibold text-gold transition hover:bg-gold/10">{copy.open}</a>
-                </article>
+                  <a href={`/${locale}/admin/recruitment/${String(conversation.id)}`} className={`${primeButtonClasses("secondary")} mt-4`}>{copy.open}</a>
+                </PrimeCard>
               ))}
             </div>
-          </article>
+          </PrimeCard>
 
-          <article className="rounded-2xl border border-gold/15 bg-bg-primary/70 p-5">
+          <PrimeCard className="p-5">
             <h2 className="font-heading text-2xl text-text-primary">{copy.audit}</h2>
             <div className="mt-4 space-y-3 text-sm text-text-secondary">
               {(data?.auditHistory ?? []).map((item) => (
-                <article key={String(item.id)} className="rounded-2xl border border-gold/10 bg-bg-secondary/60 p-4">
+                <PrimeCard key={String(item.id)} className="p-4">
                   <p className="text-text-primary">{String(item.action ?? "audit")}</p>
                   <p className="mt-2 text-xs text-text-tertiary">{String(item.created_at ?? "")}</p>
-                </article>
+                </PrimeCard>
               ))}
             </div>
-          </article>
+          </PrimeCard>
         </section>
-      </section>
+      </PrimeCard>
     </main>
   );
 }

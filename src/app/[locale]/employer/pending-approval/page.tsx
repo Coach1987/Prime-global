@@ -1,4 +1,7 @@
 import { Link } from "@/i18n/routing";
+import { PrimeCard } from "@/components/ui/prime/PrimeCard";
+import { primeButtonClasses } from "@/components/ui/prime/PrimeButton";
+import { PrimePageTitle } from "@/components/ui/prime/PrimePageTitle";
 
 export default async function EmployerPendingApprovalPage({
   params,
@@ -10,8 +13,8 @@ export default async function EmployerPendingApprovalPage({
 
   return (
     <main className="mx-auto w-full max-w-[760px] px-4 pb-20 pt-[124px] sm:px-6 md:px-8">
-      <section className="rounded-3xl border border-gold/20 bg-bg-secondary/80 p-8 backdrop-blur-xl md:p-10">
-        <h1 className="font-heading text-4xl text-text-primary">{isArabic ? "الحساب قيد المراجعة" : "Account Pending Review"}</h1>
+      <PrimeCard as="section" className="p-8 md:p-10">
+        <PrimePageTitle>{isArabic ? "الحساب قيد المراجعة" : "Account Pending Review"}</PrimePageTitle>
         <p className="mt-3 text-sm leading-7 text-text-secondary">
           {isArabic
             ? "تم إنشاء حساب صاحب العمل، لكنه سيبقى في حالة pending_review حتى يعتمد فريق برايم غلوبال الشركة. لن يتم فتح بيانات المرشحين أو نشر الوظائف قبل التحقق."
@@ -19,14 +22,14 @@ export default async function EmployerPendingApprovalPage({
         </p>
 
         <div className="mt-6 flex flex-wrap gap-3">
-          <Link href="/employers/login" className="prime-auth-pill-outline">
+          <Link href="/employers/login" className={primeButtonClasses("secondary")}>
             {isArabic ? "العودة إلى تسجيل الدخول" : "Back to Sign In"}
           </Link>
-          <Link href="/contact" className="prime-auth-pill-outline">
+          <Link href="/contact" className={primeButtonClasses("secondary")}>
             {isArabic ? "التواصل مع برايم غلوبال" : "Contact Prime Global"}
           </Link>
         </div>
-      </section>
+      </PrimeCard>
     </main>
   );
 }

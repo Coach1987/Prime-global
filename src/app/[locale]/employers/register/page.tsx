@@ -3,6 +3,10 @@
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { Link, useRouter } from "@/i18n/routing";
 import { useLocale } from "next-intl";
+import { PrimeCard } from "@/components/ui/prime/PrimeCard";
+import { PrimeButton } from "@/components/ui/prime/PrimeButton";
+import { PrimeCheckbox, PrimeInput, PrimeLabel, PrimeSelect, PrimeTextarea } from "@/components/ui/prime/PrimeInput";
+import { PrimePageTitle } from "@/components/ui/prime/PrimePageTitle";
 
 const companySizes = ["1-10", "11-50", "51-200", "201-500", "501-1000", "1000+"];
 
@@ -90,8 +94,8 @@ export default function EmployerRegisterPage() {
 
   return (
     <main className="mx-auto w-full max-w-[920px] px-4 pb-20 pt-[124px] sm:px-6 md:px-8">
-      <section className="rounded-3xl border border-gold/20 bg-bg-secondary/80 p-8 backdrop-blur-xl md:p-10">
-        <h1 className="font-heading text-4xl text-text-primary">{isArabic ? "إنشاء حساب صاحب عمل" : "Employer Create Account"}</h1>
+      <PrimeCard as="section" className="p-8 md:p-10">
+        <PrimePageTitle>{isArabic ? "إنشاء حساب صاحب عمل" : "Employer Create Account"}</PrimePageTitle>
         <p className="mt-3 text-sm text-text-secondary">{isArabic ? "أنشئ حساب شركتك. تبقى الشركة في حالة pending_review حتى يعتمدها فريق برايم جلوبال قبل نشر الوظائف أو الوصول إلى بيانات المرشحين." : "Create your company account. The company stays in pending_review until Prime Global approves it before publishing jobs or accessing candidate data."}</p>
 
         <form className="mt-8 grid gap-5 md:grid-cols-2" onSubmit={onSubmit}>
@@ -110,65 +114,60 @@ export default function EmployerRegisterPage() {
             ["phoneNumber", isArabic ? "رقم الهاتف" : "Phone Number", "text"],
             ["industry", isArabic ? "القطاع" : "Industry", "text"],
           ].map(([key, label, type]) => (
-            <label key={key} className="block text-sm text-text-secondary">
+            <PrimeLabel key={key}>
               <span className="mb-2 block">{label}</span>
-              <input
+              <PrimeInput
                 required={key !== "website"}
                 type={type}
                 value={form[key as keyof typeof form]}
                 onChange={(event) =>
                   setForm((prev) => ({ ...prev, [key]: event.target.value }))
                 }
-                className="w-full rounded-xl border border-gold/20 bg-bg-primary px-4 py-3 text-text-primary"
               />
-            </label>
+            </PrimeLabel>
           ))}
 
-          <label className="block text-sm text-text-secondary">
+          <PrimeLabel>
             <span className="mb-2 block">{isArabic ? "تأكيد كلمة المرور" : "Confirm Password"}</span>
-            <input
+            <PrimeInput
               type="password"
               required
               value={confirmPassword}
               onChange={(event) => setConfirmPassword(event.target.value)}
-              className="w-full rounded-xl border border-gold/20 bg-bg-primary px-4 py-3 text-text-primary"
             />
-          </label>
+          </PrimeLabel>
 
-          <label className="block text-sm text-text-secondary">
+          <PrimeLabel>
             <span className="mb-2 block">{isArabic ? "حجم الشركة" : "Company Size"}</span>
-            <select
+            <PrimeSelect
               value={form.companySize}
               onChange={(event) => setForm((prev) => ({ ...prev, companySize: event.target.value }))}
-              className="w-full rounded-xl border border-gold/20 bg-bg-primary px-4 py-3 text-text-primary"
             >
               {companySizes.map((size) => (
                 <option key={size} value={size}>
                   {size}
                 </option>
               ))}
-            </select>
-          </label>
+            </PrimeSelect>
+          </PrimeLabel>
 
-          <label className="block text-sm text-text-secondary md:col-span-2">
+          <PrimeLabel className="md:col-span-2">
             <span className="mb-2 block">{isArabic ? "وصف الشركة" : "Company Description"}</span>
-            <textarea
+            <PrimeTextarea
               required
               rows={5}
               value={form.companyDescription}
               onChange={(event) =>
                 setForm((prev) => ({ ...prev, companyDescription: event.target.value }))
               }
-              className="w-full rounded-xl border border-gold/20 bg-bg-primary px-4 py-3 text-text-primary"
             />
-          </label>
+          </PrimeLabel>
 
-          <label className="md:col-span-2 flex min-h-12 items-start gap-3 rounded-2xl border border-gold/15 bg-bg-primary/40 px-4 py-3 text-sm text-text-secondary">
-            <input
+          <label className="md:col-span-2 flex min-h-12 items-start gap-3 rounded-2xl border border-blue-200/20 bg-[#071428]/75 px-4 py-3 text-sm text-text-secondary">
+            <PrimeCheckbox
               type="checkbox"
               checked={acceptTerms}
               onChange={(event) => setAcceptTerms(event.target.checked)}
-              className="mt-1 h-4 w-4 rounded border-gold/30"
             />
             <span>{isArabic ? "أوافق على الشروط وسياسة الخصوصية ومتطلبات التحقق من الشركة." : "I accept the Terms, Privacy Policy, and company verification requirements."}</span>
           </label>
@@ -176,23 +175,22 @@ export default function EmployerRegisterPage() {
           {error ? <p className="text-sm text-red-300 md:col-span-2">{error}</p> : null}
 
           <div className="md:col-span-2">
-            <button
+            <PrimeButton
               type="submit"
               disabled={disabled}
-              className="prime-auth-pill"
             >
               {loading ? (isArabic ? "جارٍ الإرسال..." : "Submitting...") : isArabic ? "إنشاء الحساب" : "Create Employer Account"}
-            </button>
+            </PrimeButton>
           </div>
 
           <p className="md:col-span-2 text-sm text-text-secondary">
             {isArabic ? "لديك حساب بالفعل؟" : "Already have an account?"}{" "}
-            <Link href="/employers/login" className="font-semibold text-gold hover:text-gold-bright">
+            <Link href="/employers/login" className="font-semibold text-blue-200 hover:text-blue-100">
               {isArabic ? "تسجيل الدخول" : "Sign In"}
             </Link>
           </p>
         </form>
-      </section>
+      </PrimeCard>
     </main>
   );
 }

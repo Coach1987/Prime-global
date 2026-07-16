@@ -2,6 +2,10 @@
 
 import { FormEvent, useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
+import { PrimeCard } from "@/components/ui/prime/PrimeCard";
+import { primeButtonClasses } from "@/components/ui/prime/PrimeButton";
+import { PrimeInput } from "@/components/ui/prime/PrimeInput";
+import { PrimePageTitle } from "@/components/ui/prime/PrimePageTitle";
 
 export default function StaffLoginPage() {
   const params = useParams<{ locale: string }>();
@@ -51,30 +55,28 @@ export default function StaffLoginPage() {
 
   return (
     <main className="mx-auto w-full max-w-[720px] px-4 pb-20 pt-[124px] sm:px-6 md:px-8">
-      <section className="rounded-3xl border border-gold/20 bg-bg-secondary/80 p-8 backdrop-blur-xl">
-        <h1 className="font-heading text-4xl text-text-primary">Prime Global Staff Login</h1>
+      <PrimeCard as="section" className="p-8">
+        <PrimePageTitle>Prime Global Staff Login</PrimePageTitle>
         <p className="mt-3 text-sm text-text-secondary">Access Control Center for supervised chat and interview governance.</p>
 
         <form className="mt-8 space-y-5" onSubmit={onSubmit}>
           <div>
             <label className="mb-2 block text-sm text-text-secondary">Staff Email</label>
-            <input
+            <PrimeInput
               type="email"
               required
               value={email}
               onChange={(event) => setEmail(event.target.value)}
-              className="w-full rounded-xl border border-gold/20 bg-bg-primary px-4 py-3 text-text-primary"
             />
           </div>
 
           <div>
             <label className="mb-2 block text-sm text-text-secondary">Password</label>
-            <input
+            <PrimeInput
               type="password"
               required
               value={password}
               onChange={(event) => setPassword(event.target.value)}
-              className="w-full rounded-xl border border-gold/20 bg-bg-primary px-4 py-3 text-text-primary"
             />
           </div>
 
@@ -83,12 +85,12 @@ export default function StaffLoginPage() {
           <button
             type="submit"
             disabled={loading}
-            className="prime-auth-pill"
+            className={primeButtonClasses("primary")}
           >
             {loading ? "Signing In..." : "Sign In"}
           </button>
         </form>
-      </section>
+      </PrimeCard>
     </main>
   );
 }

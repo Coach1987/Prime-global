@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import { Link, useRouter } from "@/i18n/routing";
 import { useTranslations } from "next-intl";
 import { AuthRole, getAccountHref, getDashboardHref, normalizeAuthRole } from "@/lib/auth/routing";
+import { primeButtonClasses } from "@/components/ui/prime/PrimeButton";
+import { AuthSegmentedControl } from "./AuthSegmentedControl";
 
 type AuthState = {
   role: AuthRole;
@@ -58,20 +60,11 @@ export function AuthActions({ mobile = false, onNavigate }: AuthActionsProps) {
   }
 
   const actionClassName = mobile
-    ? "inline-flex min-h-12 w-full items-center justify-center rounded-xl border border-gold/25 bg-white/[0.03] px-4 py-3 text-sm font-semibold text-text-primary transition hover:bg-white/[0.08]"
-    : "inline-flex min-h-11 items-center justify-center rounded-xl border border-gold/20 px-4 py-2.5 text-sm font-semibold text-text-primary transition hover:border-gold/35 hover:bg-white/[0.04]";
+    ? primeButtonClasses("secondary") + " w-full"
+    : primeButtonClasses("secondary") + " min-h-11 px-4 py-2.5";
 
   if (!authState) {
-    return (
-      <div className={mobile ? "mt-10 flex w-full flex-col gap-3" : "hidden items-center gap-3 md:flex"}>
-        <Link href="/auth" onClick={onNavigate} className={actionClassName}>
-          {t("signIn")}
-        </Link>
-        <Link href="/auth?mode=register" onClick={onNavigate} className={mobile ? `${actionClassName} border-transparent bg-gold text-bg-primary hover:bg-gold-bright` : "inline-flex min-h-11 items-center justify-center rounded-xl bg-gold px-4 py-2.5 text-sm font-semibold text-bg-primary transition hover:bg-gold-bright"}>
-          {t("createAccount")}
-        </Link>
-      </div>
-    );
+    return <AuthSegmentedControl mobile={mobile} onNavigate={onNavigate} />;
   }
 
   return (

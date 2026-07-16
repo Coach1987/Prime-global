@@ -1,6 +1,9 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { primeButtonClasses } from "@/components/ui/prime/PrimeButton";
+import { PrimeCard } from "@/components/ui/prime/PrimeCard";
+import { PrimePageTitle } from "@/components/ui/prime/PrimePageTitle";
 
 type ConversationRow = Record<string, unknown>;
 
@@ -112,39 +115,39 @@ export function ConversationCenter({
 
   return (
     <main className="mx-auto w-full max-w-[1180px] px-4 pb-20 pt-[124px] sm:px-6 md:px-8">
-      <section className="rounded-3xl border border-gold/20 bg-bg-secondary/80 p-7 backdrop-blur-xl md:p-10">
-        <h1 className="font-heading text-4xl text-text-primary">{copy.title}</h1>
+      <PrimeCard as="section" className="p-7 md:p-10">
+        <PrimePageTitle>{copy.title}</PrimePageTitle>
         <p className="mt-3 text-sm text-text-secondary">{copy.subtitle}</p>
-        <div className="prime-auth-card mt-6 rounded-2xl border border-gold/25 bg-bg-primary/60 p-5 text-sm leading-7 text-text-secondary">
+        <div className="prime-auth-card mt-6 p-5 text-sm leading-7 text-text-secondary">
           {copy.notice}
         </div>
 
         {error ? <p className="mt-6 text-sm text-red-300">{error}</p> : null}
 
         <section className="mt-8 grid gap-6 lg:grid-cols-2">
-          <article className="prime-auth-card rounded-2xl border border-gold/15 bg-bg-primary/70 p-5">
+          <PrimeCard className="p-5">
             <h2 className="font-heading text-2xl text-text-primary">{copy.requests}</h2>
             <div className="mt-4 space-y-3">
               {requests.length === 0 ? <p className="text-sm text-text-tertiary">{copy.emptyRequests}</p> : null}
               {requests.map((request) => (
-                <article key={String(request.id)} className="prime-auth-card rounded-2xl border border-gold/10 bg-bg-secondary/60 p-4">
+                <PrimeCard key={String(request.id)} className="p-4">
                   <p className="text-xs uppercase tracking-[0.18em] text-text-tertiary">{copy.status}</p>
                   <p className="mt-1 text-sm font-medium text-text-primary">{String(request.status ?? "-")}</p>
                   <p className="mt-3 text-sm text-text-secondary">
                     {copy.candidate}: {String((request.candidateProfile as Record<string, unknown> | undefined)?.candidate_reference ?? "PG Candidate")}
                   </p>
                   <p className="mt-1 text-sm text-text-secondary">{copy.assignedStaff}: {String((request.assignedStaff as Record<string, unknown> | undefined)?.label ?? "Prime Global")}</p>
-                </article>
+                </PrimeCard>
               ))}
             </div>
-          </article>
+          </PrimeCard>
 
-          <article className="prime-auth-card rounded-2xl border border-gold/15 bg-bg-primary/70 p-5">
+          <PrimeCard className="p-5">
             <h2 className="font-heading text-2xl text-text-primary">{copy.conversations}</h2>
             <div className="mt-4 space-y-3">
               {conversations.length === 0 ? <p className="text-sm text-text-tertiary">{copy.emptyConversations}</p> : null}
               {conversations.map((conversation) => (
-                <article key={String(conversation.id)} className="prime-auth-card rounded-2xl border border-gold/10 bg-bg-secondary/60 p-4">
+                <PrimeCard key={String(conversation.id)} className="p-4">
                   <p className="text-sm font-medium text-text-primary">
                     {role === "employer"
                       ? String((conversation.candidateProfile as Record<string, unknown> | undefined)?.candidate_reference ?? "PG Candidate")
@@ -174,15 +177,15 @@ export function ConversationCenter({
                       {copy.lastMessage}: {String(conversation.lastMessageAt ?? "-")}
                     </p>
                   </div>
-                  <a href={`${detailBasePath}/${String(conversation.id)}`} className="prime-auth-pill-outline prime-auth-pill-sm mt-4">
+                  <a href={`${detailBasePath}/${String(conversation.id)}`} className={`${primeButtonClasses("secondary", "sm")} mt-4`}>
                     {copy.open}
                   </a>
-                </article>
+                </PrimeCard>
               ))}
             </div>
-          </article>
+          </PrimeCard>
         </section>
-      </section>
+      </PrimeCard>
     </main>
   );
 }

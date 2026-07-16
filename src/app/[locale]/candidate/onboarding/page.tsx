@@ -3,6 +3,10 @@
 import { FormEvent, useEffect, useState } from "react";
 import { Link, useRouter } from "@/i18n/routing";
 import { useLocale } from "next-intl";
+import { PrimeCard } from "@/components/ui/prime/PrimeCard";
+import { primeButtonClasses } from "@/components/ui/prime/PrimeButton";
+import { PrimeCheckbox, PrimeInput, PrimeLabel, PrimeTextarea } from "@/components/ui/prime/PrimeInput";
+import { PrimePageTitle } from "@/components/ui/prime/PrimePageTitle";
 
 type CandidateProfile = {
   full_name?: string | null;
@@ -185,7 +189,7 @@ export default function CandidateOnboardingPage() {
   if (loading) {
     return (
       <main className="mx-auto w-full max-w-[760px] px-4 pb-20 pt-[124px] sm:px-6 md:px-8">
-        <section className="rounded-3xl border border-gold/20 bg-bg-secondary/80 p-8 backdrop-blur-xl text-sm text-text-secondary">
+        <section className="rounded-3xl border border-blue-200/20 bg-[#081223]/82 p-8 backdrop-blur-xl text-sm text-text-secondary">
           {isArabic ? "جارٍ تحميل الإعداد الأولي..." : "Loading onboarding..."}
         </section>
       </main>
@@ -195,10 +199,10 @@ export default function CandidateOnboardingPage() {
   if (!token || !profile) {
     return (
       <main className="mx-auto w-full max-w-[760px] px-4 pb-20 pt-[124px] sm:px-6 md:px-8">
-        <section className="rounded-3xl border border-gold/20 bg-bg-secondary/80 p-8 backdrop-blur-xl">
+        <section className="rounded-3xl border border-blue-200/20 bg-[#081223]/82 p-8 backdrop-blur-xl">
           <h1 className="font-heading text-3xl text-text-primary">{isArabic ? "الدخول مطلوب" : "Sign in required"}</h1>
           <p className="mt-3 text-sm text-text-secondary">{error ?? (isArabic ? "يجب تسجيل الدخول أولاً للوصول إلى إعداد الملف الشخصي." : "You need to sign in before continuing to onboarding.")}</p>
-          <Link href="/candidate/login" className="prime-auth-pill-outline mt-5">
+          <Link href="/candidate/login" className={`${primeButtonClasses("secondary")} mt-5`}>
             {isArabic ? "فتح تسجيل الدخول" : "Open sign in"}
           </Link>
         </section>
@@ -208,8 +212,8 @@ export default function CandidateOnboardingPage() {
 
   return (
     <main className="mx-auto w-full max-w-[820px] px-4 pb-20 pt-[124px] sm:px-6 md:px-8">
-      <section className="rounded-3xl border border-gold/20 bg-bg-secondary/80 p-8 backdrop-blur-xl md:p-10">
-        <h1 className="font-heading text-4xl text-text-primary">{isArabic ? "إعداد الملف المهني" : "Candidate Onboarding"}</h1>
+      <PrimeCard as="section" className="p-8 md:p-10">
+        <PrimePageTitle>{isArabic ? "إعداد الملف المهني" : "Candidate Onboarding"}</PrimePageTitle>
         <p className="mt-3 text-sm leading-7 text-text-secondary">
           {isArabic
             ? "أكمل ملفك المهني بشكل خاص. تظل بياناتك الحساسة خارج متناول أصحاب العمل ما لم تسمح سياسات برايم غلوبال بعرض النسخة المحمية فقط."
@@ -218,62 +222,56 @@ export default function CandidateOnboardingPage() {
 
         <form className="mt-8 space-y-5" onSubmit={onSubmit}>
           <div className="grid gap-5 sm:grid-cols-2">
-            <label className="block text-sm text-text-secondary">
+            <PrimeLabel>
               <span className="mb-2 block">{isArabic ? "المدينة" : "City"}</span>
-              <input
+              <PrimeInput
                 value={form.city}
                 onChange={(event) => setForm((prev) => ({ ...prev, city: event.target.value }))}
-                className="w-full rounded-xl border border-gold/20 bg-bg-primary px-4 py-3 text-text-primary"
               />
-            </label>
+            </PrimeLabel>
 
-            <label className="block text-sm text-text-secondary">
+            <PrimeLabel>
               <span className="mb-2 block">{isArabic ? "المنصب المطلوب" : "Desired position"}</span>
-              <input
+              <PrimeInput
                 required
                 value={form.desiredPosition}
                 onChange={(event) => setForm((prev) => ({ ...prev, desiredPosition: event.target.value }))}
-                className="w-full rounded-xl border border-gold/20 bg-bg-primary px-4 py-3 text-text-primary"
               />
-            </label>
+            </PrimeLabel>
           </div>
 
-          <label className="block text-sm text-text-secondary">
+          <PrimeLabel>
             <span className="mb-2 block">{isArabic ? "مستوى الخبرة" : "Experience level"}</span>
-            <input
+            <PrimeInput
               value={form.experienceLevel}
               onChange={(event) => setForm((prev) => ({ ...prev, experienceLevel: event.target.value }))}
               placeholder={isArabic ? "مثل: 3-5 سنوات" : "Example: 3-5 years"}
-              className="w-full rounded-xl border border-gold/20 bg-bg-primary px-4 py-3 text-text-primary"
             />
-          </label>
+          </PrimeLabel>
 
-          <label className="block text-sm text-text-secondary">
+          <PrimeLabel>
             <span className="mb-2 block">{isArabic ? "ملخص مهني" : "Professional summary"}</span>
-            <textarea
+            <PrimeTextarea
               rows={5}
               value={form.shortBio}
               onChange={(event) => setForm((prev) => ({ ...prev, shortBio: event.target.value }))}
-              className="w-full rounded-xl border border-gold/20 bg-bg-primary px-4 py-3 text-text-primary"
             />
-          </label>
+          </PrimeLabel>
 
-          <label className="block text-sm text-text-secondary">
+          <PrimeLabel>
             <span className="mb-2 block">{isArabic ? "المهارات" : "Skills"}</span>
-            <input
+            <PrimeInput
               value={form.skills}
               onChange={(event) => setForm((prev) => ({ ...prev, skills: event.target.value }))}
               placeholder={isArabic ? "افصل المهارات بفواصل" : "Separate skills with commas"}
-              className="w-full rounded-xl border border-gold/20 bg-bg-primary px-4 py-3 text-text-primary"
             />
-          </label>
+          </PrimeLabel>
 
-          <label className="flex min-h-12 items-start gap-3 rounded-2xl border border-gold/15 bg-bg-primary/40 px-4 py-3 text-sm text-text-secondary">
-            <input
+          <label className="flex min-h-12 items-start gap-3 rounded-2xl border border-blue-200/20 bg-[#071428]/75 px-4 py-3 text-sm text-text-secondary">
+            <PrimeCheckbox
               type="checkbox"
               checked={form.jobAlertsEnabled}
               onChange={(event) => setForm((prev) => ({ ...prev, jobAlertsEnabled: event.target.checked }))}
-              className="mt-1 h-4 w-4 rounded border-gold/30"
             />
             <span>{isArabic ? "فعّل تنبيهات الوظائف لهذا الملف." : "Enable job alerts for this profile."}</span>
           </label>
@@ -283,12 +281,12 @@ export default function CandidateOnboardingPage() {
           <button
             type="submit"
             disabled={saving || !csrfToken}
-            className="prime-auth-pill"
+            className={primeButtonClasses("primary")}
           >
             {saving ? (isArabic ? "جارٍ الحفظ..." : "Saving...") : isArabic ? "حفظ ومتابعة" : "Save and continue"}
           </button>
         </form>
-      </section>
+      </PrimeCard>
     </main>
   );
 }

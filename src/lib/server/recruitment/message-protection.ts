@@ -4,7 +4,7 @@ import {
   createInMemoryFalsePositiveRepository,
   createInMemoryMessageProjectionRepository,
   protectMessageContactInformation,
-} from "@/lib/server/phase10/protection-engine/analysis/contact-protection";
+} from "../phase10/protection-engine/analysis/contact-protection/index.ts";
 
 const projectionRepository = createInMemoryMessageProjectionRepository();
 const crossMessageRepository = createInMemoryCrossMessageRepository();

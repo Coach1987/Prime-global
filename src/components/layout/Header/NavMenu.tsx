@@ -51,7 +51,7 @@ export function NavMenu() {
             {t(item.labelKey)}
             <span
               className={cn(
-                "absolute inset-x-4 -bottom-0.5 h-px origin-center bg-gold transition-transform duration-300 ease-premium-out",
+                "absolute inset-x-4 -bottom-0.5 h-px origin-center bg-blue-300 transition-transform duration-300 ease-premium-out",
                 active ? "scale-x-100" : "scale-x-0 group-hover:scale-x-100"
               )}
             />
