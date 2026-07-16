@@ -1,0 +1,18 @@
+export type {
+  AnalysisProviderSuite,
+  ArchiveInspectionProvider,
+  ArchiveInspectionResult,
+  BarcodeProtectionProvider,
+  DOCXTextExtractionProvider,
+  FileTypeDetectionProvider,
+  FileTypeDetectionResult,
+  ImageAnalysisProvider,
+  ImageAnalysisResult,
+  MetadataProtectionProvider,
+  OCRProtectionProvider,
+  PDFTextExtractionProvider,
+  ProviderExecutionResult,
+  ProviderInvocationInput,
+  QRProtectionProvider,
+  TextExtractionResult,
+} from "./types.ts";

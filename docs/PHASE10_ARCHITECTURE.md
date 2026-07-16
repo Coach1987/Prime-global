@@ -180,6 +180,39 @@ Stage 1 establishes the reusable Prime Global Shield Plus foundation only.
 - No governance UI implementation.
 - No real provider integrations.
 
+## Stage 8 Document and Image Protection Analysis (Foundation Only)
+- Adds the Stage 8 analysis foundation under `src/lib/server/phase10/protection-engine/analysis`.
+- Introduces a candidate-friendly analysis pipeline that quarantines, analyzes, and plans protected-copy transformations while continuing workflow.
+- Adds provider abstraction contracts for OCR, QR, barcode, PDF text extraction, DOCX text extraction, image analysis, metadata protection, archive inspection, and file type detection.
+- Adds deterministic in-memory provider implementations for tests only.
+- Adds a structured protection finding model with explainable confidence and action recommendations.
+- Adds a protection plan model that defines masking/removal instructions without binary rendering.
+- Adds quarantine lifecycle and repository abstraction with in-memory implementation.
+- Adds non-accusatory analysis events and privacy-safe audit/timeline helpers.
+- Maintains original/protected/public three-copy architecture boundaries.
+
+### Stage 8 Feature Flags (Default Disabled)
+- `DOCUMENT_ANALYSIS_ENABLED`
+- `IMAGE_ANALYSIS_ENABLED`
+- `PDF_TEXT_EXTRACTION_ENABLED`
+- `DOCX_TEXT_EXTRACTION_ENABLED`
+- `QR_ANALYSIS_ENABLED`
+- `BARCODE_ANALYSIS_ENABLED`
+- `METADATA_PROTECTION_ENABLED`
+- `DOCUMENT_QUARANTINE_ENABLED`
+- `PROTECTION_PLAN_ENABLED`
+- `DOCUMENT_REVIEW_ENABLED`
+
+### Stage 8 Guardrails
+- No real OCR provider integration.
+- No real QR/barcode library integration.
+- No real PDF/DOCX renderer integration.
+- No binary protected-copy generation.
+- No progressive enforcement or automatic punishment.
+- No external queue or storage provider changes.
+- No production migration changes.
+- No candidate-facing technical detector wording.
+
 ## Phase 10 Import Convention
 - Phase 10 foundation modules use explicit `.ts` import specifiers inside `src/lib/server/phase10/**`.
 - This exists because the foundation is exercised directly by Node-based tests, and the explicit specifiers keep the TS source graph resolvable in that runtime.
