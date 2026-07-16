@@ -209,6 +209,8 @@ export async function runDocumentProtectionAnalysis(
 
     const failedPlan = createFailedSafePlan({
       planId: `plan:${input.request.analysisId}`,
+      organizationScope: input.request.ownership.organizationId,
+      candidateScope: input.request.ownership.candidateId,
       originalObjectReference: input.request.file.originalObjectReference,
       protectedCopyTargetReference: input.request.file.protectedCopyTargetReference,
       publicProfileTargetReference: input.request.file.publicProfileTargetReference,
@@ -219,6 +221,7 @@ export async function runDocumentProtectionAnalysis(
       quarantine,
       findings: [],
       protectionPlan: failedPlan,
+      explainableDecisions: [],
       candidateNotification: null,
       timelineEntry: createCandidateFriendlyTimelineEntry(),
       auditEntries: [
@@ -287,10 +290,13 @@ export async function runDocumentProtectionAnalysis(
         findings: [],
         protectionPlan: createFailedSafePlan({
           planId: `plan:${input.request.analysisId}`,
+          organizationScope: input.request.ownership.organizationId,
+          candidateScope: input.request.ownership.candidateId,
           originalObjectReference: input.request.file.originalObjectReference,
           protectedCopyTargetReference: input.request.file.protectedCopyTargetReference,
           publicProfileTargetReference: input.request.file.publicProfileTargetReference,
         }),
+        explainableDecisions: [],
         candidateNotification: null,
         timelineEntry: createCandidateFriendlyTimelineEntry(),
         auditEntries: [
@@ -336,10 +342,13 @@ export async function runDocumentProtectionAnalysis(
         findings: [],
         protectionPlan: createFailedSafePlan({
           planId: `plan:${input.request.analysisId}`,
+          organizationScope: input.request.ownership.organizationId,
+          candidateScope: input.request.ownership.candidateId,
           originalObjectReference: input.request.file.originalObjectReference,
           protectedCopyTargetReference: input.request.file.protectedCopyTargetReference,
           publicProfileTargetReference: input.request.file.publicProfileTargetReference,
         }),
+        explainableDecisions: [],
         candidateNotification: null,
         timelineEntry: createCandidateFriendlyTimelineEntry(),
         auditEntries: [
@@ -385,10 +394,13 @@ export async function runDocumentProtectionAnalysis(
         findings: [],
         protectionPlan: createFailedSafePlan({
           planId: `plan:${input.request.analysisId}`,
+          organizationScope: input.request.ownership.organizationId,
+          candidateScope: input.request.ownership.candidateId,
           originalObjectReference: input.request.file.originalObjectReference,
           protectedCopyTargetReference: input.request.file.protectedCopyTargetReference,
           publicProfileTargetReference: input.request.file.publicProfileTargetReference,
         }),
+        explainableDecisions: [],
         candidateNotification: null,
         timelineEntry: createCandidateFriendlyTimelineEntry(),
         auditEntries: [
@@ -524,6 +536,8 @@ export async function runDocumentProtectionAnalysis(
   const protectionPlan: ProtectionPlan | null = dependencies.featureFlags.PROTECTION_PLAN_ENABLED
     ? createProtectionPlan({
         planId: `plan:${input.request.analysisId}`,
+      organizationScope: input.request.ownership.organizationId,
+      candidateScope: input.request.ownership.candidateId,
         originalObjectReference: input.request.file.originalObjectReference,
         protectedCopyTargetReference: input.request.file.protectedCopyTargetReference,
         publicProfileTargetReference: input.request.file.publicProfileTargetReference,
@@ -550,6 +564,7 @@ export async function runDocumentProtectionAnalysis(
     quarantine,
     findings,
     protectionPlan,
+    explainableDecisions: [],
     candidateNotification,
     timelineEntry: createCandidateFriendlyTimelineEntry(),
     auditEntries: [

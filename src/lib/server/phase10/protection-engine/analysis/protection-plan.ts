@@ -1,4 +1,5 @@
 import type { ProtectionFinding, ProtectionPlan, ProtectionPlanStatus, ProtectionReviewStatus } from "./types.ts";
+import { createDisclosureManifest } from "./disclosure-manifest.ts";
 
 export function mapFindingsToPlanStatus(findings: ProtectionFinding[]): {
   protectionStatus: ProtectionPlanStatus;
@@ -18,12 +19,15 @@ export function mapFindingsToPlanStatus(findings: ProtectionFinding[]): {
 
 export function createProtectionPlan(input: {
   planId: string;
+  organizationScope?: string;
+  candidateScope?: string;
   originalObjectReference: string;
   protectedCopyTargetReference: string;
   publicProfileTargetReference: string;
   findings: ProtectionFinding[];
 }): ProtectionPlan {
   const mapping = mapFindingsToPlanStatus(input.findings);
+  const currentDisclosureManifest = createDisclosureManifest("strict_private");
 
   const maskingOperations = input.findings
     .filter((finding) => ["text_redact", "mask_qr", "mask_barcode", "image_region_redact"].includes(finding.suggestedProtectionAction))
@@ -50,7 +54,10 @@ export function createProtectionPlan(input: {
 
   return {
     planId: input.planId,
+    organizationScope: input.organizationScope ?? "unknown",
+    candidateScope: input.candidateScope ?? "unknown",
     originalObjectReference: input.originalObjectReference,
+    originalImmutableReference: input.originalObjectReference,
     protectedCopyTargetReference: input.protectedCopyTargetReference,
     publicProfileTargetReference: input.publicProfileTargetReference,
     findingsIncluded: input.findings.map((finding) => finding.findingId),
@@ -65,20 +72,80 @@ export function createProtectionPlan(input: {
     imageRegionRedaction: input.findings.some((finding) => finding.suggestedProtectionAction === "image_region_redact"),
     protectionStatus: mapping.protectionStatus,
     reviewStatus: mapping.reviewStatus,
+    currentDisclosureManifest,
+    allowedFutureDisclosureTransitions: [
+      {
+        fieldCategory: "professional_name",
+        from: "protected_placeholder",
+        to: "revealed",
+        allowed: true,
+        policyRequired: true,
+        staffApprovalRequired: true,
+        reasonCode: "PG-CONTRACT-REVEAL-001",
+      },
+      {
+        fieldCategory: "portfolio",
+        from: "protected_placeholder",
+        to: "revealed",
+        allowed: true,
+        policyRequired: true,
+        staffApprovalRequired: true,
+        reasonCode: "PG-CONTRACT-REVEAL-001",
+      },
+    ],
+    deniedTransitions: [
+      {
+        fieldCategory: "original_cv",
+        from: "staff_only",
+        to: "revealed",
+        allowed: false,
+        policyRequired: true,
+        staffApprovalRequired: true,
+        reasonCode: "PG-CV-PRIVATE-001",
+      },
+      {
+        fieldCategory: "private_documents",
+        from: "staff_only",
+        to: "revealed",
+        allowed: false,
+        policyRequired: true,
+        staffApprovalRequired: true,
+        reasonCode: "PG-ID-DOCUMENT-001",
+      },
+    ],
+    transitionPrerequisites: ["policy_approval", "workflow_stage_match", "consent_version_match"],
+    policyVersion: "phase10.stage8_5.v1",
+    workflowStageRequirement: "intake",
+    consentRequirement: "v1",
+    staffApprovalRequirement: true,
+    paymentRequirement: "not_required",
+    contractStateRequirement: "not_required",
+    activeFreezeRestriction: true,
+    criticalViolationRestriction: true,
+    transitionHistory: [],
+    rollbackTarget: null,
+    irreversibleFields: ["original_cv", "private_documents", "passport_number", "national_id"],
+    expiryTimestamp: null,
+    revocationTimestamp: null,
     generatedTimestamp: new Date().toISOString(),
-    protectionVersion: "stage8.plan.v1",
+    protectionVersion: "stage8_5.plan.v1",
   };
 }
 
 export function createFailedSafePlan(input: {
   planId: string;
+  organizationScope?: string;
+  candidateScope?: string;
   originalObjectReference: string;
   protectedCopyTargetReference: string;
   publicProfileTargetReference: string;
 }): ProtectionPlan {
   return {
     planId: input.planId,
+    organizationScope: input.organizationScope ?? "unknown",
+    candidateScope: input.candidateScope ?? "unknown",
     originalObjectReference: input.originalObjectReference,
+    originalImmutableReference: input.originalObjectReference,
     protectedCopyTargetReference: input.protectedCopyTargetReference,
     publicProfileTargetReference: input.publicProfileTargetReference,
     findingsIncluded: [],
@@ -93,7 +160,24 @@ export function createFailedSafePlan(input: {
     imageRegionRedaction: false,
     protectionStatus: "failed_safe",
     reviewStatus: "required",
+    currentDisclosureManifest: createDisclosureManifest("strict_private"),
+    allowedFutureDisclosureTransitions: [],
+    deniedTransitions: [],
+    transitionPrerequisites: ["policy_approval"],
+    policyVersion: "phase10.stage8_5.v1",
+    workflowStageRequirement: "any",
+    consentRequirement: null,
+    staffApprovalRequirement: true,
+    paymentRequirement: "not_required",
+    contractStateRequirement: "not_required",
+    activeFreezeRestriction: true,
+    criticalViolationRestriction: true,
+    transitionHistory: [],
+    rollbackTarget: null,
+    irreversibleFields: ["original_cv", "private_documents", "passport_number", "national_id"],
+    expiryTimestamp: null,
+    revocationTimestamp: null,
     generatedTimestamp: new Date().toISOString(),
-    protectionVersion: "stage8.plan.v1",
+    protectionVersion: "stage8_5.plan.v1",
   };
 }

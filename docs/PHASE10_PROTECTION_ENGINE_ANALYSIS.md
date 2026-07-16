@@ -224,6 +224,36 @@ Stage 8 deliberately avoids external provider SDKs and paid services.
 - Archive extraction is architecture-only.
 - Stage 8 does not apply legal classification.
 
+## Stage 8.5 Adaptive and Reversible Extension
+
+### Adaptive Context
+Stage 8.5 adds a typed adaptive context that evaluates protection using workflow stage, actor role, policy version, consent version, verification status, payment/contract status, freeze/critical state, and organization/tenant scope.
+
+### Explainable Decisions
+Stage 8.5 adds explainable decision records containing policy/rule IDs, evaluated conditions, passed/failed conditions, blocking reasons, next actions, and candidate/employer/internal explanations.
+
+### Field-Level Disclosure Manifest
+Field categories now use policy-managed states (`hidden`, `masked`, `summarized`, `protected_placeholder`, `revealed`, `staff_only`).
+
+### Reversible Disclosure
+A field-level state machine supports:
+- `hidden -> masked -> summarized -> protected_placeholder -> revealed`
+- `revealed -> masked`
+- `masked -> hidden`
+
+Reveal transitions require policy approval and can fail with structured explainable errors.
+
+### Immutable Restrictions
+The following fields remain employer-hidden regardless of reveal requests:
+- `original_cv`
+- `private_documents`
+- `passport_number`
+- `national_id`
+- `precise_address`
+
+### Command and Query Foundations
+Added typed command/query foundations for adaptive level evaluation and reveal lifecycle controls, with integration hooks for workflow, policy, business rule, orchestrator, evidence, audit, timeline, and domain events.
+
 ## Contributor Rules
 - Keep candidate-facing language friendly and non-technical.
 - Never add automatic punishment for single findings.

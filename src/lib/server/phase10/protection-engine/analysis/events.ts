@@ -8,7 +8,15 @@ export type AnalysisEventType =
   | "ProtectedCopyReady"
   | "DocumentReviewRequired"
   | "DocumentAnalysisFailedSafe"
-  | "DocumentQuarantineExpired";
+  | "DocumentQuarantineExpired"
+  | "ProtectionLevelEvaluated"
+  | "DisclosureManifestCreated"
+  | "FieldRevealRequested"
+  | "FieldRevealApproved"
+  | "FieldRevealDenied"
+  | "FieldRevealRevoked"
+  | "DisclosureStateChanged"
+  | "ProtectionPolicyReevaluated";
 
 export interface AnalysisEvent {
   eventType: AnalysisEventType;

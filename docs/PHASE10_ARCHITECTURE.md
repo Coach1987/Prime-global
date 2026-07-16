@@ -213,6 +213,31 @@ Stage 1 establishes the reusable Prime Global Shield Plus foundation only.
 - No production migration changes.
 - No candidate-facing technical detector wording.
 
+## Stage 8.5 Adaptive and Reversible Protection (Foundation Only)
+- Extends Stage 8 analysis with typed adaptive protection context evaluation.
+- Adds policy-controlled protection levels with strict privacy as default fallback.
+- Adds field-level disclosure manifest and reversible disclosure state transitions.
+- Adds explainable decision model with policy/rule IDs, conditions, and stakeholder-safe explanations.
+- Adds command/query foundations for protection-level evaluation and reveal lifecycle operations.
+- Adds employer-safe disclosure projection that excludes immutable private references.
+- Adds false-positive and policy-exception feedback states for future learning hooks.
+
+### Stage 8.5 Feature Flags (Default Disabled)
+- `ADAPTIVE_PROTECTION_ENABLED`
+- `EXPLAINABLE_PROTECTION_ENABLED`
+- `REVERSIBLE_PROTECTION_ENABLED`
+- `FIELD_LEVEL_DISCLOSURE_ENABLED`
+- `PARTIAL_REVEAL_ENABLED`
+- `REVEAL_APPROVAL_ENABLED`
+- `DISCLOSURE_MANIFEST_ENABLED`
+
+### Stage 8.5 Guardrails
+- No route wiring to production APIs.
+- No external provider integration.
+- No production migration execution.
+- No original CV or private-document reveal path to employers.
+- No override path for immutable privacy restrictions.
+
 ## Phase 10 Import Convention
 - Phase 10 foundation modules use explicit `.ts` import specifiers inside `src/lib/server/phase10/**`.
 - This exists because the foundation is exercised directly by Node-based tests, and the explicit specifiers keep the TS source graph resolvable in that runtime.

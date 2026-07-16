@@ -480,4 +480,11 @@ test("feature flags disabled by default", () => {
   assert.equal(flags.DOCUMENT_QUARANTINE_ENABLED, false);
   assert.equal(flags.PROTECTION_PLAN_ENABLED, false);
   assert.equal(flags.DOCUMENT_REVIEW_ENABLED, false);
+  assert.equal(flags.ADAPTIVE_PROTECTION_ENABLED, false);
+  assert.equal(flags.EXPLAINABLE_PROTECTION_ENABLED, false);
+  assert.equal(flags.REVERSIBLE_PROTECTION_ENABLED, false);
+  assert.equal(flags.FIELD_LEVEL_DISCLOSURE_ENABLED, false);
+  assert.equal(flags.PARTIAL_REVEAL_ENABLED, false);
+  assert.equal(flags.REVEAL_APPROVAL_ENABLED, false);
+  assert.equal(flags.DISCLOSURE_MANIFEST_ENABLED, false);
 });

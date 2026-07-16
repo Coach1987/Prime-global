@@ -58,6 +58,51 @@ export type ProtectionPlanStatus =
   | "failed_safe"
   | "cancelled";
 
+export type ProtectionLevel =
+  | "strict_private"
+  | "protected_recruitment"
+  | "staff_review"
+  | "authorized_partial_reveal"
+  | "contract_stage_limited_reveal"
+  | "closed_process";
+
+export type RecruitmentWorkflowStage =
+  | "intake"
+  | "screening"
+  | "matching"
+  | "interview"
+  | "offer"
+  | "contract"
+  | "closed";
+
+export type DisclosureFieldCategory =
+  | "professional_name"
+  | "candidate_reference"
+  | "professional_title"
+  | "general_location"
+  | "experience"
+  | "skills"
+  | "education"
+  | "certifications"
+  | "languages"
+  | "portfolio"
+  | "availability"
+  | "salary_expectations"
+  | "work_authorization"
+  | "personal_email"
+  | "personal_phone"
+  | "precise_address"
+  | "passport_number"
+  | "national_id"
+  | "original_cv"
+  | "private_documents";
+
+export type DisclosureState = "hidden" | "masked" | "summarized" | "protected_placeholder" | "revealed" | "staff_only";
+
+export type DecisionOrigin = "policy_engine" | "business_rule_engine" | "workflow_kernel" | "staff_override" | "system_default";
+
+export type DecisionFeedbackStatus = "confirmed" | "false_positive" | "ignored" | "manually_reviewed" | "policy_exception";
+
 export type ProtectionReviewStatus = "not_required" | "required" | "in_review" | "reviewed";
 
 export type QuarantineStatus =
@@ -133,7 +178,10 @@ export interface RemovalOperation {
 
 export interface ProtectionPlan {
   planId: string;
+  organizationScope: string;
+  candidateScope: string;
   originalObjectReference: string;
+  originalImmutableReference: string;
   protectedCopyTargetReference: string;
   publicProfileTargetReference: string;
   findingsIncluded: string[];
@@ -148,8 +196,108 @@ export interface ProtectionPlan {
   imageRegionRedaction: boolean;
   protectionStatus: ProtectionPlanStatus;
   reviewStatus: ProtectionReviewStatus;
+  currentDisclosureManifest: DisclosureManifest;
+  allowedFutureDisclosureTransitions: DisclosureTransitionRule[];
+  deniedTransitions: DisclosureTransitionRule[];
+  transitionPrerequisites: string[];
+  policyVersion: string;
+  workflowStageRequirement: RecruitmentWorkflowStage | "any";
+  consentRequirement: string | null;
+  staffApprovalRequirement: boolean;
+  paymentRequirement: "not_required" | "required";
+  contractStateRequirement: "not_required" | "required" | "must_be_signed";
+  activeFreezeRestriction: boolean;
+  criticalViolationRestriction: boolean;
+  transitionHistory: DisclosureTransitionHistoryEntry[];
+  rollbackTarget: DisclosureManifest | null;
+  irreversibleFields: DisclosureFieldCategory[];
+  expiryTimestamp: string | null;
+  revocationTimestamp: string | null;
   generatedTimestamp: string;
   protectionVersion: string;
+}
+
+export interface DisclosureManifestFieldEntry {
+  fieldCategory: DisclosureFieldCategory;
+  disclosureState: DisclosureState;
+  employerVisible: boolean;
+  rationale: string;
+}
+
+export interface DisclosureManifest {
+  manifestId: string;
+  protectionLevel: ProtectionLevel;
+  fields: DisclosureManifestFieldEntry[];
+  createdAt: string;
+  schemaVersion: string;
+}
+
+export interface DisclosureTransitionRule {
+  fieldCategory: DisclosureFieldCategory;
+  from: DisclosureState;
+  to: DisclosureState;
+  allowed: boolean;
+  policyRequired: boolean;
+  staffApprovalRequired: boolean;
+  reasonCode: string;
+}
+
+export interface DisclosureTransitionHistoryEntry {
+  transitionId: string;
+  fieldCategory: DisclosureFieldCategory;
+  from: DisclosureState;
+  to: DisclosureState;
+  approvedBy: string | null;
+  reasonCode: string;
+  createdAt: string;
+}
+
+export interface AdaptiveProtectionContext {
+  recruitmentWorkflowStage: RecruitmentWorkflowStage;
+  actorRole: AnalysisActor["role"];
+  organizationScope: string;
+  tenantScope: string | null;
+  policyVersion: string;
+  candidateConsentVersion: string;
+  employerVerificationStatus: "unverified" | "pending" | "verified";
+  interviewStatus: "not_started" | "scheduled" | "in_progress" | "completed" | "cancelled";
+  paymentStatus: "not_applicable" | "pending" | "verified" | "failed";
+  contractState: "not_started" | "draft" | "review" | "signed" | "closed";
+  activeFreezeState: boolean;
+  activeCriticalViolationState: boolean;
+  authorizedStaffOverride: boolean;
+  fieldLevelDisclosurePolicy: string;
+}
+
+export interface ExplainableProtectionDecision {
+  decisionId: string;
+  policyId: string;
+  policyVersion: string;
+  ruleId: string;
+  protectionLevel: ProtectionLevel;
+  fieldOrFindingCategory: string;
+  previousDisclosureState: DisclosureState;
+  resultingDisclosureState: DisclosureState;
+  reasonCode: string;
+  internalExplanation: string;
+  candidateFriendlyExplanation: string;
+  employerFriendlyExplanation: string;
+  evaluatedWorkflowStage: RecruitmentWorkflowStage;
+  evaluatedActorRole: AnalysisActor["role"];
+  evaluatedOrganizationScope: string;
+  evaluatedConsentVersion: string;
+  evaluatedConditions: string[];
+  passedConditions: string[];
+  failedConditions: string[];
+  blockingReasons: string[];
+  requiredNextActions: string[];
+  decisionOrigin: DecisionOrigin;
+  confidence: number | null;
+  humanReviewRequirement: boolean;
+  staffOverrideEligibility: boolean;
+  createdTimestamp: string;
+  schemaVersion: string;
+  feedbackStatus: DecisionFeedbackStatus;
 }
 
 export interface DocumentAnalysisQuarantine {
@@ -248,6 +396,7 @@ export interface AnalysisOutcome {
   quarantine: DocumentAnalysisQuarantine;
   findings: ProtectionFinding[];
   protectionPlan: ProtectionPlan | null;
+  explainableDecisions: ExplainableProtectionDecision[];
   candidateNotification: string | null;
   timelineEntry: CandidateTimelineEntry;
   auditEntries: DocumentAnalysisAuditEntry[];
@@ -258,4 +407,10 @@ export interface AnalysisOutcome {
 export interface AnalysisIdempotencyStore {
   get(analysisId: string): Promise<AnalysisOutcome | null>;
   set(outcome: AnalysisOutcome): Promise<void>;
+}
+
+export interface EmployerSafeDisclosureProjection {
+  analysisId: string;
+  protectionLevel: ProtectionLevel;
+  fields: Array<{ fieldCategory: DisclosureFieldCategory; disclosureState: DisclosureState }>;
 }
