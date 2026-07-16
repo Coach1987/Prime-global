@@ -32,6 +32,13 @@ test("phase10 feature flags default to disabled", () => {
   assert.equal(flags.VIDEO_ROOM_PROVIDER_ENABLED, false);
   assert.equal(flags.INTERVIEW_TOKEN_ENABLED, false);
   assert.equal(flags.INTERVIEW_LIFECYCLE_ENABLED, false);
+  assert.equal(flags.PROTECTION_ENGINE_ENABLED, false);
+  assert.equal(flags.REDACTION_ENGINE_ENABLED, false);
+  assert.equal(flags.PROTECTED_COPY_ENABLED, false);
+  assert.equal(flags.AUTO_MASKING_ENABLED, false);
+  assert.equal(flags.PROTECTION_EVENTS_ENABLED, false);
+  assert.equal(flags.PROTECTION_AUDIT_ENABLED, false);
+  assert.equal(flags.PROTECTION_TIMELINE_ENABLED, false);
   assert.equal(isPhase10FeatureEnabled("GOVERNANCE_CENTER_ENABLED"), false);
 });
 

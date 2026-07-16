@@ -131,20 +131,54 @@ Stage 1 establishes the reusable Prime Global Shield Plus foundation only.
 - No production migration changes.
 - No external queues or external schedulers.
 
-## Candidate Friendly Shield Philosophy (Adopted Before Detection Engine)
-- Prime Global Shield is observation-first: detect, classify, explain, score confidence, and add evidence references only when needed.
-- The system assumes good intent first and avoids hostile or punitive UX for genuine candidates.
-- Single detections do not trigger automatic bans, suspensions, rejections, contract blocking, or permanent penalties.
+## Stage 7 Prime Global Protection Engine (Foundation Only)
+- Internal phase name: Prime Global Protection Engine (PGPE).
+- Protection-first sequencing is required: protect and continue workflow.
+- Detection is only one internal step in protection, not the final outcome.
 
-### Progressive Experience Levels
-- Level 0 (Normal): no interruption.
-- Level 1 (Soft detection): internal logging only.
-- Level 2 (High confidence): friendly reminder, allow user edit and continue.
-- Level 3 (Repeated intentional attempts with very high confidence): notify Policy Engine and Rule Engine, append evidence reference, and allow governance review.
+### Required Protection Pipeline
+- normalize
+- inspect
+- analyze
+- confidence scoring
+- protection decision
+- automatic protection
+- evidence reference
+- continue workflow
 
-### UX Language Rule
-- Never accuse users or use threatening language.
-- Preferred wording: "To help protect candidates and employers, contact details can only be exchanged after the recruitment process reaches the appropriate stage."
+### Automatic Protection Baseline
+- Email: mask.
+- Phone: mask.
+- QR code or barcode: remove from employer copy.
+- External links or short links: convert to protected placeholder.
+- Social handles: mask.
+- Personal address: mask.
+- Passport, national ID, or personal numbers: mask.
+- Private attachments and document text flows: protected copy.
+
+### Protected Copy Rule
+- Never modify originals.
+- Always create original, protected copy, and employer copy layers.
+- Original remains encrypted and limited to authorized Prime Global staff.
+- Employers only receive protected copies.
+
+### Confidence Behavior
+- Low: observe only.
+- Medium: protect automatically.
+- High: protect plus friendly user notification.
+- Very high with repeated confirmed attempts: protect, append evidence reference, and evaluate policy and rules.
+- Automatic punishment is disallowed.
+
+### Stage 7 Non-Goals
+- No OCR implementation.
+- No QR implementation.
+- No AI learning behavior implementation.
+- No risk score implementation.
+- No enforcement execution.
+- No video integration.
+- No payment integration.
+- No governance UI implementation.
+- No real provider integrations.
 
 ## Phase 10 Import Convention
 - Phase 10 foundation modules use explicit `.ts` import specifiers inside `src/lib/server/phase10/**`.

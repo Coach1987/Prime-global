@@ -37,14 +37,14 @@ The registry contains the initial Phase 10 policies as disabled foundation defin
 ## Stage 1 guarantee
 - The engine is available for future wiring, but no current production route depends on it.
 
-## Candidate Friendly Detection Policy Baseline
-- Detection is observation-first and escalation-aware.
-- Detection outcomes must include confidence and explanation.
-- Low confidence: ignore.
-- Medium confidence: observe and log only.
-- High confidence: show a friendly reminder and allow edit-and-continue.
-- Very high confidence with repeated confirmed attempts: evaluate policy and business rules, append evidence references, and allow governance review.
-- Automatic punishment from a single detection is disallowed.
+## Candidate Friendly PGPE Policy Baseline
+- Prime Global Protection Engine is protection-first and workflow-continuation-first.
+- Provider outcomes must include confidence, reason, evidence reference, suggested action, protection action, human-review signal, and false-positive possibility.
+- Low confidence: observe only.
+- Medium confidence: protect automatically and continue workflow.
+- High confidence: protect and show friendly notification.
+- Very high confidence with repeated confirmed attempts: protect, append evidence reference, and evaluate policy and business rules.
+- Automatic punishment from a single protection result is disallowed.
 
 ## Prohibited Automatic Actions
 - Automatic bans.
