@@ -10,6 +10,8 @@ import type {
 const SUPPORTED: AiCapability[] = ["generate_text", "generate_json", "embed", "classify", "health_check"];
 
 function baseResponse(request: AiRequest): Omit<AiResponse, "ok" | "capability"> {
+  const executionTimestamp = new Date().toISOString();
+
   return {
     provider: "mock",
     model: "mock-static-v1",
@@ -27,6 +29,9 @@ function baseResponse(request: AiRequest): Omit<AiResponse, "ok" | "capability">
       provider: "mock",
       model: "mock-static-v1",
       promptRef: request.promptRef,
+      executionTimestamp,
+      schemaVersion: "v1",
+      provenanceRefs: [{ source: "system", reference: "mock-adapter" }],
     },
   };
 }

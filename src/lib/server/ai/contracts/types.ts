@@ -26,6 +26,11 @@ export interface AiPromptRef {
   version: string;
 }
 
+export interface AiProvenanceRef {
+  source: "cv" | "candidate_edit" | "prime_edit" | "system";
+  reference: string;
+}
+
 export interface AiExecutionContext {
   requestId: string;
   correlationId?: string;
@@ -102,6 +107,9 @@ export interface AiResponseMetadata {
   provider: AiProviderName;
   model: string;
   promptRef: AiPromptRef;
+  executionTimestamp: string;
+  schemaVersion?: string;
+  provenanceRefs?: AiProvenanceRef[];
   fieldConfidence?: AiFieldConfidence[];
   matchFactors?: AiMatchFactor[];
 }
@@ -175,6 +183,35 @@ export interface AiTelemetryRecord {
   policyVersion: string;
   redactionApplied: boolean;
   promptRef: AiPromptRef;
+  promptVersion: string;
+  schemaVersion?: string;
+}
+
+export type PiiRedactionCategory =
+  | "email"
+  | "phone"
+  | "address"
+  | "national_id"
+  | "passport"
+  | "document_identifier"
+  | "url_token"
+  | "document_path"
+  | "contact_instruction"
+  | "social_handle"
+  | "messaging_identifier";
+
+export interface PiiRedactionItem {
+  category: PiiRedactionCategory;
+  placeholder: string;
+  count: number;
+}
+
+export interface PiiRedactionResult {
+  input: string;
+  redactedText: string;
+  redactionApplied: boolean;
+  categories: PiiRedactionCategory[];
+  metadata: PiiRedactionItem[];
 }
 
 export interface AiProviderAdapter {
