@@ -58,12 +58,12 @@ export default function CompanyVerificationPage() {
             </label>
           ))}
           <input name="documents" type="file" multiple className="md:col-span-2 rounded-xl border border-gold/20 bg-bg-primary px-4 py-3 text-text-primary" />
-          <button type="submit" className="rounded-xl bg-gold px-5 py-3 text-sm font-semibold text-bg-primary md:col-span-2">Submit Verification</button>
+          <button type="submit" className="prime-auth-pill md:col-span-2">Submit Verification</button>
         </form>
 
         <div className="mt-8 space-y-3">
           {status.map((item) => (
-            <article key={String(item.id)} className="rounded-2xl border border-gold/15 bg-bg-primary/70 p-4">
+            <article key={String(item.id)} className="prime-auth-card rounded-2xl border border-gold/15 bg-bg-primary/70 p-4">
               <p className="font-medium text-text-primary">{String(item.company_name ?? item.companyName ?? "Verification Request")}</p>
               <p className="mt-1 text-sm text-text-secondary">Status: {String(item.status ?? "pending")}</p>
             </article>

@@ -19,10 +19,10 @@ export default async function EmployerPendingApprovalPage({
         </p>
 
         <div className="mt-6 flex flex-wrap gap-3">
-          <Link href="/employers/login" className="inline-flex min-h-12 items-center rounded-full border border-gold/30 px-5 py-3 text-sm font-semibold text-gold transition hover:bg-gold/10">
+          <Link href="/employers/login" className="prime-auth-pill-outline">
             {isArabic ? "العودة إلى تسجيل الدخول" : "Back to Sign In"}
           </Link>
-          <Link href="/contact" className="inline-flex min-h-12 items-center rounded-full border border-gold/20 px-5 py-3 text-sm font-semibold text-text-primary transition hover:bg-white/[0.04]">
+          <Link href="/contact" className="prime-auth-pill-outline">
             {isArabic ? "التواصل مع برايم غلوبال" : "Contact Prime Global"}
           </Link>
         </div>

@@ -179,7 +179,7 @@ export default function EmployerRegisterPage() {
             <button
               type="submit"
               disabled={disabled}
-              className="rounded-full bg-gold px-8 py-3 text-sm font-semibold text-bg-primary transition hover:bg-gold-bright disabled:opacity-60"
+              className="prime-auth-pill"
             >
               {loading ? (isArabic ? "جارٍ الإرسال..." : "Submitting...") : isArabic ? "إنشاء الحساب" : "Create Employer Account"}
             </button>

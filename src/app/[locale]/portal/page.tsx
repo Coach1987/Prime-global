@@ -14,22 +14,22 @@ export default async function PortalPage({
         <p className="mt-3 text-sm text-text-secondary">Secure access for candidates, employers, and Prime Global staff.</p>
 
         <div className="mt-8 grid gap-4 md:grid-cols-3">
-          <article className="rounded-2xl border border-gold/15 bg-bg-primary/70 p-5">
+          <article className="prime-auth-card rounded-2xl border border-gold/15 bg-bg-primary/70 p-5">
             <h2 className="font-heading text-2xl text-text-primary">Candidate</h2>
             <p className="mt-2 text-sm text-text-secondary">View My Interviews, invitations, waiting room, and protected meeting access.</p>
-            <Link href="/candidate/login" className="mt-4 inline-flex rounded-full border border-gold/30 px-4 py-2 text-sm font-semibold text-gold">Open My Interviews</Link>
+            <Link href="/candidate/login" className="prime-auth-pill-outline mt-4">Open My Interviews</Link>
           </article>
 
-          <article className="rounded-2xl border border-gold/15 bg-bg-primary/70 p-5">
+          <article className="prime-auth-card rounded-2xl border border-gold/15 bg-bg-primary/70 p-5">
             <h2 className="font-heading text-2xl text-text-primary">Employer</h2>
             <p className="mt-2 text-sm text-text-secondary">Access Interview Center, schedule flow, and supervised protected communications.</p>
-            <Link href="/employers/login" className="mt-4 inline-flex rounded-full border border-gold/30 px-4 py-2 text-sm font-semibold text-gold">Open Interview Center</Link>
+            <Link href="/employers/login" className="prime-auth-pill-outline mt-4">Open Interview Center</Link>
           </article>
 
-          <article className="rounded-2xl border border-gold/15 bg-bg-primary/70 p-5">
+          <article className="prime-auth-card rounded-2xl border border-gold/15 bg-bg-primary/70 p-5">
             <h2 className="font-heading text-2xl text-text-primary">Prime Global Staff</h2>
             <p className="mt-2 text-sm text-text-secondary">Open Control Center for moderation, supervision, and interview room governance.</p>
-            <Link href="/admin/login" className="mt-4 inline-flex rounded-full border border-gold/30 px-4 py-2 text-sm font-semibold text-gold">Open Control Center</Link>
+            <Link href="/admin/login" className="prime-auth-pill-outline mt-4">Open Control Center</Link>
           </article>
         </div>
       </section>

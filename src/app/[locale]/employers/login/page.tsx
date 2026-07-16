@@ -107,7 +107,7 @@ export default function EmployerLoginPage() {
           <button
             type="submit"
             disabled={loading}
-            className="rounded-full bg-gold px-7 py-3 text-sm font-semibold text-bg-primary transition hover:bg-gold-bright disabled:opacity-60"
+            className="prime-auth-pill"
           >
             {loading ? (isArabic ? "جارٍ تسجيل الدخول..." : "Signing In...") : isArabic ? "تسجيل الدخول" : "Sign In"}
           </button>

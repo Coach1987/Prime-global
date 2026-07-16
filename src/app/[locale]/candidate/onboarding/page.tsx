@@ -198,7 +198,7 @@ export default function CandidateOnboardingPage() {
         <section className="rounded-3xl border border-gold/20 bg-bg-secondary/80 p-8 backdrop-blur-xl">
           <h1 className="font-heading text-3xl text-text-primary">{isArabic ? "الدخول مطلوب" : "Sign in required"}</h1>
           <p className="mt-3 text-sm text-text-secondary">{error ?? (isArabic ? "يجب تسجيل الدخول أولاً للوصول إلى إعداد الملف الشخصي." : "You need to sign in before continuing to onboarding.")}</p>
-          <Link href="/candidate/login" className="mt-5 inline-flex min-h-12 items-center rounded-full border border-gold/30 px-5 py-3 text-sm font-semibold text-gold transition hover:bg-gold/10">
+          <Link href="/candidate/login" className="prime-auth-pill-outline mt-5">
             {isArabic ? "فتح تسجيل الدخول" : "Open sign in"}
           </Link>
         </section>
@@ -283,7 +283,7 @@ export default function CandidateOnboardingPage() {
           <button
             type="submit"
             disabled={saving || !csrfToken}
-            className="inline-flex min-h-12 items-center rounded-full bg-gold px-7 py-3 text-sm font-semibold text-bg-primary transition hover:bg-gold-bright disabled:opacity-60"
+            className="prime-auth-pill"
           >
             {saving ? (isArabic ? "جارٍ الحفظ..." : "Saving...") : isArabic ? "حفظ ومتابعة" : "Save and continue"}
           </button>

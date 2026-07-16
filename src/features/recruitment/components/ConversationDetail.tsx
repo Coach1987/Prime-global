@@ -303,11 +303,11 @@ export function ConversationDetail({
     <main className="mx-auto w-full max-w-[1180px] px-4 pb-20 pt-[124px] sm:px-6 md:px-8">
       <section className="rounded-3xl border border-gold/20 bg-bg-secondary/80 p-7 backdrop-blur-xl md:p-10">
         <h1 className="font-heading text-4xl text-text-primary">{copy.title}</h1>
-        <p className="mt-3 rounded-2xl border border-gold/25 bg-bg-primary/60 p-4 text-sm leading-7 text-text-secondary">
+        <p className="prime-auth-card mt-3 rounded-2xl border border-gold/25 bg-bg-primary/60 p-4 text-sm leading-7 text-text-secondary">
           {copy.conversationNotice}
         </p>
         {String(conversation.conversationMode ?? conversation.conversation_mode ?? "staff_active") !== "staff_active" ? (
-          <p className="mt-3 rounded-2xl border border-gold/25 bg-bg-primary/60 p-4 text-sm leading-7 text-gold">
+          <p className="prime-auth-card mt-3 rounded-2xl border border-gold/25 bg-bg-primary/60 p-4 text-sm leading-7 text-gold">
             {copy.aiAssistNotice}
           </p>
         ) : null}
@@ -322,7 +322,7 @@ export function ConversationDetail({
             [copy.representative, String(assignedStaff.label ?? "Prime Global")],
             [locale === "ar" ? "المرجع" : "Reference", String(candidateProfile.candidate_reference ?? employer.company_name ?? "-")],
           ].map(([label, value]) => (
-            <article key={String(label)} className="rounded-2xl border border-gold/15 bg-bg-primary/70 p-4">
+            <article key={String(label)} className="prime-auth-card rounded-2xl border border-gold/15 bg-bg-primary/70 p-4">
               <p className="text-xs uppercase tracking-[0.18em] text-text-tertiary">{label}</p>
               <p className="mt-2 text-sm font-medium text-text-primary">{value}</p>
             </article>
@@ -331,7 +331,7 @@ export function ConversationDetail({
 
         {permissions.canRespondToInvitation ? (
           <div className="mt-6 flex flex-wrap gap-3">
-            <button onClick={() => respond("accept")} className="rounded-full bg-gold px-5 py-3 text-sm font-semibold text-bg-primary">
+            <button onClick={() => respond("accept")} className="prime-auth-pill">
               {copy.accept}
             </button>
             <button onClick={() => respond("decline")} className="rounded-full border border-red-400/30 px-5 py-3 text-sm font-semibold text-red-200">
@@ -341,11 +341,11 @@ export function ConversationDetail({
         ) : null}
 
         <section className="mt-8 grid gap-6 xl:grid-cols-[1.6fr_1fr]">
-          <article className="rounded-2xl border border-gold/15 bg-bg-primary/70 p-5">
+          <article className="prime-auth-card rounded-2xl border border-gold/15 bg-bg-primary/70 p-5">
             <div className="space-y-3">
               {data.messages.length === 0 ? <p className="text-sm text-text-tertiary">{copy.noMessages}</p> : null}
               {data.messages.map((item) => (
-                <article key={String(item.id)} className="rounded-2xl border border-gold/10 bg-bg-secondary/60 p-4">
+                <article key={String(item.id)} className="prime-auth-card rounded-2xl border border-gold/10 bg-bg-secondary/60 p-4">
                   <div className="flex flex-wrap items-center justify-between gap-3 text-xs text-text-tertiary">
                     <span>{String(item.sender_role ?? "message")}</span>
                     <span>{String(item.created_at ?? "")}</span>
@@ -368,13 +368,13 @@ export function ConversationDetail({
               />
               {permissions.canSendMessages ? (
                 <div className="flex flex-wrap gap-3">
-                  <button onClick={() => sendMessage(message)} className="rounded-full bg-gold px-5 py-3 text-sm font-semibold text-bg-primary">
+                  <button onClick={() => sendMessage(message)} className="prime-auth-pill">
                     {copy.send}
                   </button>
                   {role === "employer" && permissions.canRequestInterview ? (
                     <button
                       onClick={requestInterview}
-                      className="rounded-full border border-gold/30 px-5 py-3 text-sm font-semibold text-gold">
+                      className="prime-auth-pill-outline">
                       {copy.requestInterview}
                     </button>
                   ) : null}
@@ -385,12 +385,12 @@ export function ConversationDetail({
 
           <div className="space-y-6">
             {role === "staff" ? (
-              <article className="rounded-2xl border border-gold/15 bg-bg-primary/70 p-5">
+              <article className="prime-auth-card rounded-2xl border border-gold/15 bg-bg-primary/70 p-5">
                 <h2 className="font-heading text-2xl text-text-primary">{copy.internalNotes}</h2>
                 <div className="mt-4 space-y-3">
                   {data.internalNotes.length === 0 ? <p className="text-sm text-text-tertiary">{copy.noNotes}</p> : null}
                   {data.internalNotes.map((item) => (
-                    <article key={String(item.id)} className="rounded-2xl border border-gold/10 bg-bg-secondary/60 p-4 text-sm text-text-secondary">
+                    <article key={String(item.id)} className="prime-auth-card rounded-2xl border border-gold/10 bg-bg-secondary/60 p-4 text-sm text-text-secondary">
                       <p>{String(item.note ?? "")}</p>
                       <p className="mt-2 text-xs text-text-tertiary">{String(item.created_at ?? "")}</p>
                     </article>
@@ -403,32 +403,32 @@ export function ConversationDetail({
                   placeholder={copy.notePlaceholder}
                   className="mt-4 w-full rounded-2xl border border-gold/15 bg-bg-secondary px-4 py-3 text-sm text-text-primary"
                 />
-                <button onClick={submitInternalNote} className="mt-3 rounded-full bg-gold px-5 py-3 text-sm font-semibold text-bg-primary">
+                <button onClick={submitInternalNote} className="prime-auth-pill mt-3">
                   {copy.addNote}
                 </button>
               </article>
             ) : null}
 
-            <article className="rounded-2xl border border-gold/15 bg-bg-primary/70 p-5">
+            <article className="prime-auth-card rounded-2xl border border-gold/15 bg-bg-primary/70 p-5">
               <h2 className="font-heading text-2xl text-text-primary">{copy.interviews}</h2>
               <div className="mt-4 space-y-3">
                 {data.interviews.length === 0 ? <p className="text-sm text-text-tertiary">{copy.noInterviews}</p> : null}
                 {data.interviews.map((item) => (
-                  <article key={String(item.id)} className="rounded-2xl border border-gold/10 bg-bg-secondary/60 p-4 text-sm text-text-secondary">
+                  <article key={String(item.id)} className="prime-auth-card rounded-2xl border border-gold/10 bg-bg-secondary/60 p-4 text-sm text-text-secondary">
                     <p className="font-medium text-text-primary">{String(item.status ?? "scheduled")}</p>
                     <p className="mt-2">{String(item.scheduled_at ?? "")}</p>
                     <a
                       href={`${interviewCenterBasePath}/${String(item.id)}`}
-                      className="mt-3 inline-flex rounded-full border border-gold/30 px-3 py-1 text-xs font-semibold text-gold"
+                      className="prime-auth-pill-outline prime-auth-pill-sm mt-3"
                     >
                       {copy.openMeetingCenter}
                     </a>
                     {role === "staff" ? (
                       <div className="mt-3 flex flex-wrap gap-2">
-                        <button onClick={() => updateInterview(String(item.id), "start")} className="rounded-full border border-gold/30 px-3 py-1 text-xs font-semibold text-gold">
+                        <button onClick={() => updateInterview(String(item.id), "start")} className="prime-auth-pill-outline prime-auth-pill-sm">
                           {copy.startInterview}
                         </button>
-                        <button onClick={() => updateInterview(String(item.id), "end")} className="rounded-full border border-gold/30 px-3 py-1 text-xs font-semibold text-gold">
+                        <button onClick={() => updateInterview(String(item.id), "end")} className="prime-auth-pill-outline prime-auth-pill-sm">
                           {copy.endInterview}
                         </button>
                       </div>
@@ -452,7 +452,7 @@ export function ConversationDetail({
                     placeholder={copy.interviewPlaceholder}
                     className="w-full rounded-2xl border border-gold/15 bg-bg-secondary px-4 py-3 text-sm text-text-primary"
                   />
-                  <button onClick={scheduleInterview} className="rounded-full bg-gold px-5 py-3 text-sm font-semibold text-bg-primary">
+                  <button onClick={scheduleInterview} className="prime-auth-pill">
                     {copy.scheduleInterview}
                   </button>
                 </div>
@@ -460,27 +460,27 @@ export function ConversationDetail({
             </article>
 
             {role === "staff" ? (
-              <article className="rounded-2xl border border-gold/15 bg-bg-primary/70 p-5">
+              <article className="prime-auth-card rounded-2xl border border-gold/15 bg-bg-primary/70 p-5">
                 <div className="flex flex-wrap gap-3">
-                  <button onClick={() => updateConversation({ status: "paused", pausedReason: "staff_pause" })} className="rounded-full border border-gold/30 px-4 py-2 text-sm font-semibold text-gold">
+                  <button onClick={() => updateConversation({ status: "paused", pausedReason: "staff_pause" })} className="prime-auth-pill-outline prime-auth-pill-sm">
                     {copy.pause}
                   </button>
-                  <button onClick={() => updateConversation({ status: "active" })} className="rounded-full border border-gold/30 px-4 py-2 text-sm font-semibold text-gold">
+                  <button onClick={() => updateConversation({ status: "active" })} className="prime-auth-pill-outline prime-auth-pill-sm">
                     {copy.reopen}
                   </button>
-                  <button onClick={() => updateConversation({ status: "closed", closureReason: "staff_closed" })} className="rounded-full border border-gold/30 px-4 py-2 text-sm font-semibold text-gold">
+                  <button onClick={() => updateConversation({ status: "closed", closureReason: "staff_closed" })} className="prime-auth-pill-outline prime-auth-pill-sm">
                     {copy.close}
                   </button>
-                  <button onClick={() => updateConversation({ status: "archived" })} className="rounded-full border border-gold/30 px-4 py-2 text-sm font-semibold text-gold">
+                  <button onClick={() => updateConversation({ status: "archived" })} className="prime-auth-pill-outline prime-auth-pill-sm">
                     {copy.archive}
                   </button>
-                  <button onClick={() => runAiAction("assist")} className="rounded-full border border-gold/30 px-4 py-2 text-sm font-semibold text-gold">
+                  <button onClick={() => runAiAction("assist")} className="prime-auth-pill-outline prime-auth-pill-sm">
                     {copy.activateAi}
                   </button>
-                  <button onClick={() => runAiAction("set_awaiting_staff")} className="rounded-full border border-gold/30 px-4 py-2 text-sm font-semibold text-gold">
+                  <button onClick={() => runAiAction("set_awaiting_staff")} className="prime-auth-pill-outline prime-auth-pill-sm">
                     {copy.awaitStaff}
                   </button>
-                  <button onClick={() => runAiAction("set_staff_active")} className="rounded-full border border-gold/30 px-4 py-2 text-sm font-semibold text-gold">
+                  <button onClick={() => runAiAction("set_staff_active")} className="prime-auth-pill-outline prime-auth-pill-sm">
                     {copy.resumeStaff}
                   </button>
                 </div>
@@ -491,7 +491,7 @@ export function ConversationDetail({
                     placeholder="Prime Global staff user id"
                     className="flex-1 rounded-2xl border border-gold/15 bg-bg-secondary px-4 py-3 text-sm text-text-primary"
                   />
-                  <button onClick={() => updateConversation({ assignedStaffUserId: reassignUserId || undefined, escalatedToAdmin: true })} className="rounded-full bg-gold px-5 py-3 text-sm font-semibold text-bg-primary">
+                  <button onClick={() => updateConversation({ assignedStaffUserId: reassignUserId || undefined, escalatedToAdmin: true })} className="prime-auth-pill">
                     {copy.reassign}
                   </button>
                 </div>

@@ -34,7 +34,7 @@ export default async function AuthGatewayPage({
   return (
     <main className="mx-auto w-full max-w-[1120px] px-4 pb-20 pt-[124px] sm:px-6 md:px-8">
       <section className="rounded-3xl border border-gold/20 bg-bg-secondary/80 p-7 backdrop-blur-xl md:p-10">
-        <h1 className="font-heading text-4xl text-text-primary">{isArabic ? "بوابة المصادقة" : "Authentication Gateway"}</h1>
+        <h1 className="prime-auth-metallic-title font-heading text-4xl">{isArabic ? "بوابة المصادقة" : "Authentication Gateway"}</h1>
         <p className="mt-3 max-w-2xl text-sm leading-7 text-text-secondary">
           {isArabic
             ? "اختر تسجيل الدخول أو إنشاء الحساب المناسب لدورك. يظل زر ابدأ الآن مخصصًا للتواصل فقط."
@@ -43,10 +43,10 @@ export default async function AuthGatewayPage({
 
         <div className="mt-8 grid gap-4 sm:grid-cols-2">
           {cards.map((card) => (
-            <article key={card.href} className="rounded-2xl border border-gold/15 bg-bg-primary/70 p-5">
+            <article key={card.href} className="prime-auth-card rounded-2xl border border-gold/15 bg-bg-primary/70 p-5">
               <h2 className="font-heading text-2xl text-text-primary">{card.title}</h2>
               <p className="mt-2 text-sm leading-7 text-text-secondary">{card.description}</p>
-              <Link href={card.href} className="mt-5 inline-flex min-h-12 items-center rounded-full border border-gold/30 px-5 py-3 text-sm font-semibold text-gold transition hover:bg-gold/10">
+              <Link href={card.href} className="prime-auth-pill mt-5">
                 {isArabic ? "فتح" : "Open"}
               </Link>
             </article>

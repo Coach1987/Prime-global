@@ -184,7 +184,7 @@ export default function CandidateRegisterPage() {
           <button
             type="submit"
             disabled={loading || !csrfToken}
-            className="inline-flex min-h-12 items-center rounded-full bg-gold px-7 py-3 text-sm font-semibold text-bg-primary transition hover:bg-gold-bright disabled:opacity-60"
+            className="prime-auth-pill"
           >
             {loading ? (isArabic ? "جارٍ إنشاء الحساب..." : "Creating account...") : isArabic ? "إنشاء الحساب" : "Create Account"}
           </button>

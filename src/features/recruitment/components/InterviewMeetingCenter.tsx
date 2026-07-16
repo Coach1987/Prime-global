@@ -363,32 +363,32 @@ export function InterviewMeetingCenter({
     <main className="mx-auto w-full max-w-[1260px] px-4 pb-20 pt-[124px] sm:px-6 md:px-8">
       <section className="rounded-3xl border border-gold/20 bg-bg-secondary/80 p-7 backdrop-blur-xl md:p-10">
         <h1 className="font-heading text-4xl text-text-primary">{copy.title}</h1>
-        <p className="mt-3 rounded-2xl border border-gold/25 bg-bg-primary/60 p-4 text-sm leading-7 text-text-secondary">{copy.secureNotice}</p>
-        <p className="mt-3 rounded-2xl border border-gold/25 bg-bg-primary/60 p-4 text-sm leading-7 text-text-secondary">{String(data.coordinationTerms?.notice ?? copy.coordinationBanner)}</p>
+        <p className="prime-auth-card mt-3 rounded-2xl border border-gold/25 bg-bg-primary/60 p-4 text-sm leading-7 text-text-secondary">{copy.secureNotice}</p>
+        <p className="prime-auth-card mt-3 rounded-2xl border border-gold/25 bg-bg-primary/60 p-4 text-sm leading-7 text-text-secondary">{String(data.coordinationTerms?.notice ?? copy.coordinationBanner)}</p>
         {tokenNotice ? <p className="mt-3 text-xs text-gold">{tokenNotice}</p> : null}
         {error ? <p className="mt-4 text-sm text-red-300">{error}</p> : null}
 
-        <section className="mt-5 rounded-2xl border border-gold/15 bg-bg-primary/70 p-4 text-sm text-text-secondary">
+        <section className="prime-auth-card mt-5 rounded-2xl border border-gold/15 bg-bg-primary/70 p-4 text-sm text-text-secondary">
           <p>{copy.waitingRoom}</p>
           <div className="mt-3 flex flex-wrap gap-2">
             {role !== "staff" ? (
               <>
-                <button onClick={() => respondToInvitation("accept")} className="rounded-full border border-gold/30 px-4 py-2 text-xs font-semibold text-gold">{copy.acceptInterview}</button>
+                <button onClick={() => respondToInvitation("accept")} className="prime-auth-pill-outline prime-auth-pill-sm">{copy.acceptInterview}</button>
                 <button onClick={() => respondToInvitation("reject")} className="rounded-full border border-red-400/30 px-4 py-2 text-xs font-semibold text-red-200">{copy.rejectInterview}</button>
-                <button onClick={acceptCoordinationTerms} className="rounded-full border border-gold/30 px-4 py-2 text-xs font-semibold text-gold">{copy.acceptTerms}</button>
-                <button onClick={() => setReadiness(true)} className="rounded-full border border-gold/30 px-4 py-2 text-xs font-semibold text-gold">{copy.ready}</button>
-                <button onClick={() => setReadiness(false)} className="rounded-full border border-gold/30 px-4 py-2 text-xs font-semibold text-gold">{copy.notReady}</button>
+                <button onClick={acceptCoordinationTerms} className="prime-auth-pill-outline prime-auth-pill-sm">{copy.acceptTerms}</button>
+                <button onClick={() => setReadiness(true)} className="prime-auth-pill-outline prime-auth-pill-sm">{copy.ready}</button>
+                <button onClick={() => setReadiness(false)} className="prime-auth-pill-outline prime-auth-pill-sm">{copy.notReady}</button>
               </>
             ) : null}
           </div>
         </section>
 
-        <section className="mt-5 rounded-2xl border border-gold/15 bg-bg-primary/70 p-4">
+        <section className="prime-auth-card mt-5 rounded-2xl border border-gold/15 bg-bg-primary/70 p-4">
           <p className="text-sm font-semibold text-text-primary">Interview Workflow</p>
           <p className="mt-2 text-xs text-text-secondary">Scheduled at: {schedule}</p>
           <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-5">
             {workflowSteps.map((step) => (
-              <article key={step.id} className="rounded-xl border border-gold/10 bg-bg-secondary/60 p-3 text-xs">
+              <article key={step.id} className="prime-auth-card rounded-xl border border-gold/10 bg-bg-secondary/60 p-3 text-xs">
                 <p className="font-semibold text-text-primary">{step.label}</p>
                 <p className="mt-1 text-text-secondary">{step.done ? "complete" : "pending"}</p>
               </article>
@@ -400,20 +400,20 @@ export function InterviewMeetingCenter({
         </section>
 
         <section className="mt-7 grid gap-5 xl:grid-cols-[1.8fr_1fr]">
-          <article className="rounded-2xl border border-gold/15 bg-bg-primary/70 p-5">
+          <article className="prime-auth-card rounded-2xl border border-gold/15 bg-bg-primary/70 p-5">
             <p className="text-xs uppercase tracking-[0.18em] text-text-tertiary">{copy.placeholder}</p>
-            <div className="mt-4 min-h-[280px] rounded-2xl border border-gold/15 bg-bg-secondary/70 p-4">
+            <div className="prime-auth-card mt-4 min-h-[280px] rounded-2xl border border-gold/15 bg-bg-secondary/70 p-4">
               <div className="mb-4 flex flex-wrap gap-2">
-                <button onClick={() => setCameraOn((v) => !v)} className="rounded-full border border-gold/30 px-4 py-2 text-xs font-semibold text-gold">
+                <button onClick={() => setCameraOn((v) => !v)} className="prime-auth-pill-outline prime-auth-pill-sm">
                   {copy.camera}: {cameraOn ? "on" : "off"}
                 </button>
-                <button onClick={() => setMicOn((v) => !v)} className="rounded-full border border-gold/30 px-4 py-2 text-xs font-semibold text-gold">
+                <button onClick={() => setMicOn((v) => !v)} className="prime-auth-pill-outline prime-auth-pill-sm">
                   {copy.mic}: {micOn ? "on" : "off"}
                 </button>
-                <button onClick={() => setScreenSharingOn((v) => !v)} className="rounded-full border border-gold/30 px-4 py-2 text-xs font-semibold text-gold">
+                <button onClick={() => setScreenSharingOn((v) => !v)} className="prime-auth-pill-outline prime-auth-pill-sm">
                   {copy.share}: {screenSharingOn ? "on" : "off"}
                 </button>
-                <button onClick={runDeviceCheck} className="rounded-full border border-gold/30 px-4 py-2 text-xs font-semibold text-gold">
+                <button onClick={runDeviceCheck} className="prime-auth-pill-outline prime-auth-pill-sm">
                   Camera/Microphone check
                 </button>
               </div>
@@ -426,7 +426,7 @@ export function InterviewMeetingCenter({
 
               <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                 {(data.participants ?? []).map((participant) => (
-                  <article key={String(participant.id)} className="rounded-xl border border-gold/10 bg-bg-primary/70 p-3 text-sm text-text-primary">
+                  <article key={String(participant.id)} className="prime-auth-card rounded-xl border border-gold/10 bg-bg-primary/70 p-3 text-sm text-text-primary">
                     <p className="font-medium">{String(participant.participant_role ?? "participant")}</p>
                     <p className="mt-1 text-xs text-text-tertiary">{String(participant.presence_status ?? "invited")}</p>
                   </article>
@@ -436,21 +436,21 @@ export function InterviewMeetingCenter({
 
             <div className="mt-4 flex flex-wrap gap-3">
               {permissions.canJoinMeeting ? (
-                <button onClick={joinMeeting} className="rounded-full bg-gold px-5 py-3 text-sm font-semibold text-bg-primary">
+                <button onClick={joinMeeting} className="prime-auth-pill">
                   {copy.join}
                 </button>
               ) : null}
               {permissions.canJoinMeeting ? (
-                <button onClick={leaveMeeting} className="rounded-full border border-gold/30 px-5 py-3 text-sm font-semibold text-gold">
+                <button onClick={leaveMeeting} className="prime-auth-pill-outline">
                   {copy.leave}
                 </button>
               ) : null}
               {role === "staff" && permissions.canStartOrEndMeeting ? (
                 <>
-                  <button onClick={() => startOrEndMeeting("start")} className="rounded-full border border-gold/30 px-5 py-3 text-sm font-semibold text-gold">
+                  <button onClick={() => startOrEndMeeting("start")} className="prime-auth-pill-outline">
                     {copy.start}
                   </button>
-                  <button onClick={() => startOrEndMeeting("end")} className="rounded-full border border-gold/30 px-5 py-3 text-sm font-semibold text-gold">
+                  <button onClick={() => startOrEndMeeting("end")} className="prime-auth-pill-outline">
                     {copy.end}
                   </button>
                   <button onClick={() => updateScheduleOrStatus({ status: "cancelled" })} className="rounded-full border border-red-400/30 px-5 py-3 text-sm font-semibold text-red-200">
@@ -473,7 +473,7 @@ export function InterviewMeetingCenter({
                 />
                 <button
                   onClick={() => updateScheduleOrStatus({ scheduledAt: rescheduleAt })}
-                  className="rounded-full border border-gold/30 px-4 py-2 text-xs font-semibold text-gold"
+                  className="prime-auth-pill-outline prime-auth-pill-sm"
                 >
                   Reschedule
                 </button>
@@ -482,12 +482,12 @@ export function InterviewMeetingCenter({
           </article>
 
           <article className="space-y-5">
-            <section className="rounded-2xl border border-gold/15 bg-bg-primary/70 p-5">
+            <section className="prime-auth-card rounded-2xl border border-gold/15 bg-bg-primary/70 p-5">
               <h2 className="font-heading text-2xl text-text-primary">{copy.chat}</h2>
               <div className="mt-4 max-h-[240px] space-y-2 overflow-y-auto">
                 {(data.chatMessages ?? []).length === 0 ? <p className="text-sm text-text-tertiary">{copy.noChat}</p> : null}
                 {(data.chatMessages ?? []).map((item) => (
-                  <article key={String(item.id)} className="rounded-xl border border-gold/10 bg-bg-secondary/60 p-3 text-sm">
+                  <article key={String(item.id)} className="prime-auth-card rounded-xl border border-gold/10 bg-bg-secondary/60 p-3 text-sm">
                     <p className="text-xs text-text-tertiary">{String(item.sender_role ?? "participant")}</p>
                     <p className="mt-1 text-text-primary">{String(item.body ?? "")}</p>
                   </article>
@@ -502,18 +502,18 @@ export function InterviewMeetingCenter({
                     placeholder={copy.chatPlaceholder}
                     className="w-full rounded-2xl border border-gold/15 bg-bg-secondary px-4 py-3 text-sm text-text-primary"
                   />
-                  <button onClick={sendChat} className="rounded-full bg-gold px-5 py-3 text-sm font-semibold text-bg-primary">
+                  <button onClick={sendChat} className="prime-auth-pill">
                     {copy.send}
                   </button>
                 </div>
               ) : null}
             </section>
 
-            <section className="rounded-2xl border border-gold/15 bg-bg-primary/70 p-5">
+            <section className="prime-auth-card rounded-2xl border border-gold/15 bg-bg-primary/70 p-5">
               <h2 className="font-heading text-2xl text-text-primary">{copy.history}</h2>
               <div className="mt-4 max-h-[200px] space-y-2 overflow-y-auto">
                 {(data.history ?? []).map((event) => (
-                  <article key={String(event.id)} className="rounded-xl border border-gold/10 bg-bg-secondary/60 p-3 text-xs text-text-secondary">
+                  <article key={String(event.id)} className="prime-auth-card rounded-xl border border-gold/10 bg-bg-secondary/60 p-3 text-xs text-text-secondary">
                     <p className="font-medium text-text-primary">{String(event.event_type ?? "event")}</p>
                     <p className="mt-1">{String(event.created_at ?? "")}</p>
                   </article>
