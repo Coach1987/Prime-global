@@ -17,7 +17,7 @@ export default async function PortalPage({
           <article className="rounded-2xl border border-gold/15 bg-bg-primary/70 p-5">
             <h2 className="font-heading text-2xl text-text-primary">Candidate</h2>
             <p className="mt-2 text-sm text-text-secondary">View My Interviews, invitations, waiting room, and protected meeting access.</p>
-            <Link href={`/${locale}/candidate/login`} className="mt-4 inline-flex rounded-full border border-gold/30 px-4 py-2 text-sm font-semibold text-gold">Open My Interviews</Link>
+            <Link href="/candidate/login" className="mt-4 inline-flex rounded-full border border-gold/30 px-4 py-2 text-sm font-semibold text-gold">Open My Interviews</Link>
           </article>
 
           <article className="rounded-2xl border border-gold/15 bg-bg-primary/70 p-5">
