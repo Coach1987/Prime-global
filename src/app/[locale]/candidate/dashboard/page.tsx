@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useLocale } from "next-intl";
 
 export default function CandidateDashboardPage() {
-  const [token, setToken] = useState("");
+  const [hasSession, setHasSession] = useState(false);
   const [profile, setProfile] = useState<Record<string, unknown> | null>(null);
   const [applications, setApplications] = useState<Array<Record<string, unknown>>>([]);
   const [savedJobs, setSavedJobs] = useState<Array<Record<string, unknown>>>([]);
@@ -12,30 +12,37 @@ export default function CandidateDashboardPage() {
   const locale = useLocale();
 
   useEffect(() => {
-    const accessToken = localStorage.getItem("prime_auth_token") ?? "";
-    setToken(accessToken);
-    if (!accessToken) return;
+    fetch("/api/auth/me", { credentials: "include" })
+      .then((res) => res.json())
+      .then((payload) => {
+        if (!payload?.success || payload?.data?.role !== "candidate") {
+          setHasSession(false);
+          return;
+        }
+        setHasSession(true);
 
-    Promise.all([
-      fetch("/api/candidates/profile", { headers: { Authorization: `Bearer ${accessToken}` } }),
-      fetch("/api/candidates/applications", { headers: { Authorization: `Bearer ${accessToken}` } }),
-      fetch("/api/candidates/saved-jobs", { headers: { Authorization: `Bearer ${accessToken}` } }),
-      fetch("/api/candidates/notifications", { headers: { Authorization: `Bearer ${accessToken}` } }),
-    ])
-      .then(async ([profileRes, applicationsRes, savedJobsRes, notificationsRes]) => {
-        const [profilePayload, applicationsPayload, savedJobsPayload, notificationsPayload] = await Promise.all([
-          profileRes.json(),
-          applicationsRes.json(),
-          savedJobsRes.json(),
-          notificationsRes.json(),
-        ]);
+        return Promise.all([
+          fetch("/api/candidates/profile", { credentials: "include" }),
+          fetch("/api/candidates/applications", { credentials: "include" }),
+          fetch("/api/candidates/saved-jobs", { credentials: "include" }),
+          fetch("/api/candidates/notifications", { credentials: "include" }),
+        ])
+          .then(async ([profileRes, applicationsRes, savedJobsRes, notificationsRes]) => {
+            const [profilePayload, applicationsPayload, savedJobsPayload, notificationsPayload] = await Promise.all([
+              profileRes.json(),
+              applicationsRes.json(),
+              savedJobsRes.json(),
+              notificationsRes.json(),
+            ]);
 
-        setProfile(profilePayload.data ?? null);
-        setApplications(applicationsPayload.data ?? []);
-        setSavedJobs(savedJobsPayload.data ?? []);
-        setNotifications(notificationsPayload.data ?? []);
+            setProfile(profilePayload.data ?? null);
+            setApplications(applicationsPayload.data ?? []);
+            setSavedJobs(savedJobsPayload.data ?? []);
+            setNotifications(notificationsPayload.data ?? []);
+          })
+          .catch(() => undefined);
       })
-      .catch(() => undefined);
+      .catch(() => setHasSession(false));
   }, []);
 
   return (
@@ -59,12 +66,12 @@ export default function CandidateDashboardPage() {
 
         <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {[
-            ["Profile", profile ? "Complete" : token ? "Pending" : "No Session"],
+            ["Profile", profile ? "Complete" : hasSession ? "Pending" : "No Session"],
             ["Applied Jobs", String(applications.length)],
             ["Saved Jobs", String(savedJobs.length)],
             ["Notifications", String(notifications.length)],
-          ].map(([label, value]) => (
-            <article key={label} className="rounded-2xl border border-gold/20 bg-bg-primary/70 p-4">
+          ].map(([label, value], index) => (
+            <article key={`${label}-${index}`} className="rounded-2xl border border-gold/20 bg-bg-primary/70 p-4">
               <p className="text-xs uppercase tracking-[0.18em] text-text-tertiary">{label}</p>
               <p className="mt-2 text-2xl font-semibold text-gold">{value}</p>
             </article>

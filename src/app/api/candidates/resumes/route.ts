@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { requireAuth, requireRole } from "@/lib/server/security/auth";
-import { enforceRateLimit } from "@/lib/server/http";
+import { enforceCsrf, enforceRateLimit } from "@/lib/server/http";
 import { createSupabaseAdminClient } from "@/lib/server/supabase";
 
 const CANDIDATE_RESUMES_BUCKET = process.env.SUPABASE_CANDIDATE_RESUMES_BUCKET ?? "candidate-resumes";
@@ -91,6 +91,9 @@ export async function POST(request: Request) {
   const rateLimitResult = enforceRateLimit(request, "candidate-resumes-post", 50);
   if (rateLimitResult) return rateLimitResult;
 
+  const csrfResult = enforceCsrf(request);
+  if (csrfResult) return csrfResult;
+
   const auth = await requireAuth(request);
   if (auth instanceof NextResponse) return auth;
   const roleCheck = requireRole(auth, ["candidate", "admin", "super_admin"]);
@@ -175,12 +178,45 @@ export async function POST(request: Request) {
     .eq("candidate_id", candidateId)
     .neq("id", data.id);
 
+  const { data: candidateProfile } = await supabase
+    .from("candidate_profiles")
+    .select("full_name, email, phone_number, country, city")
+    .eq("id", candidateId)
+    .maybeSingle();
+
+  const { data: privateProfile } = await supabase
+    .from("candidate_private_profiles")
+    .select("candidate_id, original_documents_paths")
+    .eq("candidate_id", candidateId)
+    .maybeSingle();
+
+  if (privateProfile?.candidate_id) {
+    await supabase
+      .from("candidate_private_profiles")
+      .update({ original_cv_path: storagePath })
+      .eq("candidate_id", candidateId);
+  } else {
+    await supabase.from("candidate_private_profiles").insert({
+      candidate_id: candidateId,
+      full_name: String(candidateProfile?.full_name ?? "Candidate"),
+      email: String(candidateProfile?.email ?? auth.email),
+      phone: String(candidateProfile?.phone_number ?? "+000000000"),
+      address: [candidateProfile?.country, candidateProfile?.city].filter(Boolean).join(", ") || null,
+      original_cv_path: storagePath,
+      original_documents_paths: [],
+      restricted_to_prime_global: true,
+    });
+  }
+
   return NextResponse.json({ success: true, data }, { status: 201 });
 }
 
 export async function PATCH(request: Request) {
   const rateLimitResult = enforceRateLimit(request, "candidate-resumes-patch", 80);
   if (rateLimitResult) return rateLimitResult;
+
+  const csrfResult = enforceCsrf(request);
+  if (csrfResult) return csrfResult;
 
   const auth = await requireAuth(request);
   if (auth instanceof NextResponse) return auth;

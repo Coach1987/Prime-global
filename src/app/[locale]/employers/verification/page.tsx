@@ -7,30 +7,40 @@ import { PrimeInput, PrimeLabel } from "@/components/ui/prime/PrimeInput";
 import { PrimePageTitle } from "@/components/ui/prime/PrimePageTitle";
 
 export default function CompanyVerificationPage() {
-  const [token, setToken] = useState("");
+  const [hasSession, setHasSession] = useState(false);
+  const [csrfToken, setCsrfToken] = useState("");
   const [status, setStatus] = useState<Array<Record<string, unknown>>>([]);
 
   useEffect(() => {
-    setToken(localStorage.getItem("prime_auth_token") ?? "");
+    fetch("/api/security/csrf")
+      .then((response) => response.json())
+      .then((payload) => setCsrfToken(payload?.data?.csrfToken ?? ""))
+      .catch(() => setCsrfToken(""));
+
+    fetch("/api/auth/me", { credentials: "include" })
+      .then((response) => response.json())
+      .then((payload) => setHasSession(Boolean(payload?.success && payload?.data?.role === "employer")))
+      .catch(() => setHasSession(false));
   }, []);
 
   useEffect(() => {
-    if (!token) return;
+    if (!hasSession) return;
 
-    fetch("/api/companies/verification", { headers: { Authorization: `Bearer ${token}` } })
+    fetch("/api/companies/verification", { credentials: "include" })
       .then((res) => res.json())
       .then((payload) => setStatus(payload?.data ?? []))
       .catch(() => undefined);
-  }, [token]);
+  }, [hasSession]);
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!token) return;
+    if (!hasSession) return;
 
     const formData = new FormData(event.currentTarget);
     const response = await fetch("/api/companies/verification", {
       method: "POST",
-      headers: { Authorization: `Bearer ${token}` },
+      headers: { "x-csrf-token": csrfToken },
+      credentials: "include",
       body: formData,
     });
 

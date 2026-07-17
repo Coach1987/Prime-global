@@ -36,16 +36,16 @@ function getCopy(locale: string) {
 }
 
 export function StaffRecruitmentCenter({ locale }: { locale: string }) {
-  const [token, setToken] = useState("");
+  const [hasSession, setHasSession] = useState(false);
   const [isAuthorized, setIsAuthorized] = useState(false);
   const [csrfToken, setCsrfToken] = useState("");
   const [data, setData] = useState<StaffOverview | null>(null);
   const [error, setError] = useState<string | null>(null);
   const copy = useMemo(() => getCopy(locale), [locale]);
 
-  const loadOverview = useCallback(async (accessToken: string) => {
+  const loadOverview = useCallback(async () => {
     const response = await fetch(`/api/recruitment/staff/overview?locale=${locale}`, {
-      headers: { Authorization: `Bearer ${accessToken}` },
+      credentials: "include",
     });
     const payload = await response.json();
     if (!response.ok || !payload.success) {
@@ -56,16 +56,8 @@ export function StaffRecruitmentCenter({ locale }: { locale: string }) {
   }, [locale]);
 
   useEffect(() => {
-    const accessToken = localStorage.getItem("prime_auth_token") ?? "";
-    setToken(accessToken);
-
-    if (!accessToken) {
-      setError(locale === "ar" ? "يرجى تسجيل الدخول للوصول." : "Please sign in to continue.");
-      return;
-    }
-
     fetch("/api/auth/me", {
-      headers: { Authorization: `Bearer ${accessToken}` },
+      credentials: "include",
     })
       .then((response) => response.json())
       .then((payload) => {
@@ -80,6 +72,7 @@ export function StaffRecruitmentCenter({ locale }: { locale: string }) {
           setError(locale === "ar" ? "هذه الصفحة مخصصة لفريق برايم جلوبال." : "This page is restricted to Prime Global staff.");
           return;
         }
+        setHasSession(true);
         setIsAuthorized(true);
       })
       .catch(() => setError(locale === "ar" ? "تعذر التحقق من الجلسة." : "Unable to verify session."));
@@ -89,26 +82,25 @@ export function StaffRecruitmentCenter({ locale }: { locale: string }) {
       .then((payload) => setCsrfToken(payload?.data?.csrfToken ?? ""))
       .catch(() => setCsrfToken(""));
 
-    if (!accessToken) return;
-    loadOverview(accessToken).catch(() => setError(locale === "ar" ? "تعذر تحميل البيانات." : "Unable to load data."));
+    loadOverview().catch(() => setError(locale === "ar" ? "تعذر تحميل البيانات." : "Unable to load data."));
   }, [loadOverview, locale]);
 
   useEffect(() => {
-    if (!token || !isAuthorized) return;
-    loadOverview(token).catch(() => setError(locale === "ar" ? "تعذر تحميل البيانات." : "Unable to load data."));
-  }, [token, isAuthorized, loadOverview, locale]);
+    if (!hasSession || !isAuthorized) return;
+    loadOverview().catch(() => setError(locale === "ar" ? "تعذر تحميل البيانات." : "Unable to load data."));
+  }, [hasSession, isAuthorized, loadOverview, locale]);
 
   async function reviewRequest(requestId: string, action: "assign" | "approve" | "reject") {
-    if (!token) return;
+    if (!hasSession) return;
 
     const rejectionReason = action === "reject" ? window.prompt(locale === "ar" ? "سبب الرفض" : "Rejection reason") ?? undefined : undefined;
     const response = await fetch(`/api/recruitment/conversation-requests/${requestId}`, {
       method: "PATCH",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
         "x-csrf-token": csrfToken,
       },
+      credentials: "include",
       body: JSON.stringify({ action, rejectionReason, locale }),
     });
     const payload = await response.json();
@@ -116,19 +108,19 @@ export function StaffRecruitmentCenter({ locale }: { locale: string }) {
       setError(payload?.error?.message ?? "Failed to update request");
       return;
     }
-    await loadOverview(token);
+    await loadOverview();
   }
 
   async function moderate(messageId: string, action: "approve" | "reject") {
-    if (!token) return;
+    if (!hasSession) return;
 
     const response = await fetch(`/api/recruitment/messages/${messageId}/moderation`, {
       method: "PATCH",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
         "x-csrf-token": csrfToken,
       },
+      credentials: "include",
       body: JSON.stringify({ action, locale }),
     });
     const payload = await response.json();
@@ -136,7 +128,7 @@ export function StaffRecruitmentCenter({ locale }: { locale: string }) {
       setError(payload?.error?.message ?? "Failed to moderate message");
       return;
     }
-    await loadOverview(token);
+    await loadOverview();
   }
 
   return (

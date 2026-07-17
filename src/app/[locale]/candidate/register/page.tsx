@@ -7,6 +7,8 @@ import { PrimeCard } from "@/components/ui/prime/PrimeCard";
 import { PrimeCheckbox, PrimeInput, PrimeLabel } from "@/components/ui/prime/PrimeInput";
 import { primeButtonClasses } from "@/components/ui/prime/PrimeButton";
 import { PrimePageTitle } from "@/components/ui/prime/PrimePageTitle";
+import { CountrySelector } from "@/components/ui/CountrySelector";
+import { InternationalPhoneInput } from "@/components/ui/InternationalPhoneInput";
 
 type RegisterResponse = {
   success: boolean;
@@ -32,7 +34,8 @@ export default function CandidateRegisterPage() {
     email: "",
     password: "",
     confirmPassword: "",
-    country: "",
+    countryCode: "",
+    phoneNumberRaw: "",
     phoneNumber: "",
     acceptTerms: false,
   });
@@ -42,7 +45,18 @@ export default function CandidateRegisterPage() {
       .then((response) => response.json())
       .then((payload) => setCsrfToken(payload?.data?.csrfToken ?? ""))
       .catch(() => setCsrfToken(""));
-  }, []);
+
+    fetch("/api/auth/me", { credentials: "include" })
+      .then((response) => response.json())
+      .then((payload) => {
+        if (!payload?.success) return;
+        const role = String(payload?.data?.role ?? "");
+        if (role === "candidate") {
+          router.push("/candidate/onboarding");
+        }
+      })
+      .catch(() => undefined);
+  }, [router]);
 
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -55,6 +69,16 @@ export default function CandidateRegisterPage() {
 
     if (!form.acceptTerms) {
       setError(isArabic ? "يجب الموافقة على الشروط وسياسة الخصوصية." : "You must accept the Terms and Privacy Policy.");
+      return;
+    }
+
+    if (!form.countryCode) {
+      setError(isArabic ? "يرجى اختيار الدولة." : "Please select a country.");
+      return;
+    }
+
+    if (!form.phoneNumber) {
+      setError(isArabic ? "يرجى إدخال رقم هاتف دولي صحيح." : "Please enter a valid international phone number.");
       return;
     }
 
@@ -71,19 +95,18 @@ export default function CandidateRegisterPage() {
           fullName: form.fullName,
           email: form.email,
           password: form.password,
-          country: form.country,
+          country: form.countryCode,
           phoneNumber: form.phoneNumber,
           acceptTerms: form.acceptTerms,
         }),
       });
 
       const payload = (await response.json()) as RegisterResponse;
-      if (!response.ok || !payload.success || !payload.data?.session?.accessToken) {
+      if (!response.ok || !payload.success) {
         setError(payload?.error?.message ?? (isArabic ? "تعذر إنشاء الحساب." : "Unable to create account."));
         return;
       }
 
-      localStorage.setItem("prime_auth_token", payload.data.session.accessToken);
       router.push("/candidate/onboarding");
       router.refresh();
     } catch {
@@ -148,19 +171,35 @@ export default function CandidateRegisterPage() {
           <div className="grid gap-5 sm:grid-cols-2">
             <PrimeLabel>
               <span className="mb-2 block">{isArabic ? "الدولة" : "Country"}</span>
-              <PrimeInput
-                required
-                value={form.country}
-                onChange={(event) => setForm((prev) => ({ ...prev, country: event.target.value }))}
+              <CountrySelector
+                locale={isArabic ? "ar" : "en"}
+                value={form.countryCode}
+                onChange={(countryCode) =>
+                  setForm((prev) => ({
+                    ...prev,
+                    countryCode,
+                    phoneNumber: prev.phoneNumber,
+                  }))
+                }
+                placeholder={isArabic ? "ابحث عن الدولة" : "Search country"}
               />
             </PrimeLabel>
 
             <PrimeLabel>
               <span className="mb-2 block">{isArabic ? "رقم الهاتف" : "Phone number"}</span>
-              <PrimeInput
-                required
-                value={form.phoneNumber}
-                onChange={(event) => setForm((prev) => ({ ...prev, phoneNumber: event.target.value }))}
+              <InternationalPhoneInput
+                locale={isArabic ? "ar" : "en"}
+                countryCode={form.countryCode || "SA"}
+                value={form.phoneNumberRaw}
+                onCountryCodeChange={(nextCode) => setForm((prev) => ({ ...prev, countryCode: nextCode }))}
+                onChange={(phoneNumberRaw, phoneNumber) =>
+                  setForm((prev) => ({
+                    ...prev,
+                    phoneNumberRaw,
+                    phoneNumber,
+                  }))
+                }
+                placeholder={isArabic ? "مثال: +216 12 345 678" : "Example: +216 12 345 678"}
               />
             </PrimeLabel>
           </div>

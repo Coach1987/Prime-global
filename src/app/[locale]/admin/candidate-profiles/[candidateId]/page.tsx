@@ -35,7 +35,8 @@ export default function AdminCandidateProfileDetailPage() {
   const params = useParams<{ locale: string; candidateId: string }>();
   const locale = String(params.locale ?? "en");
   const candidateId = String(params.candidateId ?? "");
-  const [token, setToken] = useState("");
+  const [hasSession, setHasSession] = useState(false);
+  const [csrfToken, setCsrfToken] = useState("");
   const [profile, setProfile] = useState<CandidateDetail | null>(null);
   const [notes, setNotes] = useState("");
   const [title, setTitle] = useState("");
@@ -65,34 +66,41 @@ export default function AdminCandidateProfileDetailPage() {
   );
 
   useEffect(() => {
-    setToken(localStorage.getItem("prime_auth_token") ?? "");
-  }, []);
+    fetch("/api/security/csrf")
+      .then((response) => response.json())
+      .then((payload) => setCsrfToken(payload?.data?.csrfToken ?? ""))
+      .catch(() => setCsrfToken(""));
 
-  useEffect(() => {
-    if (!token || !candidateId) return;
-
-    fetch(`/api/admin/candidate-profiles/${candidateId}`, {
-      headers: { Authorization: `Bearer ${token}` },
-    })
+    fetch("/api/auth/me", { credentials: "include" })
       .then((response) => response.json())
       .then((payload) => {
-        const nextProfile = payload?.data ?? null;
-        setProfile(nextProfile);
-        setTitle(nextProfile?.professional_title ?? "");
-        setSummary(nextProfile?.professional_summary ?? "");
+        if (!payload?.success || !candidateId) return;
+        setHasSession(true);
+
+        return fetch(`/api/admin/candidate-profiles/${candidateId}`, {
+          credentials: "include",
+        })
+          .then((response) => response.json())
+          .then((payload) => {
+            const nextProfile = payload?.data ?? null;
+            setProfile(nextProfile);
+            setTitle(nextProfile?.professional_title ?? "");
+            setSummary(nextProfile?.professional_summary ?? "");
+          });
       })
       .catch(() => setError("Failed to load candidate profile"));
-  }, [candidateId, token]);
+  }, [candidateId]);
 
   async function submitAction(action: "approve" | "reject" | "needs_changes" | "regenerate") {
-    if (!token) return;
+    if (!hasSession) return;
 
     const response = await fetch(`/api/admin/candidate-profiles/${candidateId}`, {
       method: "PATCH",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
+        "x-csrf-token": csrfToken,
       },
+      credentials: "include",
       body: JSON.stringify({
         action,
         notes,

@@ -3,6 +3,7 @@ import { z } from "zod";
 import { enforceCsrf, enforceRateLimit, getRequestContext, parseJsonBody } from "@/lib/server/http";
 import { createSupabaseAdminClient, createSupabasePublicClient } from "@/lib/server/supabase";
 import { createAuditLog } from "@/lib/server/security/audit";
+import { setAuthCookies } from "@/lib/server/security/session-cookies";
 
 const candidateRegistrationSchema = z
   .object({
@@ -122,7 +123,7 @@ export async function POST(request: Request) {
     );
   }
 
-  return NextResponse.json(
+  const response = NextResponse.json(
     {
       success: true,
       data: {
@@ -137,4 +138,12 @@ export async function POST(request: Request) {
     },
     { status: 201 }
   );
+
+  setAuthCookies(response, {
+    accessToken: sessionData.session.access_token,
+    refreshToken: sessionData.session.refresh_token,
+    expiresAt: sessionData.session.expires_at ?? null,
+  });
+
+  return response;
 }

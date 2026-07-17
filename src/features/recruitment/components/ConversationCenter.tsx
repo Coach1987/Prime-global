@@ -58,7 +58,7 @@ export function ConversationCenter({
   role: "employer" | "candidate";
   detailBasePath: string;
 }) {
-  const [token, setToken] = useState("");
+  const [hasSession, setHasSession] = useState(false);
   const [isAuthorized, setIsAuthorized] = useState(false);
   const [requests, setRequests] = useState<ConversationRow[]>([]);
   const [conversations, setConversations] = useState<ConversationRow[]>([]);
@@ -66,15 +66,8 @@ export function ConversationCenter({
   const copy = useMemo(() => getCopy(locale, role), [locale, role]);
 
   useEffect(() => {
-    const accessToken = localStorage.getItem("prime_auth_token") ?? "";
-    setToken(accessToken);
-    if (!accessToken) {
-      setError(locale === "ar" ? "يرجى تسجيل الدخول للوصول." : "Please sign in to continue.");
-      return;
-    }
-
     fetch("/api/auth/me", {
-      headers: { Authorization: `Bearer ${accessToken}` },
+      credentials: "include",
     })
       .then((response) => response.json())
       .then((payload) => {
@@ -87,17 +80,18 @@ export function ConversationCenter({
           setError(locale === "ar" ? "صلاحيات غير كافية." : "Insufficient role privileges.");
           return;
         }
+        setHasSession(true);
         setIsAuthorized(true);
       })
       .catch(() => setError(locale === "ar" ? "تعذر التحقق من الجلسة." : "Unable to verify session."));
   }, [locale, role]);
 
   useEffect(() => {
-    if (!token || !isAuthorized) return;
+    if (!hasSession || !isAuthorized) return;
 
     Promise.all([
-      fetch(`/api/recruitment/conversation-requests?locale=${locale}`, { headers: { Authorization: `Bearer ${token}` } }),
-      fetch(`/api/recruitment/conversations?locale=${locale}`, { headers: { Authorization: `Bearer ${token}` } }),
+      fetch(`/api/recruitment/conversation-requests?locale=${locale}`, { credentials: "include" }),
+      fetch(`/api/recruitment/conversations?locale=${locale}`, { credentials: "include" }),
     ])
       .then(async ([requestsResponse, conversationsResponse]) => {
         const [requestsPayload, conversationsPayload] = await Promise.all([requestsResponse.json(), conversationsResponse.json()]);
@@ -111,7 +105,7 @@ export function ConversationCenter({
         setConversations(conversationsPayload?.data ?? []);
       })
       .catch(() => setError(locale === "ar" ? "تعذر تحميل البيانات." : "Unable to load data."));
-  }, [locale, token, isAuthorized]);
+  }, [locale, hasSession, isAuthorized]);
 
   return (
     <main className="mx-auto w-full max-w-[1180px] px-4 pb-20 pt-[124px] sm:px-6 md:px-8">

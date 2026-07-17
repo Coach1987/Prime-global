@@ -15,7 +15,7 @@ function parseCsv(value: string) {
 export default function CandidateJobAlertSettingsPage() {
   const params = useParams<{ locale: string }>();
   const locale = String(params.locale ?? "en");
-  const [token, setToken] = useState("");
+  const [hasSession, setHasSession] = useState(false);
   const [csrfToken, setCsrfToken] = useState("");
   const [status, setStatus] = useState<string | null>(null);
 
@@ -51,48 +51,50 @@ export default function CandidateJobAlertSettingsPage() {
   );
 
   useEffect(() => {
-    const accessToken = localStorage.getItem("prime_auth_token") ?? "";
-    setToken(accessToken);
-
     fetch("/api/security/csrf")
       .then((response) => response.json())
       .then((payload) => setCsrfToken(payload?.data?.csrfToken ?? ""))
       .catch(() => setCsrfToken(""));
 
-    if (!accessToken) return;
-
-    fetch("/api/candidates/job-alert-preferences", {
-      headers: { Authorization: `Bearer ${accessToken}` },
-    })
+    fetch("/api/auth/me", { credentials: "include" })
       .then((response) => response.json())
-      .then((payload: { data?: PreferencesPayload | null }) => {
-        const data = payload?.data;
-        if (!data) return;
+      .then((payload) => {
+        if (!payload?.success || payload?.data?.role !== "candidate") return;
+        setHasSession(true);
 
-        setDesiredJobTitles(Array.isArray(data.desired_job_titles) ? data.desired_job_titles.join(", ") : "");
-        setRelatedJobTitles(Array.isArray(data.related_job_titles) ? data.related_job_titles.join(", ") : "");
-        setSkills(Array.isArray(data.skills) ? data.skills.join(", ") : "");
-        setLanguages(Array.isArray(data.languages) ? data.languages.join(", ") : "");
-        setCountry(String(data.country ?? ""));
-        setCity(String(data.city ?? ""));
-        setAvailability(String(data.availability ?? ""));
-        setWorkModePreference(String(data.work_mode_preference ?? "any"));
-        setFrequency(String(data.email_notification_frequency ?? "instant"));
-        setThreshold(Number(data.notification_threshold ?? 70));
+        return fetch("/api/candidates/job-alert-preferences", {
+          credentials: "include",
+        })
+          .then((response) => response.json())
+          .then((payload: { data?: PreferencesPayload | null }) => {
+            const data = payload?.data;
+            if (!data) return;
+
+            setDesiredJobTitles(Array.isArray(data.desired_job_titles) ? data.desired_job_titles.join(", ") : "");
+            setRelatedJobTitles(Array.isArray(data.related_job_titles) ? data.related_job_titles.join(", ") : "");
+            setSkills(Array.isArray(data.skills) ? data.skills.join(", ") : "");
+            setLanguages(Array.isArray(data.languages) ? data.languages.join(", ") : "");
+            setCountry(String(data.country ?? ""));
+            setCity(String(data.city ?? ""));
+            setAvailability(String(data.availability ?? ""));
+            setWorkModePreference(String(data.work_mode_preference ?? "any"));
+            setFrequency(String(data.email_notification_frequency ?? "instant"));
+            setThreshold(Number(data.notification_threshold ?? 70));
+          });
       })
       .catch(() => undefined);
   }, []);
 
   async function save() {
-    if (!token) return;
+    if (!hasSession) return;
 
     const response = await fetch("/api/candidates/job-alert-preferences", {
       method: "PUT",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
         "x-csrf-token": csrfToken,
       },
+      credentials: "include",
       body: JSON.stringify({
         desiredJobTitles: parseCsv(desiredJobTitles),
         relatedJobTitles: parseCsv(relatedJobTitles),

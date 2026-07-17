@@ -68,7 +68,7 @@ export function ConversationDetail({
   role: "employer" | "candidate" | "staff";
   conversationId: string;
 }) {
-  const [token, setToken] = useState("");
+  const [hasSession, setHasSession] = useState(false);
   const [csrfToken, setCsrfToken] = useState("");
   const [data, setData] = useState<DetailPayload | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -79,9 +79,9 @@ export function ConversationDetail({
   const [reassignUserId, setReassignUserId] = useState("");
   const copy = useMemo(() => getCopy(locale, role), [locale, role]);
 
-  const loadConversation = useCallback(async (accessToken: string) => {
+  const loadConversation = useCallback(async () => {
     const response = await fetch(`/api/recruitment/conversations/${conversationId}?locale=${locale}`, {
-      headers: { Authorization: `Bearer ${accessToken}` },
+      credentials: "include",
     });
     const payload = await response.json();
     if (!response.ok || !payload.success) {
@@ -99,28 +99,33 @@ export function ConversationDetail({
         : `/${locale}/employers/supervised-conversations/${conversationId}/interviews`;
 
   useEffect(() => {
-    const accessToken = localStorage.getItem("prime_auth_token") ?? "";
-    setToken(accessToken);
+    fetch("/api/auth/me", { credentials: "include" })
+      .then((response) => response.json())
+      .then((payload) => {
+        if (payload?.success) {
+          setHasSession(true);
+        }
+      })
+      .catch(() => setHasSession(false));
 
     fetch("/api/security/csrf")
       .then((response) => response.json())
       .then((payload) => setCsrfToken(payload?.data?.csrfToken ?? ""))
       .catch(() => setCsrfToken(""));
 
-    if (!accessToken) return;
-    loadConversation(accessToken).catch(() => setError(locale === "ar" ? "تعذر تحميل المحادثة." : "Unable to load conversation."));
+    loadConversation().catch(() => setError(locale === "ar" ? "تعذر تحميل المحادثة." : "Unable to load conversation."));
   }, [conversationId, loadConversation, locale]);
 
   async function sendMessage(body: string) {
-    if (!token || !body.trim()) return;
+    if (!hasSession || !body.trim()) return;
 
     const response = await fetch(`/api/recruitment/conversations/${conversationId}/messages`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
         "x-csrf-token": csrfToken,
       },
+      credentials: "include",
       body: JSON.stringify({ body, locale, attachments: [] }),
     });
     const payload = await response.json();
@@ -129,19 +134,19 @@ export function ConversationDetail({
       return;
     }
     setMessage("");
-    await loadConversation(token);
+    await loadConversation();
   }
 
   async function respond(action: "accept" | "decline") {
-    if (!token) return;
+    if (!hasSession) return;
 
     const response = await fetch(`/api/recruitment/conversations/${conversationId}/respond`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
         "x-csrf-token": csrfToken,
       },
+      credentials: "include",
       body: JSON.stringify({ action, locale }),
     });
     const payload = await response.json();
@@ -149,19 +154,19 @@ export function ConversationDetail({
       setError(payload?.error?.message ?? "Failed to update invitation");
       return;
     }
-    await loadConversation(token);
+    await loadConversation();
   }
 
   async function updateConversation(patch: Record<string, unknown>) {
-    if (!token) return;
+    if (!hasSession) return;
 
     const response = await fetch(`/api/recruitment/conversations/${conversationId}`, {
       method: "PATCH",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
         "x-csrf-token": csrfToken,
       },
+      credentials: "include",
       body: JSON.stringify({ ...patch, locale }),
     });
     const payload = await response.json();
@@ -169,19 +174,19 @@ export function ConversationDetail({
       setError(payload?.error?.message ?? "Failed to update conversation");
       return;
     }
-    await loadConversation(token);
+    await loadConversation();
   }
 
   async function submitInternalNote() {
-    if (!token || !note.trim()) return;
+    if (!hasSession || !note.trim()) return;
 
     const response = await fetch(`/api/recruitment/conversations/${conversationId}/notes`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
         "x-csrf-token": csrfToken,
       },
+      credentials: "include",
       body: JSON.stringify({ note }),
     });
     const payload = await response.json();
@@ -190,19 +195,19 @@ export function ConversationDetail({
       return;
     }
     setNote("");
-    await loadConversation(token);
+    await loadConversation();
   }
 
   async function scheduleInterview() {
-    if (!token || !scheduledAt) return;
+    if (!hasSession || !scheduledAt) return;
 
     const response = await fetch(`/api/recruitment/conversations/${conversationId}/interviews`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
         "x-csrf-token": csrfToken,
       },
+      credentials: "include",
       body: JSON.stringify({
         scheduledAt: new Date(scheduledAt).toISOString(),
         durationMinutes: 45,
@@ -221,19 +226,19 @@ export function ConversationDetail({
     }
     setScheduledAt("");
     setInterviewNotes("");
-    await loadConversation(token);
+    await loadConversation();
   }
 
   async function requestInterview() {
-    if (!token) return;
+    if (!hasSession) return;
 
     const response = await fetch(`/api/recruitment/conversations/${conversationId}/interviews/request`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
         "x-csrf-token": csrfToken,
       },
+      credentials: "include",
       body: JSON.stringify({ locale }),
     });
     const payload = await response.json();
@@ -242,19 +247,19 @@ export function ConversationDetail({
       return;
     }
 
-    await loadConversation(token);
+    await loadConversation();
   }
 
   async function runAiAction(action: "assist" | "set_awaiting_staff" | "set_staff_active" | "handover") {
-    if (!token) return;
+    if (!hasSession) return;
 
     const response = await fetch(`/api/recruitment/conversations/${conversationId}/ai-supervisor`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
         "x-csrf-token": csrfToken,
       },
+      credentials: "include",
       body: JSON.stringify({ action, locale }),
     });
 
@@ -264,19 +269,19 @@ export function ConversationDetail({
       return;
     }
 
-    await loadConversation(token);
+    await loadConversation();
   }
 
   async function updateInterview(interviewId: string, hostAction: "start" | "end") {
-    if (!token) return;
+    if (!hasSession) return;
 
     const response = await fetch(`/api/recruitment/interviews/${interviewId}`, {
       method: "PATCH",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
         "x-csrf-token": csrfToken,
       },
+      credentials: "include",
       body: JSON.stringify({ hostAction, locale }),
     });
     const payload = await response.json();
@@ -284,7 +289,7 @@ export function ConversationDetail({
       setError(payload?.error?.message ?? "Failed to update interview");
       return;
     }
-    await loadConversation(token);
+    await loadConversation();
   }
 
   if (!data) {

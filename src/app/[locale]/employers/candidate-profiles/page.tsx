@@ -20,7 +20,7 @@ type CandidateRow = {
 export default function EmployerCandidateProfilesPage() {
   const params = useParams<{ locale: string }>();
   const locale = String(params.locale ?? "en");
-  const [token, setToken] = useState("");
+  const [hasSession, setHasSession] = useState(false);
   const [profiles, setProfiles] = useState<CandidateRow[]>([]);
   const [query, setQuery] = useState("");
 
@@ -33,22 +33,25 @@ export default function EmployerCandidateProfilesPage() {
   );
 
   useEffect(() => {
-    setToken(localStorage.getItem("prime_auth_token") ?? "");
-  }, []);
-
-  useEffect(() => {
-    if (!token) return;
+    if (!hasSession) return;
 
     const url = new URL("/api/employers/candidate-profiles", window.location.origin);
     if (query.trim()) {
       url.searchParams.set("q", query.trim());
     }
 
-    fetch(url.toString(), { headers: { Authorization: `Bearer ${token}` } })
+    fetch(url.toString(), { credentials: "include" })
       .then((response) => response.json())
       .then((payload) => setProfiles(payload?.data ?? []))
       .catch(() => undefined);
-  }, [query, token]);
+  }, [query, hasSession]);
+
+  useEffect(() => {
+    fetch("/api/auth/me", { credentials: "include" })
+      .then((response) => response.json())
+      .then((payload) => setHasSession(Boolean(payload?.success && payload?.data?.role === "employer")))
+      .catch(() => setHasSession(false));
+  }, []);
 
   return (
     <main className="mx-auto w-full max-w-[1280px] px-4 pb-20 pt-[124px] sm:px-6 md:px-8">

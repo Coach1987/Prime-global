@@ -40,7 +40,15 @@ export default function EmployerLoginPage() {
       .then((res) => res.json())
       .then((payload) => setCsrfToken(payload?.data?.csrfToken ?? ""))
       .catch(() => setCsrfToken(""));
-  }, []);
+
+    fetch("/api/auth/me", { credentials: "include" })
+      .then((response) => response.json())
+      .then((payload) => {
+        if (!payload?.success || payload?.data?.role !== "employer") return;
+        router.push("/employers/dashboard");
+      })
+      .catch(() => undefined);
+  }, [router]);
 
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -58,13 +66,13 @@ export default function EmployerLoginPage() {
       });
 
       const payload = (await response.json()) as LoginResult;
-      if (!response.ok || !payload.success || !payload.data?.session?.accessToken) {
+      if (!response.ok || !payload.success) {
         setError(payload.error?.message ?? (isArabic ? "تعذر تسجيل الدخول." : "Unable to login"));
         return;
       }
 
-      localStorage.setItem("prime_auth_token", payload.data.session.accessToken);
-      if (payload.data.user?.verificationStatus && payload.data.user.verificationStatus !== "verified") {
+      const verificationStatus = payload.data?.user?.verificationStatus;
+      if (verificationStatus && verificationStatus !== "verified") {
         router.push("/employer/pending-approval");
         return;
       }

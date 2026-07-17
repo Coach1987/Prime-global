@@ -10,16 +10,16 @@ export default function AdminDashboardPage() {
   const [auditLogs, setAuditLogs] = useState<Array<Record<string, unknown>>>([]);
 
   useEffect(() => {
-    const accessToken = localStorage.getItem("prime_auth_token") ?? "";
-    if (!accessToken) return;
-
-    fetch("/api/admin/platform", {
-      headers: { Authorization: `Bearer ${accessToken}` },
-    })
-      .then((res) => res.json())
+    fetch("/api/auth/me", { credentials: "include" })
+      .then((response) => response.json())
       .then((payload) => {
-        setAnalytics(payload?.data?.analytics ?? null);
-        setAuditLogs(payload?.data?.reports?.recentAuditLogs ?? []);
+        if (!payload?.success) return;
+        return fetch("/api/admin/platform", { credentials: "include" })
+          .then((res) => res.json())
+          .then((payload) => {
+            setAnalytics(payload?.data?.analytics ?? null);
+            setAuditLogs(payload?.data?.reports?.recentAuditLogs ?? []);
+          });
       })
       .catch(() => undefined);
   }, []);

@@ -17,7 +17,7 @@ type CandidateRow = {
 export default function AdminCandidateProfilesPage() {
   const params = useParams<{ locale: string }>();
   const locale = String(params.locale ?? "en");
-  const [token, setToken] = useState("");
+  const [hasSession, setHasSession] = useState(false);
   const [profiles, setProfiles] = useState<CandidateRow[]>([]);
   const [error, setError] = useState<string | null>(null);
 
@@ -38,19 +38,24 @@ export default function AdminCandidateProfilesPage() {
   );
 
   useEffect(() => {
-    setToken(localStorage.getItem("prime_auth_token") ?? "");
+    fetch("/api/auth/me", { credentials: "include" })
+      .then((response) => response.json())
+      .then((payload) => {
+        if (!payload?.success) return;
+        setHasSession(true);
+
+        return fetch("/api/admin/candidate-profiles?status=pending_review", {
+          credentials: "include",
+        })
+          .then((response) => response.json())
+          .then((payload) => setProfiles(payload?.data ?? []));
+      })
+      .catch(() => setError("Failed to load candidate profiles"));
   }, []);
 
   useEffect(() => {
-    if (!token) return;
-
-    fetch("/api/admin/candidate-profiles?status=pending_review", {
-      headers: { Authorization: `Bearer ${token}` },
-    })
-      .then((response) => response.json())
-      .then((payload) => setProfiles(payload?.data ?? []))
-      .catch(() => setError("Failed to load candidate profiles"));
-  }, [token]);
+    if (!hasSession) return;
+  }, [hasSession]);
 
   return (
     <main className="mx-auto w-full max-w-[1280px] px-4 pb-20 pt-[124px] sm:px-6 md:px-8">

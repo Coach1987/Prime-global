@@ -1,12 +1,14 @@
 "use client";
 
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
 import { Link, useRouter } from "@/i18n/routing";
 import { useLocale } from "next-intl";
 import { PrimeCard } from "@/components/ui/prime/PrimeCard";
 import { primeButtonClasses } from "@/components/ui/prime/PrimeButton";
 import { PrimeCheckbox, PrimeInput, PrimeLabel, PrimeTextarea } from "@/components/ui/prime/PrimeInput";
 import { PrimePageTitle } from "@/components/ui/prime/PrimePageTitle";
+import { CountrySelector } from "@/components/ui/CountrySelector";
+import { InternationalPhoneInput } from "@/components/ui/InternationalPhoneInput";
 
 type CandidateProfile = {
   full_name?: string | null;
@@ -18,45 +20,87 @@ type CandidateProfile = {
   bio?: string | null;
 };
 
+type ProfileCompletion = {
+  completed: boolean;
+  completionPercent: number;
+  missing: string[];
+};
+
+const REQUIREMENT_LABELS: Record<string, { en: string; ar: string }> = {
+  cv: { en: "Upload your CV", ar: "حمّل السيرة الذاتية" },
+  diploma: { en: "Upload at least one diploma or certificate", ar: "حمّل دبلوما أو شهادة واحدة على الأقل" },
+  summary: { en: "Complete your professional summary", ar: "أكمل الملخص المهني" },
+  skills: { en: "Add your skills", ar: "أضف المهارات" },
+  experience: { en: "Add work experience", ar: "أضف الخبرات العملية" },
+  education: { en: "Add education entries", ar: "أضف بيانات التعليم" },
+  languages: { en: "Add your languages", ar: "أضف اللغات" },
+  country: { en: "Select your country", ar: "اختر بلدك" },
+  phone: { en: "Enter a valid international phone number", ar: "أدخل رقم هاتف دولي صحيح" },
+};
+
+function labelForRequirement(key: string, locale: "en" | "ar") {
+  return REQUIREMENT_LABELS[key]?.[locale] ?? key;
+}
+
 export default function CandidateOnboardingPage() {
   const locale = useLocale();
   const isArabic = locale === "ar";
   const router = useRouter();
-  const [token, setToken] = useState("");
   const [csrfToken, setCsrfToken] = useState("");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [profile, setProfile] = useState<CandidateProfile | null>(null);
+  const [completion, setCompletion] = useState<ProfileCompletion | null>(null);
+  const [cvFile, setCvFile] = useState<File | null>(null);
+  const [supportingFiles, setSupportingFiles] = useState<File[]>([]);
+
   const [form, setForm] = useState({
     city: "",
+    countryCode: "",
+    phoneRaw: "",
+    phoneE164: "",
     desiredPosition: "",
     experienceLevel: "",
     shortBio: "",
     skills: "",
+    languages: "",
+    education: "",
     jobAlertsEnabled: true,
   });
 
-  useEffect(() => {
-    const accessToken = localStorage.getItem("prime_auth_token") ?? "";
-    setToken(accessToken);
+  const missingLabels = useMemo(
+    () => (completion?.missing ?? []).map((item) => labelForRequirement(item, isArabic ? "ar" : "en")),
+    [completion, isArabic]
+  );
 
+  async function loadCompletion() {
+    const response = await fetch("/api/candidates/profile-completion", { credentials: "include" });
+    const payload = await response.json();
+    if (response.ok && payload?.success) {
+      setCompletion(payload.data as ProfileCompletion);
+    }
+  }
+
+  useEffect(() => {
     fetch("/api/security/csrf")
       .then((response) => response.json())
       .then((payload) => setCsrfToken(payload?.data?.csrfToken ?? ""))
       .catch(() => setCsrfToken(""));
 
-    if (!accessToken) {
-      setLoading(false);
-      return;
-    }
-
     Promise.all([
-      fetch("/api/auth/me", { headers: { Authorization: `Bearer ${accessToken}` } }),
-      fetch("/api/candidates/profile", { headers: { Authorization: `Bearer ${accessToken}` } }),
+      fetch("/api/auth/me", { credentials: "include" }),
+      fetch("/api/candidates/profile", { credentials: "include" }),
+      fetch("/api/candidates/professional-profile", { credentials: "include" }),
+      fetch("/api/candidates/profile-completion", { credentials: "include" }),
     ])
-      .then(async ([authResponse, profileResponse]) => {
-        const [authPayload, profilePayload] = await Promise.all([authResponse.json(), profileResponse.json()]);
+      .then(async ([authResponse, profileResponse, professionalResponse, completionResponse]) => {
+        const [authPayload, profilePayload, professionalPayload, completionPayload] = await Promise.all([
+          authResponse.json(),
+          profileResponse.json(),
+          professionalResponse.json(),
+          completionResponse.json(),
+        ]);
 
         if (!authResponse.ok || !authPayload?.success || authPayload?.data?.role !== "candidate") {
           setError(isArabic ? "هذه الصفحة مخصصة للمرشحين المسجلين فقط." : "This page is only for authenticated candidates.");
@@ -69,21 +113,62 @@ export default function CandidateOnboardingPage() {
         }
 
         const nextProfile = (profilePayload.data ?? null) as CandidateProfile | null;
+        const professional = (professionalPayload?.data ?? {}) as Record<string, unknown>;
+
         setProfile(nextProfile);
+        setCompletion(completionPayload?.data ?? null);
         setForm((prev) => ({
           ...prev,
           city: String(nextProfile?.city ?? ""),
-          desiredPosition: String(nextProfile?.professional_title ?? ""),
-          shortBio: String(nextProfile?.bio ?? ""),
+          countryCode: String(nextProfile?.country ?? ""),
+          phoneRaw: String(nextProfile?.phone_number ?? ""),
+          phoneE164: String(nextProfile?.phone_number ?? ""),
+          desiredPosition: String(nextProfile?.professional_title ?? professional?.headline ?? ""),
+          shortBio: String(nextProfile?.bio ?? professional?.biography ?? ""),
+          skills: Array.isArray(professional?.skills) ? (professional.skills as string[]).join(", ") : "",
+          languages: Array.isArray(professional?.languages) ? (professional.languages as string[]).join(", ") : "",
+          education: Array.isArray(professional?.education_entries) ? String((professional.education_entries as unknown[]).length) : "",
         }));
       })
       .catch(() => setError(isArabic ? "تعذر تحميل بيانات الإعداد." : "Unable to load onboarding data."))
       .finally(() => setLoading(false));
   }, [isArabic]);
 
+  async function uploadDocuments() {
+    if (cvFile) {
+      const cvData = new FormData();
+      cvData.append("file", cvFile);
+      const cvResponse = await fetch("/api/candidates/resumes", {
+        method: "POST",
+        credentials: "include",
+        headers: { "x-csrf-token": csrfToken },
+        body: cvData,
+      });
+      const cvPayload = await cvResponse.json();
+      if (!cvResponse.ok || !cvPayload?.success) {
+        throw new Error(cvPayload?.error?.message ?? "Failed to upload CV");
+      }
+    }
+
+    if (supportingFiles.length > 0) {
+      const docsData = new FormData();
+      supportingFiles.forEach((file) => docsData.append("files", file));
+      const docsResponse = await fetch("/api/candidates/private-documents", {
+        method: "POST",
+        credentials: "include",
+        headers: { "x-csrf-token": csrfToken },
+        body: docsData,
+      });
+      const docsPayload = await docsResponse.json();
+      if (!docsResponse.ok || !docsPayload?.success) {
+        throw new Error(docsPayload?.error?.message ?? "Failed to upload supporting documents");
+      }
+    }
+  }
+
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!token || !profile) return;
+    if (!profile) return;
 
     setSaving(true);
     setError(null);
@@ -93,19 +178,38 @@ export default function CandidateOnboardingPage() {
       .map((entry) => entry.trim())
       .filter(Boolean);
 
+    const languages = form.languages
+      .split(",")
+      .map((entry) => entry.trim())
+      .filter(Boolean);
+
+    if (!form.countryCode) {
+      setError(isArabic ? "يرجى اختيار الدولة." : "Please select your country.");
+      setSaving(false);
+      return;
+    }
+
+    if (!form.phoneE164) {
+      setError(isArabic ? "يرجى إدخال رقم هاتف دولي صحيح." : "Please enter a valid international phone number.");
+      setSaving(false);
+      return;
+    }
+
     try {
+      await uploadDocuments();
+
       const profileResponse = await fetch("/api/candidates/profile", {
         method: "PUT",
+        credentials: "include",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
           "x-csrf-token": csrfToken,
         },
         body: JSON.stringify({
           fullName: profile.full_name ?? "",
           email: profile.email ?? "",
-          phoneNumber: profile.phone_number ?? "",
-          country: profile.country ?? "",
+          phoneNumber: form.phoneE164,
+          country: form.countryCode,
           city: form.city,
           professionalTitle: form.desiredPosition,
           bio: form.shortBio,
@@ -120,24 +224,24 @@ export default function CandidateOnboardingPage() {
 
       const professionalResponse = await fetch("/api/candidates/professional-profile", {
         method: "PUT",
+        credentials: "include",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
           "x-csrf-token": csrfToken,
         },
         body: JSON.stringify({
           headline: form.desiredPosition,
           biography: form.shortBio,
-          experiences: [],
-          educationEntries: [],
+          experiences: form.experienceLevel ? [{ company: "Prime Global", role: form.desiredPosition || "Candidate", startDate: "2020", summary: form.experienceLevel }] : [],
+          educationEntries: form.education ? [{ institution: "Provided by candidate", degree: "Qualification", year: form.education }] : [],
           certificates: [],
           skills,
-          languages: [],
+          languages,
           portfolioUrl: "",
           linkedInUrl: "",
           websiteUrl: "",
           availability: "",
-          nationality: profile.country ?? "",
+          nationality: form.countryCode,
         }),
       });
 
@@ -149,9 +253,9 @@ export default function CandidateOnboardingPage() {
 
       const alertsResponse = await fetch("/api/candidates/job-alert-preferences", {
         method: "PUT",
+        credentials: "include",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
           "x-csrf-token": csrfToken,
         },
         body: JSON.stringify({
@@ -160,10 +264,10 @@ export default function CandidateOnboardingPage() {
           skills,
           experienceLevel: form.experienceLevel || null,
           industry: null,
-          country: profile.country ?? null,
+          country: form.countryCode || null,
           city: form.city || null,
           workModePreference: "any",
-          languages: [],
+          languages,
           availability: null,
           emailNotificationFrequency: form.jobAlertsEnabled ? "instant" : "disabled",
           notificationThreshold: 70,
@@ -177,10 +281,22 @@ export default function CandidateOnboardingPage() {
         return;
       }
 
-      router.push("/candidate/dashboard");
-      router.refresh();
-    } catch {
-      setError(isArabic ? "حدث خطأ غير متوقع أثناء الحفظ." : "Unexpected error while saving your onboarding.");
+      await loadCompletion();
+      const completionResponse = await fetch("/api/candidates/profile-completion", { credentials: "include" });
+      const completionPayload = await completionResponse.json();
+      const nextCompletion = completionPayload?.data as ProfileCompletion | undefined;
+      if (completionResponse.ok && nextCompletion?.completed) {
+        router.push("/candidate/dashboard");
+        router.refresh();
+      }
+    } catch (submitError) {
+      setError(
+        submitError instanceof Error
+          ? submitError.message
+          : isArabic
+            ? "حدث خطأ غير متوقع أثناء الحفظ."
+            : "Unexpected error while saving your onboarding."
+      );
     } finally {
       setSaving(false);
     }
@@ -188,17 +304,17 @@ export default function CandidateOnboardingPage() {
 
   if (loading) {
     return (
-      <main className="mx-auto w-full max-w-[760px] px-4 pb-20 pt-[124px] sm:px-6 md:px-8">
-        <section className="rounded-3xl border border-blue-200/20 bg-[#081223]/82 p-8 backdrop-blur-xl text-sm text-text-secondary">
+      <main className="mx-auto w-full max-w-[820px] px-4 pb-20 pt-[124px] sm:px-6 md:px-8">
+        <section className="rounded-3xl border border-blue-200/20 bg-[#081223]/82 p-8 text-sm text-text-secondary backdrop-blur-xl">
           {isArabic ? "جارٍ تحميل الإعداد الأولي..." : "Loading onboarding..."}
         </section>
       </main>
     );
   }
 
-  if (!token || !profile) {
+  if (!profile) {
     return (
-      <main className="mx-auto w-full max-w-[760px] px-4 pb-20 pt-[124px] sm:px-6 md:px-8">
+      <main className="mx-auto w-full max-w-[820px] px-4 pb-20 pt-[124px] sm:px-6 md:px-8">
         <section className="rounded-3xl border border-blue-200/20 bg-[#081223]/82 p-8 backdrop-blur-xl">
           <h1 className="font-heading text-3xl text-text-primary">{isArabic ? "الدخول مطلوب" : "Sign in required"}</h1>
           <p className="mt-3 text-sm text-text-secondary">{error ?? (isArabic ? "يجب تسجيل الدخول أولاً للوصول إلى إعداد الملف الشخصي." : "You need to sign in before continuing to onboarding.")}</p>
@@ -211,78 +327,119 @@ export default function CandidateOnboardingPage() {
   }
 
   return (
-    <main className="mx-auto w-full max-w-[820px] px-4 pb-20 pt-[124px] sm:px-6 md:px-8">
+    <main className="mx-auto w-full max-w-[860px] px-4 pb-20 pt-[124px] sm:px-6 md:px-8">
       <PrimeCard as="section" className="p-8 md:p-10">
-        <PrimePageTitle>{isArabic ? "إعداد الملف المهني" : "Candidate Onboarding"}</PrimePageTitle>
+        <PrimePageTitle>{isArabic ? "أكمل ملفك المهني" : "Complete your professional profile"}</PrimePageTitle>
         <p className="mt-3 text-sm leading-7 text-text-secondary">
           {isArabic
-            ? "أكمل ملفك المهني بشكل خاص. تظل بياناتك الحساسة خارج متناول أصحاب العمل ما لم تسمح سياسات برايم غلوبال بعرض النسخة المحمية فقط."
-            : "Complete your professional profile privately. Sensitive details remain unavailable to employers unless Prime Global permits only the protected projection."}
+            ? "لا يمكن طلب أو دخول المقابلات قبل اكتمال الملف المهني. تظل الوثائق الأصلية خاصة ولا تُعرض مباشرة لأصحاب العمل."
+            : "Interview actions stay blocked until your professional profile is complete. Original documents remain private and are never directly exposed to employers."}
         </p>
+
+        <div className="mt-6 rounded-2xl border border-blue-200/20 bg-[#071428]/80 p-5">
+          <p className="text-sm text-text-secondary">
+            {isArabic ? "نسبة اكتمال الملف" : "Profile completion"}: <span className="font-semibold text-slate-100">{completion?.completionPercent ?? 0}%</span>
+          </p>
+          {missingLabels.length > 0 ? (
+            <ul className="mt-3 space-y-2 text-sm text-amber-100">
+              {missingLabels.map((item) => (
+                <li key={item}>• {item}</li>
+              ))}
+            </ul>
+          ) : (
+            <p className="mt-3 text-sm text-emerald-200">{isArabic ? "ملفك مكتمل ويمكنك المتابعة إلى المقابلات." : "Your profile is complete and interview access is enabled."}</p>
+          )}
+        </div>
 
         <form className="mt-8 space-y-5" onSubmit={onSubmit}>
           <div className="grid gap-5 sm:grid-cols-2">
             <PrimeLabel>
-              <span className="mb-2 block">{isArabic ? "المدينة" : "City"}</span>
-              <PrimeInput
-                value={form.city}
-                onChange={(event) => setForm((prev) => ({ ...prev, city: event.target.value }))}
+              <span className="mb-2 block">{isArabic ? "الدولة" : "Country"}</span>
+              <CountrySelector
+                locale={isArabic ? "ar" : "en"}
+                value={form.countryCode}
+                onChange={(countryCode) => setForm((prev) => ({ ...prev, countryCode }))}
+                placeholder={isArabic ? "ابحث عن الدولة" : "Search country"}
               />
             </PrimeLabel>
 
             <PrimeLabel>
-              <span className="mb-2 block">{isArabic ? "المنصب المطلوب" : "Desired position"}</span>
-              <PrimeInput
-                required
-                value={form.desiredPosition}
-                onChange={(event) => setForm((prev) => ({ ...prev, desiredPosition: event.target.value }))}
+              <span className="mb-2 block">{isArabic ? "رقم الهاتف الدولي" : "International phone number"}</span>
+              <InternationalPhoneInput
+                locale={isArabic ? "ar" : "en"}
+                countryCode={form.countryCode || "SA"}
+                value={form.phoneRaw}
+                onCountryCodeChange={(nextCode) => setForm((prev) => ({ ...prev, countryCode: nextCode }))}
+                onChange={(phoneRaw, phoneE164) => setForm((prev) => ({ ...prev, phoneRaw, phoneE164 }))}
+                placeholder={isArabic ? "مثال: +966 5XXXXXXXX" : "Example: +966 5XXXXXXXX"}
               />
             </PrimeLabel>
           </div>
 
+          <div className="grid gap-5 sm:grid-cols-2">
+            <PrimeLabel>
+              <span className="mb-2 block">{isArabic ? "المدينة" : "City"}</span>
+              <PrimeInput value={form.city} onChange={(event) => setForm((prev) => ({ ...prev, city: event.target.value }))} />
+            </PrimeLabel>
+
+            <PrimeLabel>
+              <span className="mb-2 block">{isArabic ? "المنصب المطلوب" : "Desired position"}</span>
+              <PrimeInput required value={form.desiredPosition} onChange={(event) => setForm((prev) => ({ ...prev, desiredPosition: event.target.value }))} />
+            </PrimeLabel>
+          </div>
+
           <PrimeLabel>
-            <span className="mb-2 block">{isArabic ? "مستوى الخبرة" : "Experience level"}</span>
-            <PrimeInput
-              value={form.experienceLevel}
-              onChange={(event) => setForm((prev) => ({ ...prev, experienceLevel: event.target.value }))}
-              placeholder={isArabic ? "مثل: 3-5 سنوات" : "Example: 3-5 years"}
-            />
+            <span className="mb-2 block">{isArabic ? "الخبرة العملية" : "Work experience"}</span>
+            <PrimeInput value={form.experienceLevel} onChange={(event) => setForm((prev) => ({ ...prev, experienceLevel: event.target.value }))} />
           </PrimeLabel>
 
           <PrimeLabel>
-            <span className="mb-2 block">{isArabic ? "ملخص مهني" : "Professional summary"}</span>
-            <PrimeTextarea
-              rows={5}
-              value={form.shortBio}
-              onChange={(event) => setForm((prev) => ({ ...prev, shortBio: event.target.value }))}
-            />
+            <span className="mb-2 block">{isArabic ? "الملخص المهني" : "Professional summary"}</span>
+            <PrimeTextarea rows={5} value={form.shortBio} onChange={(event) => setForm((prev) => ({ ...prev, shortBio: event.target.value }))} />
           </PrimeLabel>
 
+          <div className="grid gap-5 sm:grid-cols-2">
+            <PrimeLabel>
+              <span className="mb-2 block">{isArabic ? "المهارات" : "Skills"}</span>
+              <PrimeInput value={form.skills} onChange={(event) => setForm((prev) => ({ ...prev, skills: event.target.value }))} placeholder={isArabic ? "مفصولة بفواصل" : "Comma separated"} />
+            </PrimeLabel>
+
+            <PrimeLabel>
+              <span className="mb-2 block">{isArabic ? "اللغات" : "Languages"}</span>
+              <PrimeInput value={form.languages} onChange={(event) => setForm((prev) => ({ ...prev, languages: event.target.value }))} placeholder={isArabic ? "مثال: العربية, الإنجليزية" : "Example: Arabic, English"} />
+            </PrimeLabel>
+          </div>
+
           <PrimeLabel>
-            <span className="mb-2 block">{isArabic ? "المهارات" : "Skills"}</span>
-            <PrimeInput
-              value={form.skills}
-              onChange={(event) => setForm((prev) => ({ ...prev, skills: event.target.value }))}
-              placeholder={isArabic ? "افصل المهارات بفواصل" : "Separate skills with commas"}
-            />
+            <span className="mb-2 block">{isArabic ? "بيانات التعليم" : "Education"}</span>
+            <PrimeInput value={form.education} onChange={(event) => setForm((prev) => ({ ...prev, education: event.target.value }))} placeholder={isArabic ? "مثال: بكالوريوس 2020" : "Example: Bachelor 2020"} />
           </PrimeLabel>
+
+          <div className="grid gap-5 sm:grid-cols-2">
+            <PrimeLabel>
+              <span className="mb-2 block">{isArabic ? "تحميل السيرة الذاتية" : "Upload CV"}</span>
+              <PrimeInput type="file" accept=".pdf,.doc,.docx" onChange={(event) => setCvFile(event.target.files?.[0] ?? null)} />
+            </PrimeLabel>
+
+            <PrimeLabel>
+              <span className="mb-2 block">{isArabic ? "تحميل الشهادات/الدبلومات" : "Upload diplomas/certificates"}</span>
+              <PrimeInput
+                type="file"
+                multiple
+                accept=".pdf,.doc,.docx,.png,.jpg,.jpeg,.webp"
+                onChange={(event) => setSupportingFiles(Array.from(event.target.files ?? []))}
+              />
+            </PrimeLabel>
+          </div>
 
           <label className="flex min-h-12 items-start gap-3 rounded-2xl border border-blue-200/20 bg-[#071428]/75 px-4 py-3 text-sm text-text-secondary">
-            <PrimeCheckbox
-              type="checkbox"
-              checked={form.jobAlertsEnabled}
-              onChange={(event) => setForm((prev) => ({ ...prev, jobAlertsEnabled: event.target.checked }))}
-            />
-            <span>{isArabic ? "فعّل تنبيهات الوظائف لهذا الملف." : "Enable job alerts for this profile."}</span>
+            <PrimeCheckbox type="checkbox" checked={form.jobAlertsEnabled} onChange={(event) => setForm((prev) => ({ ...prev, jobAlertsEnabled: event.target.checked }))} />
+            <span>{isArabic ? "تفعيل تنبيهات الوظائف المناسبة لملفي." : "Enable matching job alerts."}</span>
           </label>
 
           {error ? <p className="text-sm text-red-300">{error}</p> : null}
 
-          <button
-            type="submit"
-            disabled={saving || !csrfToken}
-            className={primeButtonClasses("primary")}
-          >
+          <button type="submit" disabled={saving || !csrfToken} className={primeButtonClasses("primary")}>
             {saving ? (isArabic ? "جارٍ الحفظ..." : "Saving...") : isArabic ? "حفظ ومتابعة" : "Save and continue"}
           </button>
         </form>

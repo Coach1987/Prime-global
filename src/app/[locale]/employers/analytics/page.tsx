@@ -8,14 +8,16 @@ export default function EmployerAnalyticsPage() {
   const locale = useLocale();
 
   useEffect(() => {
-    const accessToken = localStorage.getItem("prime_auth_token") ?? "";
-    if (!accessToken) return;
-
-    fetch("/api/dashboard/premium", {
-      headers: { Authorization: `Bearer ${accessToken}` },
-    })
-      .then((res) => res.json())
-      .then((payload) => setStats(payload?.data ?? null))
+    fetch("/api/auth/me", { credentials: "include" })
+      .then((response) => response.json())
+      .then((payload) => {
+        if (!payload?.success || payload?.data?.role !== "employer") return;
+        return fetch("/api/dashboard/premium", {
+          credentials: "include",
+        })
+          .then((res) => res.json())
+          .then((payload) => setStats(payload?.data ?? null));
+      })
       .catch(() => undefined);
   }, []);
 

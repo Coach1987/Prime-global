@@ -3,6 +3,8 @@ import { z } from "zod";
 import { getEmployerByAuthUserId } from "@/lib/server/employers";
 import { createSupabasePublicClient } from "@/lib/server/supabase";
 import { enforceCsrf, enforceRateLimit, parseJsonBody } from "@/lib/server/http";
+import { setAuthCookies } from "@/lib/server/security/session-cookies";
+import { evaluateCandidateProfileCompletion } from "@/lib/server/candidates/profile-completion";
 
 const loginSchema = z.object({
   email: z.string().trim().email().max(320),
@@ -70,6 +72,7 @@ export async function POST(request: Request) {
 
   let verificationStatus: string | null = null;
   let accountStatus: string | null = null;
+  let profileCompletion: Awaited<ReturnType<typeof evaluateCandidateProfileCompletion>> | null = null;
 
   if (actualRole === "employer") {
     const employer = await getEmployerByAuthUserId(data.user.id);
@@ -77,15 +80,21 @@ export async function POST(request: Request) {
     accountStatus = verificationStatus === "verified" ? "active" : "pending_review";
   }
 
-  return NextResponse.json({
+  if (actualRole === "candidate") {
+    profileCompletion = await evaluateCandidateProfileCompletion(data.user.id);
+  }
+
+  const response = NextResponse.json({
     success: true,
     data: {
       user: {
         id: data.user.id,
         email: data.user.email,
+        displayName: String(data.user.user_metadata?.full_name ?? "").trim() || null,
         role: actualRole,
         verificationStatus,
         accountStatus,
+        profileCompletion,
       },
       session: {
         accessToken: data.session.access_token,
@@ -94,4 +103,12 @@ export async function POST(request: Request) {
       },
     },
   });
+
+  setAuthCookies(response, {
+    accessToken: data.session.access_token,
+    refreshToken: data.session.refresh_token,
+    expiresAt: data.session.expires_at ?? null,
+  });
+
+  return response;
 }

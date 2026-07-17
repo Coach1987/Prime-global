@@ -23,7 +23,7 @@ export function getAccountHref(role: AuthRole) {
 }
 
 export function getPostLoginHref(role: AuthRole) {
-  if (role === "candidate") return "/candidate/my-interviews";
+  if (role === "candidate") return "/candidate/dashboard";
   if (role === "employer") return "/employers/interview-center";
   return "/admin/control-center";
 }

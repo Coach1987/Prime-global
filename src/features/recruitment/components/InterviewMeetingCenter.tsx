@@ -71,7 +71,7 @@ export function InterviewMeetingCenter({
   role: "employer" | "candidate" | "staff";
   interviewId: string;
 }) {
-  const [token, setToken] = useState("");
+  const [hasSession, setHasSession] = useState(false);
   const [isAuthorized, setIsAuthorized] = useState(false);
   const [csrfToken, setCsrfToken] = useState("");
   const [data, setData] = useState<MeetingCenterPayload | null>(null);
@@ -86,9 +86,9 @@ export function InterviewMeetingCenter({
   const copy = useMemo(() => getCopy(locale), [locale]);
   const videoTransport = useMemo(() => createMockVideoTransport(), []);
 
-  const loadCenter = useCallback(async (accessToken: string) => {
+  const loadCenter = useCallback(async () => {
     const response = await fetch(`/api/recruitment/interviews/${interviewId}/meeting-center?locale=${locale}`, {
-      headers: { Authorization: `Bearer ${accessToken}` },
+      credentials: "include",
     });
     const payload = await response.json();
     if (!response.ok || !payload.success) {
@@ -99,16 +99,8 @@ export function InterviewMeetingCenter({
   }, [interviewId, locale]);
 
   useEffect(() => {
-    const accessToken = localStorage.getItem("prime_auth_token") ?? "";
-    setToken(accessToken);
-
-    if (!accessToken) {
-      setError(locale === "ar" ? "يرجى تسجيل الدخول للوصول." : "Please sign in to continue.");
-      return;
-    }
-
     fetch("/api/auth/me", {
-      headers: { Authorization: `Bearer ${accessToken}` },
+      credentials: "include",
     })
       .then((response) => response.json())
       .then((payload) => {
@@ -128,6 +120,7 @@ export function InterviewMeetingCenter({
           return;
         }
 
+        setHasSession(true);
         setIsAuthorized(true);
       })
       .catch(() => setError(locale === "ar" ? "تعذر التحقق من الجلسة." : "Unable to verify session."));
@@ -137,17 +130,16 @@ export function InterviewMeetingCenter({
       .then((payload) => setCsrfToken(payload?.data?.csrfToken ?? ""))
       .catch(() => setCsrfToken(""));
 
-    if (!accessToken) return;
-    loadCenter(accessToken).catch(() => setError(locale === "ar" ? "تعذر تحميل المركز." : "Unable to load center."));
+    loadCenter().catch(() => setError(locale === "ar" ? "تعذر تحميل المركز." : "Unable to load center."));
   }, [interviewId, locale, role, loadCenter]);
 
   useEffect(() => {
-    if (!token || !isAuthorized) return;
+    if (!hasSession || !isAuthorized) return;
     const id = window.setInterval(() => {
-      loadCenter(token).catch(() => undefined);
+      loadCenter().catch(() => undefined);
     }, 5000);
     return () => window.clearInterval(id);
-  }, [token, isAuthorized, loadCenter]);
+  }, [hasSession, isAuthorized, loadCenter]);
 
   useEffect(() => {
     if (!data?.interview) return;
@@ -157,14 +149,14 @@ export function InterviewMeetingCenter({
   }, [data]);
 
   async function joinMeeting() {
-    if (!token) return;
+    if (!hasSession) return;
 
     const tokenResponse = await fetch(`/api/recruitment/interviews/${interviewId}/meeting-center/token`, {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${token}`,
         "x-csrf-token": csrfToken,
       },
+      credentials: "include",
     });
     const tokenPayload = await tokenResponse.json();
     if (!tokenResponse.ok || !tokenPayload.success) {
@@ -176,9 +168,9 @@ export function InterviewMeetingCenter({
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
         "x-csrf-token": csrfToken,
       },
+      credentials: "include",
       body: JSON.stringify({ joinToken: tokenPayload?.data?.token }),
     });
     const payload = await response.json();
@@ -187,18 +179,18 @@ export function InterviewMeetingCenter({
       return;
     }
     setTokenNotice(copy.tokenIssued);
-    await loadCenter(token);
+    await loadCenter();
   }
 
   async function respondToInvitation(action: "accept" | "reject") {
-    if (!token) return;
+    if (!hasSession) return;
     const response = await fetch(`/api/recruitment/interviews/${interviewId}/invitation/respond`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
         "x-csrf-token": csrfToken,
       },
+      credentials: "include",
       body: JSON.stringify({ action, locale }),
     });
     const payload = await response.json();
@@ -206,18 +198,18 @@ export function InterviewMeetingCenter({
       setError(payload?.error?.message ?? "Failed to update invitation");
       return;
     }
-    await loadCenter(token);
+    await loadCenter();
   }
 
   async function acceptCoordinationTerms() {
-    if (!token) return;
+    if (!hasSession) return;
     const response = await fetch(`/api/recruitment/interviews/${interviewId}/coordination-terms/accept`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
         "x-csrf-token": csrfToken,
       },
+      credentials: "include",
       body: JSON.stringify({ locale }),
     });
     const payload = await response.json();
@@ -225,18 +217,18 @@ export function InterviewMeetingCenter({
       setError(payload?.error?.message ?? "Failed to accept terms");
       return;
     }
-    await loadCenter(token);
+    await loadCenter();
   }
 
   async function setReadiness(ready: boolean) {
-    if (!token) return;
+    if (!hasSession) return;
     const response = await fetch(`/api/recruitment/interviews/${interviewId}/meeting-center/readiness`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
         "x-csrf-token": csrfToken,
       },
+      credentials: "include",
       body: JSON.stringify({ ready }),
     });
     const payload = await response.json();
@@ -244,7 +236,7 @@ export function InterviewMeetingCenter({
       setError(payload?.error?.message ?? "Failed to update readiness");
       return;
     }
-    await loadCenter(token);
+    await loadCenter();
   }
 
   async function runDeviceCheck() {
@@ -256,28 +248,29 @@ export function InterviewMeetingCenter({
   }
 
   async function leaveMeeting() {
-    if (!token) return;
+    if (!hasSession) return;
     const response = await fetch(`/api/recruitment/interviews/${interviewId}/meeting-center/leave`, {
       method: "POST",
-      headers: { Authorization: `Bearer ${token}`, "x-csrf-token": csrfToken },
+      headers: { "x-csrf-token": csrfToken },
+      credentials: "include",
     });
     const payload = await response.json();
     if (!response.ok || !payload.success) {
       setError(payload?.error?.message ?? "Failed to leave meeting");
       return;
     }
-    await loadCenter(token);
+    await loadCenter();
   }
 
   async function sendChat() {
-    if (!token || !chatBody.trim()) return;
+    if (!hasSession || !chatBody.trim()) return;
     const response = await fetch(`/api/recruitment/interviews/${interviewId}/meeting-center/chat`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
         "x-csrf-token": csrfToken,
       },
+      credentials: "include",
       body: JSON.stringify({ body: chatBody, locale }),
     });
     const payload = await response.json();
@@ -286,18 +279,18 @@ export function InterviewMeetingCenter({
       return;
     }
     setChatBody("");
-    await loadCenter(token);
+    await loadCenter();
   }
 
   async function startOrEndMeeting(hostAction: "start" | "end") {
-    if (!token) return;
+    if (!hasSession) return;
     const response = await fetch(`/api/recruitment/interviews/${interviewId}`, {
       method: "PATCH",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
         "x-csrf-token": csrfToken,
       },
+      credentials: "include",
       body: JSON.stringify({ hostAction, locale }),
     });
     const payload = await response.json();
@@ -305,11 +298,11 @@ export function InterviewMeetingCenter({
       setError(payload?.error?.message ?? "Failed to update interview");
       return;
     }
-    await loadCenter(token);
+    await loadCenter();
   }
 
   async function updateScheduleOrStatus(input: { status?: "cancelled"; scheduledAt?: string }) {
-    if (!token) return;
+    if (!hasSession) return;
     const payload: Record<string, unknown> = { locale };
     if (input.status) payload.status = input.status;
     if (input.scheduledAt) payload.scheduledAt = new Date(input.scheduledAt).toISOString();
@@ -318,9 +311,9 @@ export function InterviewMeetingCenter({
       method: "PATCH",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
         "x-csrf-token": csrfToken,
       },
+      credentials: "include",
       body: JSON.stringify(payload),
     });
     const body = await response.json();
@@ -329,7 +322,7 @@ export function InterviewMeetingCenter({
       return;
     }
     setRescheduleAt("");
-    await loadCenter(token);
+    await loadCenter();
   }
 
   const timerValue = useMemo(() => {

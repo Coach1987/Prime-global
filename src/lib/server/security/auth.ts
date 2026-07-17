@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createSupabasePublicClient } from "@/lib/server/supabase";
+import { readAuthCookies } from "@/lib/server/security/session-cookies";
 
 export type AppRole =
   | "candidate"
@@ -14,6 +15,11 @@ export interface AuthContext {
   email: string;
   role: AppRole;
   accessToken: string;
+  refreshedSession?: {
+    accessToken: string;
+    refreshToken: string;
+    expiresAt: number | null;
+  };
 }
 
 function readBearerToken(request: Request) {
@@ -43,25 +49,49 @@ export function forbiddenResponse(message = "Forbidden") {
 }
 
 export async function requireAuth(request: Request): Promise<AuthContext | NextResponse> {
-  const accessToken = readBearerToken(request);
-  if (!accessToken) {
-    return unauthorizedResponse("Missing bearer token");
-  }
+  const bearerToken = readBearerToken(request);
+  const cookies = readAuthCookies(request);
+  const accessToken = bearerToken || cookies.accessToken;
+  if (!accessToken) return unauthorizedResponse("Missing session token");
 
   const supabase = createSupabasePublicClient();
   const { data, error } = await supabase.auth.getUser(accessToken);
 
-  if (error || !data.user) {
+  if (!error && data.user) {
+    const role = normalizeRole(data.user.app_metadata?.app_role ?? data.user.user_metadata?.app_role);
+
+    return {
+      userId: data.user.id,
+      email: data.user.email ?? "",
+      role,
+      accessToken,
+    };
+  }
+
+  if (!cookies.refreshToken) {
     return unauthorizedResponse("Invalid access token");
   }
 
-  const role = normalizeRole(data.user.app_metadata?.app_role ?? data.user.user_metadata?.app_role);
+  const { data: refreshed, error: refreshError } = await supabase.auth.refreshSession({
+    refresh_token: cookies.refreshToken,
+  });
+
+  if (refreshError || !refreshed.session || !refreshed.user) {
+    return unauthorizedResponse("Session expired");
+  }
+
+  const role = normalizeRole(refreshed.user.app_metadata?.app_role ?? refreshed.user.user_metadata?.app_role);
 
   return {
-    userId: data.user.id,
-    email: data.user.email ?? "",
+    userId: refreshed.user.id,
+    email: refreshed.user.email ?? "",
     role,
-    accessToken,
+    accessToken: refreshed.session.access_token,
+    refreshedSession: {
+      accessToken: refreshed.session.access_token,
+      refreshToken: refreshed.session.refresh_token,
+      expiresAt: refreshed.session.expires_at ?? null,
+    },
   };
 }
 

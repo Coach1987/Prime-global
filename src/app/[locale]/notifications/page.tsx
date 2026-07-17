@@ -6,12 +6,14 @@ export default function NotificationsPage() {
   const [notifications, setNotifications] = useState<Array<Record<string, unknown>>>([]);
 
   useEffect(() => {
-    const accessToken = localStorage.getItem("prime_auth_token") ?? "";
-    if (!accessToken) return;
-
-    fetch("/api/notifications", { headers: { Authorization: `Bearer ${accessToken}` } })
-      .then((res) => res.json())
-      .then((payload) => setNotifications(payload?.data ?? []))
+    fetch("/api/auth/me", { credentials: "include" })
+      .then((response) => response.json())
+      .then((payload) => {
+        if (!payload?.success) return;
+        return fetch("/api/notifications", { credentials: "include" })
+          .then((res) => res.json())
+          .then((payload) => setNotifications(payload?.data ?? []));
+      })
       .catch(() => undefined);
   }, []);
 

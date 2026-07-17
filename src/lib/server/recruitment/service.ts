@@ -4,6 +4,7 @@ import { AppRole, AuthContext, forbiddenResponse } from "@/lib/server/security/a
 import { serverEnv } from "@/lib/server/config/env";
 import { createSupabaseAdminClient } from "@/lib/server/supabase";
 import { getCandidateByAuthUserId } from "@/lib/server/candidates";
+import { evaluateCandidateProfileCompletion } from "@/lib/server/candidates/profile-completion";
 import { getEmployerByAuthUserId } from "@/lib/server/employers";
 import { protectRecruitmentMessage } from "@/lib/server/recruitment/message-protection";
 import { authorizeParticipantRole as protectedAuthorizeParticipantRole, enforceInterviewPolicy as enforceProtectedInterviewPolicy } from "@/lib/server/phase10/protected-interview/policy";
@@ -1541,7 +1542,20 @@ async function ensureInterviewParticipant(auth: AuthContext, interviewId: string
   return data;
 }
 
+async function ensureCandidateInterviewEligibility(auth: AuthContext) {
+  if (auth.role !== "candidate") return;
+
+  const completion = await evaluateCandidateProfileCompletion(auth.userId);
+  if (completion.completed) return;
+
+  throw new Error(
+    `Complete your professional profile before interview actions. Missing: ${completion.missing.join(", ")}`
+  );
+}
+
 export async function getInterviewMeetingCenter(auth: AuthContext, interviewId: string, locale: string) {
+  await ensureCandidateInterviewEligibility(auth);
+
   const supabase = createSupabaseAdminClient();
   const { data: interview, error: interviewError } = await supabase
     .from("recruitment_interviews")
@@ -1632,6 +1646,8 @@ export async function getInterviewMeetingCenter(auth: AuthContext, interviewId: 
 }
 
 export async function respondInterviewInvitation(auth: AuthContext, interviewId: string, input: { action: "accept" | "reject"; locale: string }) {
+  await ensureCandidateInterviewEligibility(auth);
+
   const detail = await getInterviewMeetingCenter(auth, interviewId, input.locale);
   const role = getConversationParticipantRole(auth.role);
   if (role !== "candidate" && role !== "employer") {
@@ -1685,6 +1701,8 @@ export async function respondInterviewInvitation(auth: AuthContext, interviewId:
 }
 
 export async function acceptInterviewCoordinationTerms(auth: AuthContext, interviewId: string, input: { locale: string }) {
+  await ensureCandidateInterviewEligibility(auth);
+
   const detail = await getInterviewMeetingCenter(auth, interviewId, input.locale);
   const role = getConversationParticipantRole(auth.role);
   if (role !== "candidate" && role !== "employer") {
@@ -1712,6 +1730,8 @@ export async function acceptInterviewCoordinationTerms(auth: AuthContext, interv
 }
 
 export async function setInterviewParticipantReadiness(auth: AuthContext, interviewId: string, input: { ready: boolean }) {
+  await ensureCandidateInterviewEligibility(auth);
+
   const supabase = createSupabaseAdminClient();
   const role = getConversationParticipantRole(auth.role);
   const detail = await getInterviewMeetingCenter(auth, interviewId, "en");
@@ -1748,6 +1768,8 @@ export async function setInterviewParticipantReadiness(auth: AuthContext, interv
 }
 
 export async function issueInterviewJoinToken(auth: AuthContext, interviewId: string) {
+  await ensureCandidateInterviewEligibility(auth);
+
   const supabase = createSupabaseAdminClient();
   const detail = await getInterviewMeetingCenter(auth, interviewId, "en");
   const role = getConversationParticipantRole(auth.role);
@@ -1798,6 +1820,8 @@ export async function issueInterviewJoinToken(auth: AuthContext, interviewId: st
 }
 
 export async function joinInterviewMeeting(auth: AuthContext, interviewId: string, joinToken: string) {
+  await ensureCandidateInterviewEligibility(auth);
+
   const supabase = createSupabaseAdminClient();
   const detail = await getInterviewMeetingCenter(auth, interviewId, "en");
   if (!detail.permissions.canJoinMeeting) {

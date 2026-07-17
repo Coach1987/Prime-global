@@ -21,7 +21,18 @@ export default function StaffLoginPage() {
       .then((res) => res.json())
       .then((payload) => setCsrfToken(payload?.data?.csrfToken ?? ""))
       .catch(() => setCsrfToken(""));
-  }, []);
+
+    fetch("/api/auth/me", { credentials: "include" })
+      .then((response) => response.json())
+      .then((payload) => {
+        const role = String(payload?.data?.role ?? "");
+        const isStaff = role === "prime_global_recruiter" || role === "prime_global_admin" || role === "admin" || role === "super_admin";
+        if (payload?.success && isStaff) {
+          router.push(`/${params.locale}/admin/control-center`);
+        }
+      })
+      .catch(() => undefined);
+  }, [params.locale, router]);
 
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -39,12 +50,11 @@ export default function StaffLoginPage() {
       });
 
       const payload = await response.json();
-      if (!response.ok || !payload.success || !payload.data?.session?.accessToken) {
+      if (!response.ok || !payload.success) {
         setError(payload?.error?.message ?? "Unable to sign in");
         return;
       }
 
-      localStorage.setItem("prime_auth_token", payload.data.session.accessToken);
       router.push(`/${params.locale}/admin/control-center`);
     } catch {
       setError("Unexpected error while logging in");

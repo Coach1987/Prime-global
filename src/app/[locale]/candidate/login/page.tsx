@@ -23,7 +23,20 @@ export default function CandidateLoginPage() {
       .then((res) => res.json())
       .then((payload) => setCsrfToken(payload?.data?.csrfToken ?? ""))
       .catch(() => setCsrfToken(""));
-  }, []);
+
+    fetch("/api/auth/me", { credentials: "include" })
+      .then((response) => response.json())
+      .then((payload) => {
+        if (!payload?.success || payload?.data?.role !== "candidate") return;
+        const completion = payload?.data?.profileCompletion;
+        if (completion?.completed) {
+          router.push("/candidate/dashboard");
+          return;
+        }
+        router.push("/candidate/onboarding");
+      })
+      .catch(() => undefined);
+  }, [router]);
 
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -41,13 +54,25 @@ export default function CandidateLoginPage() {
       });
 
       const payload = await response.json();
-      if (!response.ok || !payload.success || !payload.data?.session?.accessToken) {
+      if (!response.ok || !payload.success) {
         setError(payload?.error?.message ?? (isArabic ? "تعذر تسجيل الدخول." : "Unable to sign in"));
         return;
       }
 
-      localStorage.setItem("prime_auth_token", payload.data.session.accessToken);
-      router.push("/candidate/my-interviews");
+      const completion = payload?.data?.profileCompletion;
+      const redirectParam = new URLSearchParams(window.location.search).get("redirectTo") ?? "";
+      const safeRedirect = redirectParam.startsWith("/") && !redirectParam.startsWith("//") ? redirectParam : "";
+
+      if (safeRedirect) {
+        router.push(safeRedirect as never);
+        return;
+      }
+
+      if (completion?.completed) {
+        router.push("/candidate/dashboard");
+      } else {
+        router.push("/candidate/onboarding");
+      }
     } catch {
       setError(isArabic ? "حدث خطأ غير متوقع أثناء تسجيل الدخول." : "Unexpected error while logging in");
     } finally {

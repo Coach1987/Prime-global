@@ -3,6 +3,7 @@ import { employerLoginSchema } from "@/features/employers/schemas/portal";
 import { createSupabasePublicClient } from "@/lib/server/supabase";
 import { createAuditLog } from "@/lib/server/security/audit";
 import { enforceCsrf, enforceRateLimit, getRequestContext, parseJsonBody } from "@/lib/server/http";
+import { setAuthCookies } from "@/lib/server/security/session-cookies";
 
 export async function POST(request: Request) {
   const rateLimitResult = enforceRateLimit(request, "employer-login", 30);
@@ -47,7 +48,7 @@ export async function POST(request: Request) {
     userAgent,
   });
 
-  return NextResponse.json({
+  const response = NextResponse.json({
     success: true,
     data: {
       user: {
@@ -62,4 +63,12 @@ export async function POST(request: Request) {
       },
     },
   });
+
+  setAuthCookies(response, {
+    accessToken: data.session.access_token,
+    refreshToken: data.session.refresh_token,
+    expiresAt: data.session.expires_at ?? null,
+  });
+
+  return response;
 }

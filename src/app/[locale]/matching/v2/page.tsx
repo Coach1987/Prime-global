@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 
 type Insight = {
   candidateId?: string;
@@ -15,25 +15,23 @@ type Insight = {
 };
 
 export default function MatchingV2Page() {
-  const [token, setToken] = useState("");
+  const [hasSession, setHasSession] = useState(false);
   const [candidateMatches, setCandidateMatches] = useState<Insight[]>([]);
   const [employerMatches, setEmployerMatches] = useState<Insight[]>([]);
 
   useEffect(() => {
-    setToken(localStorage.getItem("prime_auth_token") ?? "");
+    fetch("/api/auth/me", { credentials: "include" })
+      .then((response) => response.json())
+      .then((payload) => setHasSession(Boolean(payload?.success)))
+      .catch(() => setHasSession(false));
   }, []);
 
-  const headers = useMemo(
-    () => (token ? { Authorization: `Bearer ${token}` } : undefined),
-    [token]
-  );
-
   useEffect(() => {
-    if (!headers) return;
+    if (!hasSession) return;
 
     Promise.all([
-      fetch("/api/matching/v2/candidate", { headers }),
-      fetch("/api/matching/v2/employer-candidates", { headers }),
+      fetch("/api/matching/v2/candidate", { credentials: "include" }),
+      fetch("/api/matching/v2/employer-candidates", { credentials: "include" }),
     ])
       .then(async ([candidateRes, employerRes]) => {
         const [candidatePayload, employerPayload] = await Promise.all([candidateRes.json(), employerRes.json()]);
@@ -41,7 +39,7 @@ export default function MatchingV2Page() {
         setEmployerMatches(employerPayload?.data?.topCandidates ?? []);
       })
       .catch(() => undefined);
-  }, [headers]);
+  }, [hasSession]);
 
   return (
     <main className="mx-auto w-full max-w-[1260px] px-4 pb-20 pt-[124px] sm:px-6 md:px-8">

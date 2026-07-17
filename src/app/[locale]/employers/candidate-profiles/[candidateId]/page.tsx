@@ -26,7 +26,7 @@ export default function EmployerCandidateProfileDetailPage() {
   const params = useParams<{ locale: string; candidateId: string }>();
   const locale = String(params.locale ?? "en");
   const candidateId = String(params.candidateId ?? "");
-  const [token, setToken] = useState("");
+  const [hasSession, setHasSession] = useState(false);
   const [profile, setProfile] = useState<CandidateDetail | null>(null);
   const [matchScore, setMatchScore] = useState<number | null>(null);
   const [note, setNote] = useState("");
@@ -56,7 +56,10 @@ export default function EmployerCandidateProfileDetailPage() {
   );
 
   useEffect(() => {
-    setToken(localStorage.getItem("prime_auth_token") ?? "");
+    fetch("/api/auth/me", { credentials: "include" })
+      .then((response) => response.json())
+      .then((payload) => setHasSession(Boolean(payload?.success && payload?.data?.role === "employer")))
+      .catch(() => setHasSession(false));
 
     fetch("/api/security/csrf")
       .then((response) => response.json())
@@ -65,17 +68,17 @@ export default function EmployerCandidateProfileDetailPage() {
   }, []);
 
   useEffect(() => {
-    if (!token || !candidateId) return;
+    if (!hasSession || !candidateId) return;
 
     fetch(`/api/employers/candidate-profiles/${candidateId}`, {
-      headers: { Authorization: `Bearer ${token}` },
+      credentials: "include",
     })
       .then((response) => response.json())
       .then((payload) => setProfile(payload?.data ?? null))
       .catch(() => undefined);
 
     fetch("/api/matching/v2/employer-candidates", {
-      headers: { Authorization: `Bearer ${token}` },
+      credentials: "include",
     })
       .then((response) => response.json())
       .then((payload) => {
@@ -83,27 +86,28 @@ export default function EmployerCandidateProfileDetailPage() {
         setMatchScore(typeof match?.compatibilityScore === "number" ? match.compatibilityScore : null);
       })
       .catch(() => undefined);
-  }, [candidateId, token]);
+  }, [candidateId, hasSession]);
 
   async function requestInterview() {
-    if (!token) return;
+    if (!hasSession) return;
 
     await fetch(`/api/employers/candidate-profiles/${candidateId}/interview-request?note=${encodeURIComponent(note)}`, {
       method: "POST",
-      headers: { Authorization: `Bearer ${token}`, "x-csrf-token": csrfToken },
+      headers: { "x-csrf-token": csrfToken },
+      credentials: "include",
     });
   }
 
   async function requestConversation() {
-    if (!token) return;
+    if (!hasSession) return;
 
     const response = await fetch("/api/recruitment/conversation-requests", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
         "x-csrf-token": csrfToken,
       },
+      credentials: "include",
       body: JSON.stringify({
         candidateId,
         requestedMessage:

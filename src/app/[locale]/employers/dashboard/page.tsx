@@ -20,7 +20,7 @@ type Job = {
 };
 
 export default function EmployerDashboardPage() {
-  const [token, setToken] = useState("");
+  const [hasSession, setHasSession] = useState(false);
   const [csrfToken, setCsrfToken] = useState("");
   const [stats, setStats] = useState<EmployerStats | null>(null);
   const [jobs, setJobs] = useState<Job[]>([]);
@@ -32,10 +32,13 @@ export default function EmployerDashboardPage() {
   const [jobCity, setJobCity] = useState("");
   const locale = useLocale();
 
-  const isReady = useMemo(() => Boolean(token), [token]);
+  const isReady = useMemo(() => hasSession, [hasSession]);
 
   useEffect(() => {
-    setToken(localStorage.getItem("prime_auth_token") ?? "");
+    fetch("/api/auth/me", { credentials: "include" })
+      .then((response) => response.json())
+      .then((payload) => setHasSession(Boolean(payload?.success && payload?.data?.role === "employer")))
+      .catch(() => setHasSession(false));
 
     fetch("/api/security/csrf")
       .then((res) => res.json())
@@ -47,9 +50,9 @@ export default function EmployerDashboardPage() {
     if (!isReady) return;
 
     Promise.all([
-      fetch("/api/employers/stats", { headers: { Authorization: `Bearer ${token}` } }),
-      fetch("/api/employers/jobs", { headers: { Authorization: `Bearer ${token}` } }),
-      fetch("/api/employers/applicants", { headers: { Authorization: `Bearer ${token}` } }),
+      fetch("/api/employers/stats", { credentials: "include" }),
+      fetch("/api/employers/jobs", { credentials: "include" }),
+      fetch("/api/employers/applicants", { credentials: "include" }),
     ])
       .then(async ([statsRes, jobsRes, applicantsRes]) => {
         const [statsPayload, jobsPayload, applicantsPayload] = await Promise.all([
@@ -68,7 +71,7 @@ export default function EmployerDashboardPage() {
         setApplicants(applicantsPayload.data ?? []);
       })
       .catch(() => setError("Failed to load dashboard data"));
-  }, [isReady, token]);
+  }, [isReady]);
 
   async function createDraftJob(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -78,9 +81,9 @@ export default function EmployerDashboardPage() {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
         "x-csrf-token": csrfToken,
       },
+      credentials: "include",
       body: JSON.stringify({
         title: jobTitle,
         department: "General",
@@ -118,9 +121,9 @@ export default function EmployerDashboardPage() {
       method: "PATCH",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
         "x-csrf-token": csrfToken,
       },
+      credentials: "include",
       body: JSON.stringify({ status }),
     });
 
@@ -137,9 +140,9 @@ export default function EmployerDashboardPage() {
     const response = await fetch(`/api/employers/jobs/${jobId}/duplicate`, {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${token}`,
         "x-csrf-token": csrfToken,
       },
+      credentials: "include",
     });
 
     const payload = await response.json();
@@ -155,9 +158,9 @@ export default function EmployerDashboardPage() {
     const response = await fetch(`/api/employers/jobs/${jobId}`, {
       method: "DELETE",
       headers: {
-        Authorization: `Bearer ${token}`,
         "x-csrf-token": csrfToken,
       },
+      credentials: "include",
     });
 
     const payload = await response.json();

@@ -6,12 +6,14 @@ export default function EnterpriseCenterPage() {
   const [data, setData] = useState<Record<string, unknown> | null>(null);
 
   useEffect(() => {
-    const accessToken = localStorage.getItem("prime_auth_token") ?? "";
-    if (!accessToken) return;
-
-    fetch("/api/enterprise/overview", { headers: { Authorization: `Bearer ${accessToken}` } })
-      .then((res) => res.json())
-      .then((payload) => setData(payload?.data ?? null))
+    fetch("/api/auth/me", { credentials: "include" })
+      .then((response) => response.json())
+      .then((payload) => {
+        if (!payload?.success) return;
+        return fetch("/api/enterprise/overview", { credentials: "include" })
+          .then((res) => res.json())
+          .then((payload) => setData(payload?.data ?? null));
+      })
       .catch(() => undefined);
   }, []);
 
