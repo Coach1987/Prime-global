@@ -533,6 +533,26 @@
       "subject": "فرصة عمل جديدة كمدرب لياقة تتوافق مع ملفك"
     }
   },
+  "candidateDocumentVerification": {
+    "panel": {
+      "title": "حالة التحقق من المستندات",
+      "subtitle": "تتم مراجعة مستنداتك ضمن مسار تحقق آمن.",
+      "currentStatus": "الحالة الحالية",
+      "historyPreserved": "يتم الاحتفاظ بجميع النسخ المرفوعة لأغراض الامتثال والتدقيق.",
+      "uploadReplacement": "عند طلب استبدال، ارفع نسخة أحدث ومصححة.",
+      "submitAdditionalEvidence": "عند طلب أدلة إضافية، ارفع مستندات داعمة."
+    },
+    "status": {
+      "received": "تم الاستلام والإدراج للمراجعة",
+      "pendingManualReview": "بانتظار المراجعة اليدوية",
+      "verified": "تم التحقق",
+      "couldNotBeVerified": "تعذر التحقق",
+      "replacementRequired": "مطلوب استبدال",
+      "additionalEvidenceRequired": "مطلوب أدلة إضافية",
+      "liveVerificationRequired": "مطلوب تحقق مباشر",
+      "replaced": "تم الاستبدال بنسخة أحدث"
+    }
+  },
   "serviceDetails": {
     "logistics": {
       "eyebrow": "الدعم اللوجستي",

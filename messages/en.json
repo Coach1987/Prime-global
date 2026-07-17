@@ -533,6 +533,26 @@
       "subject": "New Fitness Trainer Opportunity Matching Your Profile"
     }
   },
+  "candidateDocumentVerification": {
+    "panel": {
+      "title": "Document verification status",
+      "subtitle": "Your documents are reviewed in a secure verification workflow.",
+      "currentStatus": "Current status",
+      "historyPreserved": "All submitted versions are preserved for compliance and audit.",
+      "uploadReplacement": "If replacement is requested, upload a newer corrected version.",
+      "submitAdditionalEvidence": "If additional evidence is requested, upload supporting proof documents."
+    },
+    "status": {
+      "received": "Received and queued",
+      "pendingManualReview": "Pending manual review",
+      "verified": "Verified",
+      "couldNotBeVerified": "Could not be verified",
+      "replacementRequired": "Replacement required",
+      "additionalEvidenceRequired": "Additional evidence required",
+      "liveVerificationRequired": "Live verification required",
+      "replaced": "Replaced by newer version"
+    }
+  },
   "serviceDetails": {
     "logistics": {
       "eyebrow": "Logistics Support",
