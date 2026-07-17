@@ -2,7 +2,7 @@
 
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { Link, useRouter } from "@/i18n/routing";
-import { useLocale } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { PrimeCard } from "@/components/ui/prime/PrimeCard";
 import { primeButtonClasses } from "@/components/ui/prime/PrimeButton";
 import { PrimeCheckbox, PrimeInput, PrimeLabel, PrimeTextarea } from "@/components/ui/prime/PrimeInput";
@@ -26,6 +26,30 @@ type ProfileCompletion = {
   missing: string[];
 };
 
+type DocumentVersionRow = {
+  id: string;
+  document_type: string;
+  version_number: number;
+  original_filename: string;
+  verification_status: string;
+  is_active: boolean;
+  created_at: string;
+};
+
+type DocumentCaseRow = {
+  id: string;
+  status: string;
+  priority: string;
+  candidate_message?: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+type CandidateVerificationTimeline = {
+  versions: DocumentVersionRow[];
+  cases: DocumentCaseRow[];
+};
+
 const REQUIREMENT_LABELS: Record<string, { en: string; ar: string }> = {
   cv: { en: "Upload your CV", ar: "حمّل السيرة الذاتية" },
   diploma: { en: "Upload at least one diploma or certificate", ar: "حمّل دبلوما أو شهادة واحدة على الأقل" },
@@ -44,14 +68,17 @@ function labelForRequirement(key: string, locale: "en" | "ar") {
 
 export default function CandidateOnboardingPage() {
   const locale = useLocale();
+  const tDoc = useTranslations("candidateDocumentVerification");
   const isArabic = locale === "ar";
   const router = useRouter();
   const [csrfToken, setCsrfToken] = useState("");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [verificationNotice, setVerificationNotice] = useState<string | null>(null);
   const [profile, setProfile] = useState<CandidateProfile | null>(null);
   const [completion, setCompletion] = useState<ProfileCompletion | null>(null);
+  const [verificationTimeline, setVerificationTimeline] = useState<CandidateVerificationTimeline | null>(null);
   const [cvFile, setCvFile] = useState<File | null>(null);
   const [supportingFiles, setSupportingFiles] = useState<File[]>([]);
 
@@ -82,6 +109,17 @@ export default function CandidateOnboardingPage() {
     }
   }
 
+  async function loadVerificationTimeline() {
+    const response = await fetch("/api/candidates/document-verification", { credentials: "include" });
+    const payload = await response.json();
+    if (response.ok && payload?.success) {
+      setVerificationTimeline({
+        versions: Array.isArray(payload?.data?.versions) ? payload.data.versions : [],
+        cases: Array.isArray(payload?.data?.cases) ? payload.data.cases : [],
+      });
+    }
+  }
+
   useEffect(() => {
     fetch("/api/security/csrf")
       .then((response) => response.json())
@@ -93,13 +131,15 @@ export default function CandidateOnboardingPage() {
       fetch("/api/candidates/profile", { credentials: "include" }),
       fetch("/api/candidates/professional-profile", { credentials: "include" }),
       fetch("/api/candidates/profile-completion", { credentials: "include" }),
+      fetch("/api/candidates/document-verification", { credentials: "include" }),
     ])
-      .then(async ([authResponse, profileResponse, professionalResponse, completionResponse]) => {
-        const [authPayload, profilePayload, professionalPayload, completionPayload] = await Promise.all([
+      .then(async ([authResponse, profileResponse, professionalResponse, completionResponse, verificationResponse]) => {
+        const [authPayload, profilePayload, professionalPayload, completionPayload, verificationPayload] = await Promise.all([
           authResponse.json(),
           profileResponse.json(),
           professionalResponse.json(),
           completionResponse.json(),
+          verificationResponse.json(),
         ]);
 
         if (!authResponse.ok || !authPayload?.success || authPayload?.data?.role !== "candidate") {
@@ -114,6 +154,10 @@ export default function CandidateOnboardingPage() {
 
         const nextProfile = (profilePayload.data ?? null) as CandidateProfile | null;
         const professional = (professionalPayload?.data ?? {}) as Record<string, unknown>;
+        setVerificationTimeline({
+          versions: Array.isArray(verificationPayload?.data?.versions) ? verificationPayload.data.versions : [],
+          cases: Array.isArray(verificationPayload?.data?.cases) ? verificationPayload.data.cases : [],
+        });
 
         setProfile(nextProfile);
         setCompletion(completionPayload?.data ?? null);
@@ -135,6 +179,8 @@ export default function CandidateOnboardingPage() {
   }, [isArabic]);
 
   async function uploadDocuments() {
+    const notices: string[] = [];
+
     if (cvFile) {
       const cvData = new FormData();
       cvData.append("file", cvFile);
@@ -147,6 +193,10 @@ export default function CandidateOnboardingPage() {
       const cvPayload = await cvResponse.json();
       if (!cvResponse.ok || !cvPayload?.success) {
         throw new Error(cvPayload?.error?.message ?? "Failed to upload CV");
+      }
+
+      if (typeof cvPayload?.verification?.message === "string" && cvPayload.verification.message.trim()) {
+        notices.push(cvPayload.verification.message.trim());
       }
     }
 
@@ -163,7 +213,13 @@ export default function CandidateOnboardingPage() {
       if (!docsResponse.ok || !docsPayload?.success) {
         throw new Error(docsPayload?.error?.message ?? "Failed to upload supporting documents");
       }
+
+      if (typeof docsPayload?.verification?.message === "string" && docsPayload.verification.message.trim()) {
+        notices.push(docsPayload.verification.message.trim());
+      }
     }
+
+    return notices;
   }
 
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
@@ -172,6 +228,7 @@ export default function CandidateOnboardingPage() {
 
     setSaving(true);
     setError(null);
+    setVerificationNotice(null);
 
     const skills = form.skills
       .split(",")
@@ -196,7 +253,10 @@ export default function CandidateOnboardingPage() {
     }
 
     try {
-      await uploadDocuments();
+      const notices = await uploadDocuments();
+      if (notices.length > 0) {
+        setVerificationNotice(Array.from(new Set(notices)).join(" "));
+      }
 
       const profileResponse = await fetch("/api/candidates/profile", {
         method: "PUT",
@@ -282,6 +342,7 @@ export default function CandidateOnboardingPage() {
       }
 
       await loadCompletion();
+      await loadVerificationTimeline();
       const completionResponse = await fetch("/api/candidates/profile-completion", { credentials: "include" });
       const completionPayload = await completionResponse.json();
       const nextCompletion = completionPayload?.data as ProfileCompletion | undefined;
@@ -300,6 +361,20 @@ export default function CandidateOnboardingPage() {
     } finally {
       setSaving(false);
     }
+  }
+
+  const latestCase = verificationTimeline?.cases?.[0] ?? null;
+
+  function statusLabel(status: string) {
+    if (status === "pending_manual_review") return tDoc("status.pendingManualReview");
+    if (status === "verified" || status === "auto_approved") return tDoc("status.verified");
+    if (status === "additional_evidence_requested") return tDoc("status.additionalEvidenceRequired");
+    if (status === "replacement_requested") return tDoc("status.replacementRequired");
+    if (status === "live_verification_required") return tDoc("status.liveVerificationRequired");
+    if (status === "rejected") return tDoc("status.couldNotBeVerified");
+    if (status === "superseded") return tDoc("status.replaced");
+    if (status === "escalated") return tDoc("status.pendingManualReview");
+    return tDoc("status.received");
   }
 
   if (loading) {
@@ -335,6 +410,43 @@ export default function CandidateOnboardingPage() {
             ? "لا يمكن طلب أو دخول المقابلات قبل اكتمال الملف المهني. تظل الوثائق الأصلية خاصة ولا تُعرض مباشرة لأصحاب العمل."
             : "Interview actions stay blocked until your professional profile is complete. Original documents remain private and are never directly exposed to employers."}
         </p>
+
+        {verificationNotice ? (
+          <div className="mt-4 rounded-2xl border border-amber-300/30 bg-amber-100/10 px-4 py-3 text-sm text-amber-100">
+            {verificationNotice}
+          </div>
+        ) : null}
+
+        <div className="mt-4 rounded-2xl border border-blue-200/20 bg-[#071428]/80 p-5">
+          <h2 className="font-heading text-xl text-text-primary">{tDoc("panel.title")}</h2>
+          <p className="mt-2 text-sm text-text-secondary">{tDoc("panel.subtitle")}</p>
+
+          <div className="mt-3 rounded-xl border border-blue-200/20 bg-[#081223]/70 px-4 py-3 text-sm text-text-secondary">
+            <p className="font-medium text-text-primary">{tDoc("panel.currentStatus")}</p>
+            <p className="mt-1">{statusLabel(latestCase?.status ?? "pending_manual_review")}</p>
+            {latestCase?.candidate_message ? <p className="mt-2 text-amber-100">{latestCase.candidate_message}</p> : null}
+          </div>
+
+          <div className="mt-3 space-y-2 text-sm text-text-secondary">
+            <p>{tDoc("panel.historyPreserved")}</p>
+            <p>{tDoc("panel.uploadReplacement")}</p>
+            <p>{tDoc("panel.submitAdditionalEvidence")}</p>
+          </div>
+
+          {verificationTimeline?.versions?.length ? (
+            <div className="mt-4 space-y-2">
+              {verificationTimeline.versions.slice(0, 5).map((version) => (
+                <div key={version.id} className="rounded-xl border border-blue-200/20 bg-[#081223]/70 px-4 py-3 text-sm text-text-secondary">
+                  <p className="font-medium text-text-primary">
+                    {version.document_type.toUpperCase()} v{version.version_number}
+                  </p>
+                  <p>{statusLabel(version.verification_status)}</p>
+                  {version.is_active ? <p className="text-emerald-200">{tDoc("status.verified")}</p> : null}
+                </div>
+              ))}
+            </div>
+          ) : null}
+        </div>
 
         <div className="mt-6 rounded-2xl border border-blue-200/20 bg-[#071428]/80 p-5">
           <p className="text-sm text-text-secondary">

@@ -63,7 +63,7 @@ export async function evaluateCandidateProfileCompletion(authUserId: string): Pr
       .maybeSingle(),
     supabase
       .from("candidate_private_profiles")
-      .select("original_documents_paths")
+      .select("original_documents_paths, identity_verification_status")
       .eq("candidate_id", candidateId)
       .maybeSingle(),
   ]);
@@ -71,12 +71,18 @@ export async function evaluateCandidateProfileCompletion(authUserId: string): Pr
   const professional = (professionalResult.data ?? null) as Record<string, unknown> | null;
   const privateProfile = (privateProfileResult.data ?? null) as Record<string, unknown> | null;
 
-  const hasCv = !resumesResult.error && (resumesResult.data?.length ?? 0) > 0;
+  const verificationStatus =
+    typeof privateProfile?.identity_verification_status === "string"
+      ? privateProfile.identity_verification_status
+      : null;
+  const isIdentityApproved = verificationStatus === "approved" || verificationStatus === null;
+
+  const hasCv = !resumesResult.error && (resumesResult.data?.length ?? 0) > 0 && isIdentityApproved;
   const documents = Array.isArray(privateProfile?.original_documents_paths)
     ? (privateProfile?.original_documents_paths as unknown[])
     : [];
   const certificates = Array.isArray(professional?.certificates) ? (professional?.certificates as unknown[]) : [];
-  const hasDiploma = documents.length > 0 || certificates.length > 0;
+  const hasDiploma = (documents.length > 0 || certificates.length > 0) && isIdentityApproved;
   const hasSummary =
     typeof professional?.biography === "string"
       ? professional.biography.trim().length >= 20

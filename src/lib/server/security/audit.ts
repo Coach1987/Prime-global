@@ -25,6 +25,7 @@ export async function createAuditLog(input: AuditLogInput) {
       user_agent: input.userAgent ?? null,
     });
   } catch (error) {
-    console.error("[audit] failed to persist audit log", error);
+    const message = error instanceof Error ? error.message : "unknown_error";
+    console.error("[audit] failed to persist audit log", { message });
   }
 }

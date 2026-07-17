@@ -46,7 +46,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ cand
   const { data, error } = await supabase
     .from("candidate_public_profiles")
     .select(
-      "candidate_id, candidate_reference, professional_title, professional_summary, years_of_experience, skills, employment_history, education, certifications, languages, general_location, availability, desired_role, expected_salary, ai_summary, profile_status, generated_at, updated_at, candidate_private_profiles!inner(full_name, email, phone, address, original_cv_path, original_documents_paths, restricted_to_prime_global, created_at, updated_at), candidate_profile_reviews(id, status, notes, reviewed_by_prime_global_user_id, reviewed_at, created_at), candidate_profile_versions(id, version_number, generated_content, generated_by, created_at)"
+      "candidate_id, candidate_reference, professional_title, professional_summary, years_of_experience, skills, employment_history, education, certifications, languages, general_location, availability, desired_role, expected_salary, ai_summary, profile_status, generated_at, updated_at, candidate_private_profiles!inner(full_name, email, phone, address, original_cv_path, original_documents_paths, restricted_to_prime_global, identity_verification_status, identity_verification_confidence, identity_verification_reasoning, identity_staff_review_status, identity_verification_updated_at, created_at, updated_at), candidate_profile_reviews(id, status, notes, reviewed_by_prime_global_user_id, reviewed_at, created_at), candidate_profile_versions(id, version_number, generated_content, generated_by, created_at)"
     )
     .eq("candidate_id", candidateId)
     .maybeSingle();
@@ -66,7 +66,43 @@ export async function GET(request: Request, { params }: { params: Promise<{ cand
     targetId: candidateId,
   });
 
-  return NextResponse.json({ success: true, data: data ?? null });
+  const [versionsResult, verificationsResult, casesResult, caseActionsResult] = await Promise.all([
+    supabase
+      .from("candidate_document_versions")
+      .select("id, document_type, version_number, original_filename, verification_status, reviewer_decision, identity_confidence_score, fraud_risk_score, verification_provider, verification_model, external_verification_status, is_active, is_primary, created_at, superseded_at")
+      .eq("candidate_id", candidateId)
+      .order("created_at", { ascending: false })
+      .limit(300),
+    supabase
+      .from("candidate_document_identity_verifications")
+      .select("id, source, verification_decision, confidence_score, identity_confidence_score, fraud_risk_score, fraud_risk_band, high_fraud_override_applied, verification_provider, verification_model, ai_reasoning_summary, identity_reasoning_summary, fraud_reasoning_summary, extracted_identity_fields, detected_fraud_signals, strong_evidence_signals, extracted_verification_references, external_verification_status, has_external_verification_reference, staff_review_status, created_at")
+      .eq("candidate_id", candidateId)
+      .order("created_at", { ascending: false })
+      .limit(200),
+    supabase
+      .from("candidate_document_verification_cases")
+      .select("id, document_version_id, verification_id, status, priority, assigned_reviewer_id, assigned_supervisor_id, requested_evidence, candidate_message, internal_notes, resolution, escalation_reason, created_at, updated_at, resolved_at")
+      .eq("candidate_id", candidateId)
+      .order("created_at", { ascending: false })
+      .limit(200),
+    supabase
+      .from("candidate_document_verification_case_actions")
+      .select("id, case_id, verification_id, document_version_id, action, actor_auth_user_id, previous_status, new_status, note, metadata, created_at")
+      .order("created_at", { ascending: false })
+      .limit(500),
+  ]);
+
+  const caseIds = new Set((casesResult.data ?? []).map((entry) => String(entry.id)));
+  const caseActions = (caseActionsResult.data ?? []).filter((entry) => caseIds.has(String(entry.case_id)));
+
+  return NextResponse.json({
+    success: true,
+    data: data ?? null,
+    documentVersions: versionsResult.data ?? [],
+    documentVerifications: verificationsResult.data ?? [],
+    documentVerificationCases: casesResult.data ?? [],
+    documentVerificationCaseActions: caseActions,
+  });
 }
 
 export async function PATCH(request: Request, { params }: { params: Promise<{ candidateId: string }> }) {

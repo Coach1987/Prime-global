@@ -27,6 +27,11 @@ type CandidateDetail = {
     address: string | null;
     original_cv_path: string;
     original_documents_paths: string[];
+    identity_verification_status?: string | null;
+    identity_verification_confidence?: number | null;
+    identity_verification_reasoning?: string | null;
+    identity_staff_review_status?: string | null;
+    identity_verification_updated_at?: string | null;
   }>;
   candidate_profile_reviews?: Array<{ id: string; status: string; notes: string | null; reviewed_at: string | null }>;
 };
@@ -147,6 +152,10 @@ export default function AdminCandidateProfileDetailPage() {
               <p><span className="text-text-tertiary">Address:</span> {profile?.candidate_private_profiles?.[0]?.address ?? "-"}</p>
               <p><span className="text-text-tertiary">Original CV path:</span> {profile?.candidate_private_profiles?.[0]?.original_cv_path ?? "-"}</p>
               <p><span className="text-text-tertiary">Supporting docs:</span> {profile?.candidate_private_profiles?.[0]?.original_documents_paths?.length ?? 0}</p>
+              <p><span className="text-text-tertiary">Identity verification:</span> {profile?.candidate_private_profiles?.[0]?.identity_verification_status ?? "pending_verification"}</p>
+              <p><span className="text-text-tertiary">Confidence score:</span> {profile?.candidate_private_profiles?.[0]?.identity_verification_confidence ?? "-"}</p>
+              <p><span className="text-text-tertiary">Staff review status:</span> {profile?.candidate_private_profiles?.[0]?.identity_staff_review_status ?? "pending"}</p>
+              <p><span className="text-text-tertiary">AI reasoning:</span> {profile?.candidate_private_profiles?.[0]?.identity_verification_reasoning ?? "-"}</p>
             </div>
           </article>
 
