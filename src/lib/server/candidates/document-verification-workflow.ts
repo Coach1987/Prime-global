@@ -78,6 +78,8 @@ export async function insertCandidateDocumentVersion(input: {
   isPrimary: boolean;
 }) {
   const supabase = createSupabaseAdminClient();
+  const isVersionNumberConflict = (message: string | undefined) =>
+    /candidate_document_versions_candidate_id_document_type_version_n_key/i.test(message ?? "");
 
   for (let attempt = 0; attempt < 3; attempt += 1) {
     const { data: latestVersion } = await supabase
@@ -129,7 +131,7 @@ export async function insertCandidateDocumentVersion(input: {
       };
     }
 
-    if (error?.code !== "23505" || attempt === 2) {
+    if (error?.code !== "23505" || !isVersionNumberConflict(error.message) || attempt === 2) {
       throw new Error(`Failed to create document version: ${error?.message ?? "unknown error"}`);
     }
   }
