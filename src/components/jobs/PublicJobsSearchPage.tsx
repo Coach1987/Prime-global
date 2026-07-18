@@ -33,6 +33,18 @@ type JobsResponse = {
   };
 };
 
+type DiscoveryResponse = {
+  success: boolean;
+  data?: PublicJob[];
+};
+
+type AuthMeResponse = {
+  success: boolean;
+  data?: {
+    role?: string;
+  };
+};
+
 type SearchFormState = {
   q: string;
   country: string;
@@ -124,6 +136,9 @@ export function PublicJobsSearchPage() {
             next: "التالي",
             pageLabel: "الصفحة",
             skillsLabel: "المهارات",
+            featuredTitle: "الفرص المميزة",
+            recommendedTitle: "وظائف مقترحة لك",
+            discoveryEmpty: "لا توجد فرص متاحة حالياً في هذا القسم.",
           }
         : {
             title: "Find Jobs",
@@ -155,19 +170,98 @@ export function PublicJobsSearchPage() {
             next: "Next",
             pageLabel: "Page",
             skillsLabel: "Skills",
+            featuredTitle: "Featured Opportunities",
+            recommendedTitle: "Recommended For You",
+            discoveryEmpty: "No opportunities available in this section yet.",
           },
     [isArabic]
   );
 
   const [form, setForm] = useState<SearchFormState>(() => readFormState(searchParams));
   const [jobs, setJobs] = useState<PublicJob[]>([]);
+  const [discoveryJobs, setDiscoveryJobs] = useState<PublicJob[]>([]);
+  const [authRole, setAuthRole] = useState<"unknown" | "guest" | "candidate" | "other">("unknown");
   const [loading, setLoading] = useState(true);
+  const [discoveryLoading, setDiscoveryLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [pagination, setPagination] = useState({ page: 1, pageSize: PAGE_SIZE, totalItems: 0, totalPages: 0 });
 
   useEffect(() => {
     setForm(readFormState(searchParams));
   }, [searchParams]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadAuthRole() {
+      try {
+        const response = await fetch("/api/auth/me", { credentials: "include" });
+        const payload = (await response.json()) as AuthMeResponse;
+
+        if (cancelled) return;
+        if (!response.ok || !payload.success) {
+          setAuthRole("guest");
+          return;
+        }
+
+        const role = String(payload.data?.role ?? "");
+        if (role === "candidate") {
+          setAuthRole("candidate");
+          return;
+        }
+
+        setAuthRole("other");
+      } catch {
+        if (!cancelled) {
+          setAuthRole("guest");
+        }
+      }
+    }
+
+    loadAuthRole().catch(() => undefined);
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (authRole === "unknown") return;
+
+    let cancelled = false;
+
+    async function loadDiscovery() {
+      setDiscoveryLoading(true);
+      try {
+        const kind = authRole === "candidate" ? "recommended" : "featured";
+        const response = await fetch(`/api/jobs/discovery?kind=${kind}&limit=6`, {
+          credentials: "include",
+        });
+        const payload = (await response.json()) as DiscoveryResponse;
+
+        if (!response.ok || !payload.success) {
+          throw new Error("Unable to load discovery jobs");
+        }
+
+        if (cancelled) return;
+        setDiscoveryJobs(payload.data ?? []);
+      } catch {
+        if (!cancelled) {
+          setDiscoveryJobs([]);
+        }
+      } finally {
+        if (!cancelled) {
+          setDiscoveryLoading(false);
+        }
+      }
+    }
+
+    loadDiscovery().catch(() => undefined);
+
+    return () => {
+      cancelled = true;
+    };
+  }, [authRole]);
 
   useEffect(() => {
     let cancelled = false;
@@ -239,6 +333,7 @@ export function PublicJobsSearchPage() {
 
   const hasPrevious = pagination.page > 1;
   const hasNext = pagination.page < pagination.totalPages;
+  const discoveryTitle = authRole === "candidate" ? copy.recommendedTitle : copy.featuredTitle;
 
   return (
     <main className="mx-auto w-full max-w-[1260px] px-4 pb-20 pt-[124px] sm:px-6 md:px-8">
@@ -328,6 +423,46 @@ export function PublicJobsSearchPage() {
             </button>
           </div>
         </form>
+
+        <section className="mt-8 rounded-2xl border border-blue-300/25 bg-[#0b1d35]/45 p-5" aria-label={discoveryTitle}>
+          <h2 className="font-heading text-2xl text-text-primary">{discoveryTitle}</h2>
+
+          {discoveryLoading ? <p className="mt-3 text-sm text-text-secondary">{copy.loading}</p> : null}
+
+          {!discoveryLoading && discoveryJobs.length === 0 ? (
+            <p className="mt-3 text-sm text-text-secondary">{copy.discoveryEmpty}</p>
+          ) : null}
+
+          {!discoveryLoading && discoveryJobs.length > 0 ? (
+            <div className="mt-4 grid gap-4 lg:grid-cols-3">
+              {discoveryJobs.map((job) => {
+                const location = [job.city, job.country].filter(Boolean).join(", ") || copy.locationUnknown;
+
+                return (
+                  <article key={`discovery-${job.id}`} className="rounded-2xl border border-blue-200/20 bg-bg-primary/60 p-4">
+                    <p className="text-xs uppercase tracking-[0.18em] text-blue-200">
+                      {job.company_display_name ?? copy.companyFallback}
+                    </p>
+                    <h3 className="mt-2 font-heading text-xl text-text-primary">{job.title}</h3>
+                    <p className="mt-2 text-sm text-text-secondary">{location}</p>
+                    <p className="mt-2 text-xs uppercase tracking-[0.12em] text-text-tertiary">
+                      {job.department ?? copy.categoryFallback} • {toEmploymentLabel(job.employment_type, isArabic)}
+                    </p>
+
+                    <div className="mt-4">
+                      <Link
+                        href={`/jobs/${job.id}`}
+                        className="inline-flex items-center rounded-full border border-blue-300/35 px-4 py-2 text-xs font-semibold text-blue-100 transition-colors hover:border-blue-200/55 hover:text-white"
+                      >
+                        {copy.viewJob}
+                      </Link>
+                    </div>
+                  </article>
+                );
+              })}
+            </div>
+          ) : null}
+        </section>
 
         <p aria-live="polite" className="mt-6 text-sm text-text-secondary">
           {copy.resultCount}: <span className="font-semibold text-text-primary">{pagination.totalItems}</span>

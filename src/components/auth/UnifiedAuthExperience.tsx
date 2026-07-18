@@ -11,6 +11,7 @@ import { CountrySelector } from "@/components/ui/CountrySelector";
 import { InternationalPhoneInput } from "@/components/ui/InternationalPhoneInput";
 import { SegmentedTabs } from "@/components/ui/SegmentedTabs";
 import { getPostLoginHref, normalizeAuthRole } from "@/lib/auth/routing";
+import { resolveCandidatePostAuthHref, sanitizeLocalizedJobReturnTo } from "@/lib/auth/return-to";
 
 type AuthMode = "signin" | "register";
 type AuthAudience = "candidate" | "employer";
@@ -50,13 +51,20 @@ function parseMode(value: string | null): AuthMode {
   return value === "register" || value === "signup" ? "register" : "signin";
 }
 
-function parseAudience(value: string | null): AuthAudience {
-  return value === "employer" ? "employer" : "candidate";
+function parseAudience(audienceValue: string | null, roleValue: string | null): AuthAudience {
+  if (audienceValue === "employer") return "employer";
+  if (roleValue === "employer") return "employer";
+  return "candidate";
 }
 
-function buildAuthHref(mode: AuthMode, audience: AuthAudience) {
-  const modeParam = mode === "register" ? "signup" : "signin";
-  return `/auth?mode=${modeParam}&role=${audience}`;
+function buildAuthHref(mode: AuthMode, audience: AuthAudience, returnTo: string | null) {
+  const params = new URLSearchParams();
+  params.set("mode", mode);
+  params.set("audience", audience);
+  if (returnTo) {
+    params.set("returnTo", returnTo);
+  }
+  return `/auth?${params.toString()}`;
 }
 
 export function UnifiedAuthExperience() {
@@ -65,7 +73,11 @@ export function UnifiedAuthExperience() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const mode = parseMode(searchParams.get("mode"));
-  const audience = parseAudience(searchParams.get("role"));
+  const audience = parseAudience(searchParams.get("audience"), searchParams.get("role"));
+  const safeReturnTo = sanitizeLocalizedJobReturnTo(
+    searchParams.get("returnTo") ?? searchParams.get("redirectTo"),
+    locale
+  );
 
   const [csrfToken, setCsrfToken] = useState("");
   const [authReady, setAuthReady] = useState(false);
@@ -88,6 +100,11 @@ export function UnifiedAuthExperience() {
 
         const role = normalizeAuthRole(String(authPayload?.data?.role ?? ""));
         if (authPayload?.success && role) {
+          if (role === "candidate" && safeReturnTo) {
+            router.push(safeReturnTo as never);
+            return;
+          }
+
           const destination = getPostLoginHref(role, {
             profileCompletion: authPayload?.data?.profileCompletion,
             verificationStatus: authPayload?.data?.verificationStatus,
@@ -111,7 +128,7 @@ export function UnifiedAuthExperience() {
     return () => {
       cancelled = true;
     };
-  }, [router]);
+  }, [router, safeReturnTo]);
 
   const modeItems = useMemo(
     () => [
@@ -130,7 +147,7 @@ export function UnifiedAuthExperience() {
   );
 
   function updateAuthState(nextMode: AuthMode, nextAudience: AuthAudience) {
-    router.push(buildAuthHref(nextMode, nextAudience));
+    router.push(buildAuthHref(nextMode, nextAudience, safeReturnTo));
   }
 
   const headline =
@@ -223,6 +240,8 @@ export function UnifiedAuthExperience() {
               <CandidateSignInForm
                 csrfToken={csrfToken}
                 isArabic={isArabic}
+                locale={locale}
+                safeReturnTo={safeReturnTo}
                 onSwitchMode={() => updateAuthState("register", "candidate")}
                 onSwitchAudience={() => updateAuthState(mode, "employer")}
               />
@@ -241,6 +260,8 @@ export function UnifiedAuthExperience() {
               <CandidateRegisterForm
                 csrfToken={csrfToken}
                 isArabic={isArabic}
+                locale={locale}
+                safeReturnTo={safeReturnTo}
                 onSwitchMode={() => updateAuthState("signin", "candidate")}
                 onSwitchAudience={() => updateAuthState(mode, "employer")}
               />
@@ -264,11 +285,15 @@ export function UnifiedAuthExperience() {
 function CandidateSignInForm({
   csrfToken,
   isArabic,
+  locale,
+  safeReturnTo,
   onSwitchMode,
   onSwitchAudience,
 }: {
   csrfToken: string;
   isArabic: boolean;
+  locale: string;
+  safeReturnTo: string | null;
   onSwitchMode: () => void;
   onSwitchAudience: () => void;
 }) {
@@ -299,19 +324,18 @@ function CandidateSignInForm({
         return;
       }
 
-      const redirectParam = new URLSearchParams(window.location.search).get("redirectTo") ?? "";
-      const safeRedirect = redirectParam.startsWith("/") && !redirectParam.startsWith("//") ? redirectParam : "";
+      const redirectTarget = resolveCandidatePostAuthHref({
+        locale,
+        returnTo: safeReturnTo,
+        fallback: getPostLoginHref("candidate", {
+          profileCompletion: payload?.data?.profileCompletion,
+        }),
+      });
 
-      if (safeRedirect) {
-        router.push(safeRedirect as never);
+      if (redirectTarget) {
+        router.push(redirectTarget as never);
         return;
       }
-
-      router.push(
-        getPostLoginHref("candidate", {
-          profileCompletion: payload?.data?.profileCompletion,
-        })
-      );
     } catch {
       setError(isArabic ? "حدث خطأ غير متوقع أثناء تسجيل الدخول." : "Unexpected error while logging in");
     } finally {
@@ -436,11 +460,15 @@ function EmployerSignInForm({
 function CandidateRegisterForm({
   csrfToken,
   isArabic,
+  locale,
+  safeReturnTo,
   onSwitchMode,
   onSwitchAudience,
 }: {
   csrfToken: string;
   isArabic: boolean;
+  locale: string;
+  safeReturnTo: string | null;
   onSwitchMode: () => void;
   onSwitchAudience: () => void;
 }) {
@@ -507,7 +535,13 @@ function CandidateRegisterForm({
         return;
       }
 
-      router.push("/candidate/onboarding");
+      const destination = resolveCandidatePostAuthHref({
+        locale,
+        returnTo: safeReturnTo,
+        fallback: "/candidate/onboarding",
+      });
+
+      router.push(destination as never);
       router.refresh();
     } catch {
       setError(isArabic ? "حدث خطأ غير متوقع أثناء إنشاء الحساب." : "Unexpected error while creating the account.");

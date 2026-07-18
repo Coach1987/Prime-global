@@ -11,7 +11,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ jobI
 
   const { data, error } = await supabase
     .from("jobs")
-    .select("id, title, department, employment_type, work_mode, country, city, salary_min, salary_max, salary_currency, experience, education, required_skills, responsibilities, requirements, benefits, application_deadline, publish_date, employers!inner(id, company_name, industry, verification_status)")
+    .select("id, title, department, employment_type, country, city, publish_date, responsibilities, requirements, employers!inner(id, company_name, verification_status)")
     .eq("id", jobId)
     .eq("status", "published")
     .eq("employers.verification_status", "verified")
@@ -31,5 +31,22 @@ export async function GET(request: Request, { params }: { params: Promise<{ jobI
     );
   }
 
-  return NextResponse.json({ success: true, data });
+  const employer = Array.isArray(data.employers) ? data.employers[0] : data.employers;
+
+  return NextResponse.json({
+    success: true,
+    data: {
+      id: data.id,
+      title: data.title,
+      country: data.country,
+      city: data.city,
+      category: data.department,
+      specialization: null,
+      employment_type: data.employment_type,
+      publish_date: data.publish_date,
+      description: data.responsibilities,
+      requirements: data.requirements,
+      company_display_name: employer?.company_name ?? null,
+    },
+  });
 }
