@@ -393,7 +393,7 @@ export default function CandidateOnboardingPage() {
         <section className="rounded-3xl border border-blue-200/20 bg-[#081223]/82 p-8 backdrop-blur-xl">
           <h1 className="font-heading text-3xl text-text-primary">{isArabic ? "الدخول مطلوب" : "Sign in required"}</h1>
           <p className="mt-3 text-sm text-text-secondary">{error ?? (isArabic ? "يجب تسجيل الدخول أولاً للوصول إلى إعداد الملف الشخصي." : "You need to sign in before continuing to onboarding.")}</p>
-          <Link href="/candidate/login" className={`${primeButtonClasses("secondary")} mt-5`}>
+          <Link href="/auth?mode=signin&role=candidate" className={`${primeButtonClasses("secondary")} mt-5`}>
             {isArabic ? "فتح تسجيل الدخول" : "Open sign in"}
           </Link>
         </section>

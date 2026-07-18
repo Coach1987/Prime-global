@@ -142,7 +142,8 @@ export function MobileMenu({ open, onClose }: MobileMenuProps) {
                       href={item.href}
                       onClick={(e) => handleClick(e, item.href)}
                       className={cn(
-                        "group relative flex w-full items-center overflow-hidden rounded-[18px] border px-4 py-4 text-[28px] font-heading leading-none transition-all duration-300",
+                        "group relative flex w-full select-none items-center overflow-hidden rounded-[18px] border px-4 py-4 text-[28px] font-heading leading-none [caret-color:transparent] transition-all duration-300",
+                        "focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-300/70 focus-visible:ring-offset-2 focus-visible:ring-offset-[#040b15]",
                         locale === "ar" ? "justify-end text-right" : "justify-start text-left",
                         active
                           ? "border-blue-300/30 bg-white/[0.06] text-blue-300"

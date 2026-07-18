@@ -22,7 +22,7 @@ export default async function EmployerPendingApprovalPage({
         </p>
 
         <div className="mt-6 flex flex-wrap gap-3">
-          <Link href="/employers/login" className={primeButtonClasses("secondary")}>
+          <Link href="/auth?mode=signin&role=employer" className={primeButtonClasses("secondary")}>
             {isArabic ? "العودة إلى تسجيل الدخول" : "Back to Sign In"}
           </Link>
           <Link href="/contact" className={primeButtonClasses("secondary")}>
