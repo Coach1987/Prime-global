@@ -484,18 +484,137 @@ Access model:
 - Does not change authentication behavior.
 - Exposes internal metadata and operational contracts only.
 
+## Phase 4 Foundation: Enterprise Notification & Communication Engine
+
+Phase 4 introduces a generic enterprise notification and communication foundation that consumes events from the enterprise event engine.
+
+The design is decoupled from recruitment, finance, employee-specific modules, and AI execution.
+
+Supported channel abstractions:
+
+- in_app
+- email
+- sms
+- push
+- webhook
+- future
+
+This phase models channel metadata and delivery lifecycle only. It does not integrate external providers.
+
+## Notification Model
+
+The notification foundation models the following reusable concepts:
+
+- Notification
+- Notification Template
+- Notification Rule
+- Notification Channel
+- Notification Preference
+- Notification Delivery
+- Notification Queue
+- Notification Retry
+- Notification History
+- Notification Audit
+
+## Template Rendering and Localization
+
+Templates are data-driven entities with per-channel and per-locale variants.
+
+Capabilities:
+
+- tokenized title/body rendering from event and metadata context
+- locale selection through rule defaults and user preferences
+- fallback locale resolution when preference locale is absent
+
+## Delivery Lifecycle and Communication Controls
+
+Notification lifecycle supports generic states:
+
+- created
+- queued
+- processing
+- sent
+- delivered
+- failed
+- cancelled
+- read
+- unread
+- archived
+- deleted
+
+Delivery features:
+
+- scheduling via available/scheduled timestamps
+- retry tracking with retry limits and timestamps
+- bulk notification creation to multiple recipients
+- read/unread transitions
+- soft delete with reason
+- archive/unarchive behavior
+
+## Preference and Policy Foundation
+
+Per-recipient preferences are modeled independently from business modules.
+
+Capabilities:
+
+- per-channel enable/disable
+- rule-specific preference overrides
+- mute windows
+- quiet-hours metadata
+
+Preference checks are applied during event-consumption routing to skip muted deliveries.
+
+## Event Engine Integration Boundary
+
+The notification engine consumes event records from `pgems_events` and applies notification rules filtered by:
+
+- event type
+- event category
+- active rule status
+
+Integration constraints:
+
+- consumes events only from Enterprise Event Engine
+- does not call recruitment, finance, employee, or AI modules
+- keeps routing and rendering logic generic and metadata-driven
+
+## Notification Engine API Surface
+
+Internal notification engine endpoints are available under:
+
+- /api/enterprise/notification-engine/notification-channels
+- /api/enterprise/notification-engine/notification-templates
+- /api/enterprise/notification-engine/notification-rules
+- /api/enterprise/notification-engine/notification-preferences
+- /api/enterprise/notification-engine/notification-queues
+- /api/enterprise/notification-engine/notifications
+- /api/enterprise/notification-engine/notifications/bulk
+- /api/enterprise/notification-engine/notifications/[notificationId]/read
+- /api/enterprise/notification-engine/notifications/[notificationId]/archive
+- /api/enterprise/notification-engine/notifications/[notificationId]/soft-delete
+- /api/enterprise/notification-engine/notification-deliveries
+- /api/enterprise/notification-engine/notification-retries
+- /api/enterprise/notification-engine/notification-history
+- /api/enterprise/notification-engine/notification-audit
+- /api/enterprise/notification-engine/consume-event
+
+Access model:
+
+- Uses existing internal enterprise authentication gate.
+- Does not change authentication behavior.
+- Exposes internal metadata and engine contracts only.
+
 ## Phase Boundaries
 
-Future modules may consume Phase 2 and Phase 3 foundations for business workflows and processing, but these phases remain generic.
+Future modules may consume Phase 2, Phase 3, and Phase 4 foundations for business workflows and processing, but these phases remain generic.
 
-Not included in Phase 2 and Phase 3:
+Not included in Phases 2 through 4:
 
 - finance execution
 - recruitment execution
 - employee-specific workflow logic
 - company-specific workflow logic
 - AI execution
-- notifications
 - dashboarding
 - external transport execution (email/sms/push/webhook dispatch)
 
@@ -509,11 +628,12 @@ Planned integration points (not implemented in Phase 1):
 
 ## Migration Strategy
 
-Phases 1, 1.5, 2, and 3 use additive migrations only:
+Phases 1, 1.5, 2, 3, and 4 use additive migrations only:
 
 - 202607180001_pgems_organization_core.sql
 - 202607180002_phase15_pgems_authority_foundation.sql
 - 202607180003_pgems_workflow_engine_foundation.sql
 - 202607180004_pgems_event_engine_foundation.sql
+- 202607180005_pgems_notification_engine_foundation.sql
 
 No previous migration files are edited.
