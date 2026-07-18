@@ -224,6 +224,154 @@ Future workflow modules may consume Phase 1.5 governance foundations but must be
 
 None of the above workflow behaviors are enabled in Phase 1 or Phase 1.5.
 
+## Workflow Engine Foundation (Phase 2)
+
+Phase 2 introduces a generic approval workflow engine foundation. It is intentionally reusable and is not coupled to employees, finance, recruitment, contracts, companies, or AI execution.
+
+The engine provides only metadata, state evaluation, rule evaluation, and immutable audit surfaces. It does not execute business workflows.
+
+## Workflow Model
+
+The workflow engine models the following reusable concepts:
+
+- Workflow
+- Workflow Type
+- Workflow Instance
+- Workflow Stage
+- Workflow Action
+- Workflow Participant
+- Workflow Decision
+- Workflow Rule
+- Workflow Escalation
+- Workflow Event
+- Workflow History
+- Workflow Attachment
+- Workflow Comment
+- Workflow Audit
+
+## State Machine
+
+Workflow state evaluation uses configurable transitions rather than hardcoded business logic.
+
+Supported generic states:
+
+- Draft
+- Pending
+- In Review
+- Waiting Higher Approval
+- Approved
+- Rejected
+- Returned
+- Cancelled
+- Expired
+- Executed
+- Archived
+
+State transitions are stored as data and evaluated through pure helpers so future modules can define their own transition sets.
+
+## Approval Steps
+
+The engine supports reusable approval step modes as configuration metadata:
+
+- single approval
+- sequential approvals
+- parallel approvals
+- conditional approvals
+- owner final approval
+- authority level approval
+- financial approval
+- minimum authority policies
+- future AI advisory approval
+
+This phase stores and evaluates the step model only. It does not execute approvals.
+
+## Workflow Rules
+
+Rules are modeled as generic condition trees, not business-specific code.
+
+Examples that the engine can represent:
+
+- IF Amount > X
+- IF Country = Saudi Arabia
+- IF Employee Role = Manager
+- IF Authority Level >= 80
+- IF Workflow Type = Financial
+
+Rules are evaluated from structured condition data so future modules can add new fields without schema redesign.
+
+## Escalation
+
+Escalation metadata supports reusable timers and reassignment concepts:
+
+- automatic escalation
+- timeout escalation
+- manager escalation
+- owner escalation
+- delegation
+- temporary reassignment
+- reminder scheduling
+
+The foundation records and evaluates escalation state only. It does not send reminders or trigger runtime job processing.
+
+## Audit
+
+Workflow events, history, and audit records are append-only foundations.
+
+Requirements:
+
+- every workflow action creates immutable event records
+- workflow history is never deleted
+- workflow audit entries preserve the before/after context needed by future engines
+
+## API Surface
+
+Internal workflow engine endpoints are available under:
+
+- /api/enterprise/workflow-engine/workflow-types
+- /api/enterprise/workflow-engine/workflow-types/[workflowTypeId]/states
+- /api/enterprise/workflow-engine/workflow-types/[workflowTypeId]/transitions
+- /api/enterprise/workflow-engine/workflow-types/[workflowTypeId]/workflows
+- /api/enterprise/workflow-engine/workflows
+- /api/enterprise/workflow-engine/workflows/[workflowId]/stages
+- /api/enterprise/workflow-engine/workflows/[workflowId]/stages/[stageId]/actions
+- /api/enterprise/workflow-engine/workflow-instances
+- /api/enterprise/workflow-engine/workflow-instances/evaluate
+- /api/enterprise/workflow-engine/workflow-instances/[workflowInstanceId]/participants
+- /api/enterprise/workflow-engine/workflow-instances/[workflowInstanceId]/decisions
+- /api/enterprise/workflow-engine/workflow-rules
+- /api/enterprise/workflow-engine/workflow-escalations
+- /api/enterprise/workflow-engine/workflow-events
+- /api/enterprise/workflow-engine/workflow-history
+- /api/enterprise/workflow-engine/workflow-attachments
+- /api/enterprise/workflow-engine/workflow-comments
+- /api/enterprise/workflow-engine/workflow-audit
+
+Access model:
+
+- Uses existing internal enterprise authentication gate.
+- Does not change authentication behavior.
+- Exposes internal metadata only.
+
+## Phase 3 Boundary
+
+Future modules may consume the engine foundation for business workflows, but Phase 2 itself must remain generic.
+
+Not included in Phase 2:
+
+- finance execution
+- recruitment execution
+- employee-specific workflow logic
+- company-specific workflow logic
+- AI execution
+- notifications
+- dashboarding
+
+## Migration Strategy
+
+Phase 2 uses additive migration only:
+
+- 202607180003_pgems_workflow_engine_foundation.sql
+
 ## Future AI Governance Integration Points
 
 Planned integration points (not implemented in Phase 1):
