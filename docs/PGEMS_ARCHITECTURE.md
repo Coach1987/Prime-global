@@ -604,19 +604,163 @@ Access model:
 - Does not change authentication behavior.
 - Exposes internal metadata and engine contracts only.
 
+## Phase 5 Foundation: AI Orchestration Platform
+
+Phase 5 introduces a generic AI orchestration platform that serves as the shared AI foundation for future modules.
+
+This phase is not a chatbot implementation and not a business feature implementation. It provides provider abstraction, prompt lifecycle, routing, fallback, telemetry, usage, safety, and audit foundations.
+
+The AI platform integrates with:
+
+- Organization Core (access boundaries)
+- Authority Foundation (policy thresholds)
+- Workflow Engine (future orchestration composition)
+- Event Engine (publish/consume integration)
+- Notification Engine (future downstream integration contracts)
+
+without coupling to business modules.
+
+## Provider Abstraction
+
+The platform models provider adapters for:
+
+- OpenAI
+- Anthropic Claude
+- Google Gemini
+- Azure OpenAI
+- DeepSeek
+- Local LLM
+- future providers
+
+Design characteristics:
+
+- adapter interfaces are provider-agnostic
+- no API key hardcoding
+- no real external API calls in the foundation layer
+- simulated adapter execution supports deterministic integration testing
+
+## AI Platform Model
+
+The AI foundation models the following reusable concepts:
+
+- AI Provider
+- AI Model
+- AI Task
+- AI Request
+- AI Response
+- AI Prompt
+- AI Prompt Version
+- AI Policy
+- AI Routing Rule
+- AI Fallback Rule
+- AI Cost Tracking
+- AI Usage
+- AI Cache
+- AI Telemetry
+- AI Audit
+- AI Safety Check
+- AI Rate Limit
+
+## Routing and Fallback Strategy
+
+Routing is metadata-driven and supports selection by:
+
+- task type
+- priority
+- provider health
+- region
+- compliance tags
+- latency/cost constraints
+
+Fallback strategy is modeled separately through explicit fallback rules by task type and trigger reasons.
+
+This allows future runtime engines to apply progressive provider/model fallback without business-module coupling.
+
+## Prompt Lifecycle and Localization
+
+Prompt management supports:
+
+- prompt templates
+- prompt versioning
+- variable interpolation
+- localization
+- system/developer/user prompt layers
+
+Prompt rendering is performed through versioned templates and structured variables, preserving deterministic prompt lifecycle behavior.
+
+## Telemetry, Usage, Cost, and Audit
+
+The AI platform provides append-friendly operational tracking:
+
+- usage records (token and latency dimensions)
+- cost tracking aggregates
+- telemetry metrics with dimensions
+- safety check outcomes
+- audit trail for platform actions
+- cache metadata for response reuse strategies
+
+These capabilities are generic and reusable for future modules.
+
+## Event Engine Integration Boundary
+
+The AI platform integrates with Enterprise Event Engine through generic publish/consume contracts.
+
+Capabilities:
+
+- publish AI platform events to enterprise event store
+- consume enterprise events for AI task orchestration triggers
+- preserve correlation and trace identifiers for observability
+
+Integration constraints:
+
+- no direct communication with recruitment or business modules
+- no direct execution of business AI capabilities
+
+## AI Platform API Surface
+
+Internal AI platform endpoints are available under:
+
+- /api/enterprise/ai-platform/ai-providers
+- /api/enterprise/ai-platform/ai-models
+- /api/enterprise/ai-platform/ai-prompts
+- /api/enterprise/ai-platform/ai-prompts/render
+- /api/enterprise/ai-platform/ai-prompt-versions
+- /api/enterprise/ai-platform/ai-policies
+- /api/enterprise/ai-platform/ai-routing-rules
+- /api/enterprise/ai-platform/ai-routing-rules/select
+- /api/enterprise/ai-platform/ai-fallback-rules
+- /api/enterprise/ai-platform/ai-tasks
+- /api/enterprise/ai-platform/ai-tasks/execute
+- /api/enterprise/ai-platform/ai-requests
+- /api/enterprise/ai-platform/ai-responses
+- /api/enterprise/ai-platform/ai-usage
+- /api/enterprise/ai-platform/ai-cache
+- /api/enterprise/ai-platform/ai-telemetry
+- /api/enterprise/ai-platform/ai-audit
+- /api/enterprise/ai-platform/ai-safety-checks
+- /api/enterprise/ai-platform/ai-rate-limits
+- /api/enterprise/ai-platform/ai-events/publish
+- /api/enterprise/ai-platform/ai-events/consume
+
+Access model:
+
+- Uses existing internal enterprise authentication gate.
+- Does not change authentication behavior.
+- Exposes internal metadata and orchestration contracts only.
+
 ## Phase Boundaries
 
-Future modules may consume Phase 2, Phase 3, and Phase 4 foundations for business workflows and processing, but these phases remain generic.
+Future modules may consume Phase 2 through Phase 5 foundations for business workflows and processing, while these phases remain generic.
 
-Not included in Phases 2 through 4:
+Not included in Phases 2 through 5:
 
 - finance execution
 - recruitment execution
 - employee-specific workflow logic
 - company-specific workflow logic
-- AI execution
 - dashboarding
 - external transport execution (email/sms/push/webhook dispatch)
+- business AI implementations (cv analysis, job matching, candidate scoring, interview AI, fraud detection, salary recommendation, salary prediction)
 
 ## Future AI Governance Integration Points
 
@@ -628,12 +772,13 @@ Planned integration points (not implemented in Phase 1):
 
 ## Migration Strategy
 
-Phases 1, 1.5, 2, 3, and 4 use additive migrations only:
+Phases 1, 1.5, 2, 3, 4, and 5 use additive migrations only:
 
 - 202607180001_pgems_organization_core.sql
 - 202607180002_phase15_pgems_authority_foundation.sql
 - 202607180003_pgems_workflow_engine_foundation.sql
 - 202607180004_pgems_event_engine_foundation.sql
 - 202607180005_pgems_notification_engine_foundation.sql
+- 202607180006_pgems_ai_orchestration_platform_foundation.sql
 
 No previous migration files are edited.

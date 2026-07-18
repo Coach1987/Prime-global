@@ -3,3 +3,4 @@ export * from "./authority-governance";
 export * from "./workflow-engine";
 export * from "./event-engine";
 export * from "./notification-engine";
+export * from "./ai-platform";
