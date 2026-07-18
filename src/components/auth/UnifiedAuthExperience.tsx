@@ -10,7 +10,7 @@ import { PrimePageTitle } from "@/components/ui/prime/PrimePageTitle";
 import { CountrySelector } from "@/components/ui/CountrySelector";
 import { InternationalPhoneInput } from "@/components/ui/InternationalPhoneInput";
 import { SegmentedTabs } from "@/components/ui/SegmentedTabs";
-import { normalizeAuthRole } from "@/lib/auth/routing";
+import { getPostLoginHref, normalizeAuthRole } from "@/lib/auth/routing";
 
 type AuthMode = "signin" | "register";
 type AuthAudience = "candidate" | "employer";
@@ -59,18 +59,6 @@ function buildAuthHref(mode: AuthMode, audience: AuthAudience) {
   return `/auth?mode=${modeParam}&role=${audience}`;
 }
 
-function getDestinationForRole(role: string, profileCompletion?: { completed?: boolean }) {
-  if (role === "candidate") {
-    return profileCompletion?.completed ? "/candidate/dashboard" : "/candidate/onboarding";
-  }
-
-  if (role === "employer") {
-    return "/employers/dashboard";
-  }
-
-  return "/admin/control-center";
-}
-
 export function UnifiedAuthExperience() {
   const locale = useLocale();
   const isArabic = locale === "ar";
@@ -100,7 +88,10 @@ export function UnifiedAuthExperience() {
 
         const role = normalizeAuthRole(String(authPayload?.data?.role ?? ""));
         if (authPayload?.success && role) {
-          const destination = getDestinationForRole(role, authPayload?.data?.profileCompletion);
+          const destination = getPostLoginHref(role, {
+            profileCompletion: authPayload?.data?.profileCompletion,
+            verificationStatus: authPayload?.data?.verificationStatus,
+          });
           router.push(destination);
           return;
         }
@@ -308,7 +299,6 @@ function CandidateSignInForm({
         return;
       }
 
-      const completion = payload?.data?.profileCompletion;
       const redirectParam = new URLSearchParams(window.location.search).get("redirectTo") ?? "";
       const safeRedirect = redirectParam.startsWith("/") && !redirectParam.startsWith("//") ? redirectParam : "";
 
@@ -317,7 +307,11 @@ function CandidateSignInForm({
         return;
       }
 
-      router.push(completion?.completed ? "/candidate/dashboard" : "/candidate/onboarding");
+      router.push(
+        getPostLoginHref("candidate", {
+          profileCompletion: payload?.data?.profileCompletion,
+        })
+      );
     } catch {
       setError(isArabic ? "حدث خطأ غير متوقع أثناء تسجيل الدخول." : "Unexpected error while logging in");
     } finally {
@@ -395,13 +389,11 @@ function EmployerSignInForm({
         return;
       }
 
-      const verificationStatus = payload.data?.user?.verificationStatus;
-      if (verificationStatus && verificationStatus !== "verified") {
-        router.push("/employer/pending-approval");
-        return;
-      }
-
-      router.push("/employers/interview-center");
+      router.push(
+        getPostLoginHref("employer", {
+          verificationStatus: payload?.data?.user?.verificationStatus,
+        })
+      );
     } catch {
       setError(isArabic ? "حدث خطأ غير متوقع أثناء تسجيل الدخول." : "Unexpected error while logging in");
     } finally {

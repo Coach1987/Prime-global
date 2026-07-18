@@ -6,7 +6,7 @@ import { useRouter } from "@/i18n/routing";
 import { PrimeCard } from "@/components/ui/prime/PrimeCard";
 import { primeButtonClasses } from "@/components/ui/prime/PrimeButton";
 import { PrimePageTitle } from "@/components/ui/prime/PrimePageTitle";
-import { normalizeAuthRole } from "@/lib/auth/routing";
+import { getPostLoginHref, normalizeAuthRole } from "@/lib/auth/routing";
 
 export default function PortalPage() {
   const router = useRouter();
@@ -36,24 +36,12 @@ export default function PortalPage() {
           return;
         }
 
-        if (role === "candidate") {
-          const completion = payload?.data?.profileCompletion;
-          router.replace(completion?.completed ? "/candidate/dashboard" : "/candidate/onboarding");
-          return;
-        }
-
-        if (role === "employer") {
-          const verificationStatus = payload?.data?.verificationStatus;
-          if (verificationStatus && verificationStatus !== "verified") {
-            router.replace("/employer/pending-approval");
-            return;
-          }
-
-          router.replace("/employers/dashboard");
-          return;
-        }
-
-        router.replace("/admin/control-center");
+        router.replace(
+          getPostLoginHref(role, {
+            profileCompletion: payload?.data?.profileCompletion,
+            verificationStatus: payload?.data?.verificationStatus,
+          })
+        );
       } catch {
         if (!cancelled) {
           setCheckingAuth(false);

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { enforceRateLimit } from "@/lib/server/http";
+import { getEmployerByAuthUserId } from "@/lib/server/employers";
 import { requireAuth } from "@/lib/server/security/auth";
 import { evaluateCandidateProfileCompletion } from "@/lib/server/candidates/profile-completion";
 import { persistRefreshedSession } from "@/lib/server/security/session-cookies";
@@ -18,6 +19,10 @@ export async function GET(request: Request) {
 
   const candidateCompletion =
     auth.role === "candidate" ? await evaluateCandidateProfileCompletion(auth.userId) : null;
+  const employer = auth.role === "employer" ? await getEmployerByAuthUserId(auth.userId) : null;
+  const verificationStatus = (employer?.verification_status as string | null) ?? null;
+  const accountStatus =
+    auth.role === "employer" ? (verificationStatus === "verified" ? "active" : "pending_review") : null;
 
   const response = NextResponse.json({
     success: true,
@@ -26,6 +31,8 @@ export async function GET(request: Request) {
       email: auth.email,
       role: auth.role,
       displayName,
+      verificationStatus,
+      accountStatus,
       profileCompletion: candidateCompletion,
     },
   });
