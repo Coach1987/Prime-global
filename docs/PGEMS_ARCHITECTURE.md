@@ -352,11 +352,143 @@ Access model:
 - Does not change authentication behavior.
 - Exposes internal metadata only.
 
-## Phase 3 Boundary
+## Phase 3 Foundation: Enterprise Event Bus & Domain Event Engine
 
-Future modules may consume the engine foundation for business workflows, but Phase 2 itself must remain generic.
+Phase 3 introduces a generic, reusable enterprise event bus and domain event foundation.
 
-Not included in Phase 2:
+The design is independent from recruitment, finance, dashboards, notifications, AI execution, and workflow business execution.
+
+Phase 3 adds event metadata, routing contracts, retry/replay mechanics, dead-letter tracking, and immutable event logging.
+
+## Event Bus Model
+
+The event foundation models the following reusable concepts:
+
+- Event Category
+- Event Type
+- Event Channel
+- Event Publisher
+- Event Subscriber
+- Event Queue
+- Event Handler
+- Event Subscription
+- Event
+- Event Delivery
+- Event Retry
+- Event Log
+
+## Event Lifecycle
+
+Event status transitions are evaluated through a dedicated lifecycle helper, not hardcoded in business modules.
+
+Supported generic states:
+
+- created
+- queued
+- processing
+- delivered
+- failed
+- cancelled
+- retried
+- archived
+
+Design characteristics:
+
+- lifecycle transitions are validated before status updates
+- event records are immutable audit entities
+- replay creates new events linked to original metadata
+
+## Publishing and Subscription
+
+Publishing and subscription are modeled as generic contracts:
+
+- publishing requires event type, category, channel, publisher, queue, and idempotency metadata
+- subscriptions can target category/type plus routing context
+- optional scope filters support organization, branch, country, and workflow reference
+
+Idempotency behavior:
+
+- event publish requests are deduplicated by idempotency key
+- duplicates return accepted metadata referencing the original event
+
+## Routing and Delivery
+
+Routing uses subscription matching helpers against event context.
+
+Routing inputs include:
+
+- event type and category
+- priority filter
+- organization context
+- branch and country dimensions
+- workflow reference
+
+Delivery records are stored separately so transport status and event status are independently auditable.
+
+## Retry, Replay, and Dead Letter Queue
+
+Retry behavior is generic and metadata-driven:
+
+- retry count and max retry count are tracked per event
+- retry scheduling uses next retry timestamps
+- retry attempts are logged in dedicated retry records
+
+Replay behavior is generic:
+
+- replay clones event payload/metadata into a new queued event
+- replay metadata preserves source event linkage
+
+Dead-letter behavior:
+
+- events exceeding retry constraints are marked failed and dead-lettered
+- dead-letter timestamp is persisted for forensic and operational review
+
+## Immutable Event Log
+
+Event logs are append-only records attached to events and optional deliveries.
+
+Typical log categories include:
+
+- publish
+- routing
+- retry
+- replay
+- dead_letter
+
+This preserves chronological evidence without mutating historical log entries.
+
+## Event Engine API Surface
+
+Internal event engine endpoints are available under:
+
+- /api/enterprise/event-engine/event-categories
+- /api/enterprise/event-engine/event-types
+- /api/enterprise/event-engine/event-channels
+- /api/enterprise/event-engine/event-publishers
+- /api/enterprise/event-engine/event-subscribers
+- /api/enterprise/event-engine/event-queues
+- /api/enterprise/event-engine/event-handlers
+- /api/enterprise/event-engine/event-subscriptions
+- /api/enterprise/event-engine/event-subscriptions/[subscriptionId]/unsubscribe
+- /api/enterprise/event-engine/events
+- /api/enterprise/event-engine/events/[eventId]/retry
+- /api/enterprise/event-engine/events/[eventId]/replay
+- /api/enterprise/event-engine/event-deliveries
+- /api/enterprise/event-engine/event-retries
+- /api/enterprise/event-engine/event-dead-letter
+- /api/enterprise/event-engine/event-logs
+
+Access model:
+
+- Uses existing internal enterprise authentication gate.
+- Does not change authentication behavior.
+- Exposes internal metadata and operational contracts only.
+
+## Phase Boundaries
+
+Future modules may consume Phase 2 and Phase 3 foundations for business workflows and processing, but these phases remain generic.
+
+Not included in Phase 2 and Phase 3:
 
 - finance execution
 - recruitment execution
@@ -365,12 +497,7 @@ Not included in Phase 2:
 - AI execution
 - notifications
 - dashboarding
-
-## Migration Strategy
-
-Phase 2 uses additive migration only:
-
-- 202607180003_pgems_workflow_engine_foundation.sql
+- external transport execution (email/sms/push/webhook dispatch)
 
 ## Future AI Governance Integration Points
 
@@ -382,9 +509,11 @@ Planned integration points (not implemented in Phase 1):
 
 ## Migration Strategy
 
-Phase 1 and Phase 1.5 use additive migrations only:
+Phases 1, 1.5, 2, and 3 use additive migrations only:
 
 - 202607180001_pgems_organization_core.sql
 - 202607180002_phase15_pgems_authority_foundation.sql
+- 202607180003_pgems_workflow_engine_foundation.sql
+- 202607180004_pgems_event_engine_foundation.sql
 
 No previous migration files are edited.
