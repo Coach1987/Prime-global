@@ -748,11 +748,136 @@ Access model:
 - Does not change authentication behavior.
 - Exposes internal metadata and orchestration contracts only.
 
+## Phase 6 Foundation: AI Recruitment Intelligence
+
+Phase 6 introduces the first business-facing AI module on top of the AI platform foundation.
+
+This module transforms candidate documents into structured professional profile intelligence while preserving strict advisory boundaries.
+
+Design principles:
+
+- consumes generic AI platform capabilities only
+- does not modify prior AI foundation modules
+- does not perform automatic hiring or final decisions
+- keeps all AI recommendations reviewable by Prime Global staff
+
+## Candidate Profile Model
+
+The recruitment intelligence foundation models:
+
+- Candidate Document Analysis
+- Candidate Professional Profile
+- Candidate Skill Extraction
+- Candidate Skill Normalization
+- Candidate Experience Extraction
+- Candidate Education Extraction
+- Candidate Certification Extraction
+- Candidate Language Extraction
+- Candidate Timeline Entries
+- Candidate Confidence Scores
+- Candidate Review Status
+- Candidate AI Recommendation
+
+Original document safety:
+
+- source files are treated as immutable
+- profile generation never overwrites original uploaded documents
+- extraction records reference document provenance metadata
+
+## Skill Normalization Engine
+
+Skill normalization is global taxonomy-driven.
+
+Capabilities:
+
+- canonical skill taxonomy entries
+- alias registry per locale
+- multilingual key normalization for alias matching
+- fallback behavior when a raw skill has no canonical mapping
+
+Example taxonomy behavior:
+
+- JS
+- Javascript
+- Java Script
+
+maps to canonical `JavaScript` when alias/taxonomy matches exist.
+
+## Confidence and Evidence Model
+
+Every extracted field stores:
+
+- confidence score
+- extraction source
+- document reference
+- AI model used
+- extraction timestamp
+
+Confidence is also aggregated into profile-level dimensions:
+
+- skills
+- experience
+- education
+- certifications
+- language
+- overall score
+
+## Human Review Workflow
+
+AI output remains advisory-only and never grants final approval.
+
+Review lifecycle statuses:
+
+- pending_review
+- approved_by_staff
+- rejected_by_staff
+- needs_manual_review
+
+Recommendations are explicitly advisory and include rationale metadata for staff decisioning.
+
+## Event Integration
+
+The module publishes events through enterprise event infrastructure:
+
+- CandidateProfileCreated
+- CandidateProfileUpdated
+- CandidateExtractionCompleted
+- CandidateReviewRequested
+
+It also supports event consumption hooks for future orchestration triggers.
+
+## AI Recruitment Intelligence API Surface
+
+Internal endpoints are available under:
+
+- /api/enterprise/ai-recruitment-intelligence/document-analyses
+- /api/enterprise/ai-recruitment-intelligence/professional-profiles
+- /api/enterprise/ai-recruitment-intelligence/professional-profiles/generate
+- /api/enterprise/ai-recruitment-intelligence/skill-taxonomy
+- /api/enterprise/ai-recruitment-intelligence/skill-aliases
+- /api/enterprise/ai-recruitment-intelligence/skill-extractions
+- /api/enterprise/ai-recruitment-intelligence/experience-extractions
+- /api/enterprise/ai-recruitment-intelligence/education-extractions
+- /api/enterprise/ai-recruitment-intelligence/certification-extractions
+- /api/enterprise/ai-recruitment-intelligence/language-extractions
+- /api/enterprise/ai-recruitment-intelligence/timeline-entries
+- /api/enterprise/ai-recruitment-intelligence/confidence-scores
+- /api/enterprise/ai-recruitment-intelligence/review-status
+- /api/enterprise/ai-recruitment-intelligence/review-status/[reviewId]/update
+- /api/enterprise/ai-recruitment-intelligence/recommendations
+- /api/enterprise/ai-recruitment-intelligence/events/consume
+
+Access model:
+
+- Uses existing internal enterprise authentication gate.
+- Does not change authentication behavior.
+- Exposes internal advisory intelligence contracts only.
+
 ## Phase Boundaries
 
-Future modules may consume Phase 2 through Phase 5 foundations for business workflows and processing, while these phases remain generic.
+Future modules may consume Phase 2 through Phase 6 foundations for business workflows and processing, while foundational boundaries remain explicit.
 
-Not included in Phases 2 through 5:
+Not included in Phases 2 through 6:
 
 - finance execution
 - recruitment execution
@@ -761,6 +886,9 @@ Not included in Phases 2 through 5:
 - dashboarding
 - external transport execution (email/sms/push/webhook dispatch)
 - business AI implementations (cv analysis, job matching, candidate scoring, interview AI, fraud detection, salary recommendation, salary prediction)
+- automatic hiring or automatic rejection decisions
+- automatic interview approval
+- final candidate decisions without staff review
 
 ## Future AI Governance Integration Points
 
@@ -772,7 +900,7 @@ Planned integration points (not implemented in Phase 1):
 
 ## Migration Strategy
 
-Phases 1, 1.5, 2, 3, 4, and 5 use additive migrations only:
+Phases 1, 1.5, 2, 3, 4, 5, and 6 use additive migrations only:
 
 - 202607180001_pgems_organization_core.sql
 - 202607180002_phase15_pgems_authority_foundation.sql
@@ -780,5 +908,6 @@ Phases 1, 1.5, 2, 3, 4, and 5 use additive migrations only:
 - 202607180004_pgems_event_engine_foundation.sql
 - 202607180005_pgems_notification_engine_foundation.sql
 - 202607180006_pgems_ai_orchestration_platform_foundation.sql
+- 202607180007_pgems_ai_recruitment_intelligence_foundation.sql
 
 No previous migration files are edited.
