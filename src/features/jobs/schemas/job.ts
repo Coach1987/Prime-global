@@ -29,6 +29,11 @@ export const updateJobSchema = createJobSchema.partial();
 
 export const listPublicJobsQuerySchema = z.object({
   q: z.string().trim().max(120).optional(),
+  keyword: z.string().trim().max(120).optional(),
+  profession: z.string().trim().max(120).optional(),
+  specialization: z.string().trim().max(120).optional(),
+  category: z.string().trim().max(120).optional(),
+  skill: z.string().trim().max(120).optional(),
   country: z.string().trim().max(120).optional(),
   city: z.string().trim().max(120).optional(),
   industry: z.string().trim().max(120).optional(),
