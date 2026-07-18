@@ -63,10 +63,9 @@ export function Footer() {
     href: item.href,
   }));
 
-  // Keep footer service links pointed to the main services overview.
   const serviceLinks = SERVICES.map((service) => ({
     label: tServices(`${service.key}.title`),
-    href: "/services",
+    href: `/services/${service.slug}`,
   }));
 
   const year = new Date().getFullYear();
