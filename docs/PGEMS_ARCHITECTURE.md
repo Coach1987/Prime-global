@@ -14,6 +14,8 @@ Phase 2 enterprise financial layer details are documented in docs/PHASE2_ENTERPR
 
 Phase 3 enterprise communication layer details are documented in docs/PHASE3_ENTERPRISE_COMMUNICATION_ARCHITECTURE.md.
 
+Phase 4 enterprise identity and security layer details are documented in docs/PHASE4_ENTERPRISE_IDENTITY_SECURITY_ARCHITECTURE.md.
+
 ## Organization Model
 
 The organization foundation is normalized with the following hierarchy:
@@ -233,6 +235,20 @@ Internal enterprise endpoints are available under:
 - /api/enterprise/communication-layer/deliveries
 - /api/enterprise/communication-layer/compliance
 - /api/enterprise/communication-layer/audit-events
+- /api/enterprise/identity-security-layer/identities
+- /api/enterprise/identity-security-layer/auth-methods
+- /api/enterprise/identity-security-layer/mfa
+- /api/enterprise/identity-security-layer/passkeys
+- /api/enterprise/identity-security-layer/sessions
+- /api/enterprise/identity-security-layer/sessions/revoke
+- /api/enterprise/identity-security-layer/devices
+- /api/enterprise/identity-security-layer/authorization
+- /api/enterprise/identity-security-layer/authorization/delegations
+- /api/enterprise/identity-security-layer/secrets
+- /api/enterprise/identity-security-layer/secrets/rotate
+- /api/enterprise/identity-security-layer/policies
+- /api/enterprise/identity-security-layer/monitoring
+- /api/enterprise/identity-security-layer/audit-events
 
 Access model:
 
