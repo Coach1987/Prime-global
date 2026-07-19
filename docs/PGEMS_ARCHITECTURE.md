@@ -20,6 +20,8 @@ Phase 5 enterprise observability and operations layer details are documented in 
 
 Phase 6 enterprise architecture review and consolidation details are documented in docs/PHASE6_ARCHITECTURE_REVIEW.md.
 
+Corporate payment and billing strategy details are documented in docs/CORPORATE_PAYMENT_STRATEGY.md.
+
 ## Organization Model
 
 The organization foundation is normalized with the following hierarchy:
