@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { createJobSchema } from "@/features/jobs/schemas/job";
 import { createAuditLog } from "@/lib/server/security/audit";
 import { requireAuth, requireRole } from "@/lib/server/security/auth";
-import { enforceRateLimit, getRequestContext, parseJsonBody } from "@/lib/server/http";
+import { enforceCsrf, enforceRateLimit, getRequestContext, parseJsonBody } from "@/lib/server/http";
 import { getEmployerByAuthUserId } from "@/lib/server/employers";
 import { createSupabaseAdminClient } from "@/lib/server/supabase";
 
@@ -41,6 +41,9 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   const rateLimitResult = enforceRateLimit(request, "employer-jobs-create", 40);
   if (rateLimitResult) return rateLimitResult;
+
+  const csrfResult = enforceCsrf(request);
+  if (csrfResult) return csrfResult;
 
   const auth = await requireAuth(request);
   if (auth instanceof NextResponse) return auth;

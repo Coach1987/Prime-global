@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireAuth, requireRole } from "@/lib/server/security/auth";
-import { enforceRateLimit } from "@/lib/server/http";
+import { enforceCsrf, enforceRateLimit } from "@/lib/server/http";
 import { createSupabaseAdminClient } from "@/lib/server/supabase";
 import {
   getJobAlertThreshold,
@@ -24,6 +24,13 @@ function createUnsubscribeToken() {
 export async function POST(request: Request) {
   const rateLimitResult = enforceRateLimit(request, "job-alert-dispatch-post", 30);
   if (rateLimitResult) return rateLimitResult;
+
+  const authHeader = request.headers.get("authorization") ?? "";
+  const isBearerAuth = authHeader.toLowerCase().startsWith("bearer ");
+  if (!isBearerAuth) {
+    const csrfResult = enforceCsrf(request);
+    if (csrfResult) return csrfResult;
+  }
 
   const auth = await requireAuth(request);
   if (auth instanceof NextResponse) return auth;
