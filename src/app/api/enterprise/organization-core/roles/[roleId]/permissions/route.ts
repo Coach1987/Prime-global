@@ -45,7 +45,12 @@ export async function POST(
   if (parsed.error) return parsed.error;
 
   try {
-    const data = await assignPermissionToRole(roleId, parsed.data.permissionId);
+    const data = await assignPermissionToRole(roleId, parsed.data.permissionId, {
+      actorAuthUserId: auth.userId,
+      actorRole: auth.role,
+      ipAddress: request.headers.get("x-forwarded-for") ?? undefined,
+      userAgent: request.headers.get("user-agent") ?? undefined,
+    });
     return NextResponse.json({ success: true, data }, { status: 201 });
   } catch (error) {
     return NextResponse.json({ success: false, error: { code: "PGEMS_ROLE_PERMISSION_ASSIGN_FAILED", message: error instanceof Error ? error.message : "Unable to assign role permission" } }, { status: 400 });

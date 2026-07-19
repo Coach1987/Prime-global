@@ -1,5 +1,52 @@
 import { createSupabaseAdminClient } from "@/lib/server/supabase";
+import { createAuditLog } from "@/lib/server/security/audit";
 import { evaluateEnterprisePermission } from "./permissions";
+
+interface GovernanceAuditActor {
+  actorAuthUserId?: string;
+  actorRole?: string;
+  ipAddress?: string;
+  userAgent?: string;
+}
+
+async function writeGovernanceAuditLog(payload: {
+  organizationId?: string;
+  eventType: string;
+  targetType?: string;
+  targetId?: string;
+  metadata?: Record<string, unknown>;
+  severity?: "info" | "warning" | "critical";
+  actor?: GovernanceAuditActor;
+}) {
+  const supabase = createSupabaseAdminClient();
+
+  const { error } = await supabase.rpc("pgems_log_governance_event", {
+    p_organization_id: payload.organizationId ?? null,
+    p_event_type: payload.eventType,
+    p_actor_auth_user_id: payload.actor?.actorAuthUserId ?? null,
+    p_actor_employee_id: null,
+    p_actor_role: payload.actor?.actorRole ?? null,
+    p_target_type: payload.targetType ?? null,
+    p_target_id: payload.targetId ?? null,
+    p_severity: payload.severity ?? "info",
+    p_metadata: payload.metadata ?? {},
+    p_ip_address: payload.actor?.ipAddress ?? null,
+    p_user_agent: payload.actor?.userAgent ?? null,
+  });
+
+  if (error) {
+    await createAuditLog({
+      actorAuthUserId: payload.actor?.actorAuthUserId,
+      actorRole: payload.actor?.actorRole,
+      action: payload.eventType,
+      targetType: payload.targetType,
+      targetId: payload.targetId,
+      metadata: payload.metadata,
+      ipAddress: payload.actor?.ipAddress,
+      userAgent: payload.actor?.userAgent,
+    });
+  }
+}
 
 export async function listOrganizations() {
   const supabase = createSupabaseAdminClient();
@@ -228,7 +275,7 @@ export async function createRole(payload: {
   code: string;
   description?: string;
   isSystem?: boolean;
-}) {
+}, actor?: GovernanceAuditActor) {
   const supabase = createSupabaseAdminClient();
   const { data, error } = await supabase
     .from("pgems_roles")
@@ -243,6 +290,16 @@ export async function createRole(payload: {
     .single();
 
   if (error) throw error;
+
+  await writeGovernanceAuditLog({
+    organizationId: payload.organizationId,
+    eventType: "governance.role.created",
+    targetType: "role",
+    targetId: data.id,
+    metadata: { code: payload.code, isSystem: payload.isSystem ?? false },
+    actor,
+  });
+
   return data;
 }
 
@@ -261,7 +318,7 @@ export async function createPermission(payload: {
   code: string;
   name: string;
   description?: string;
-}) {
+}, actor?: GovernanceAuditActor) {
   const supabase = createSupabaseAdminClient();
   const { data, error } = await supabase
     .from("pgems_permissions")
@@ -274,11 +331,26 @@ export async function createPermission(payload: {
     .single();
 
   if (error) throw error;
+
+  await writeGovernanceAuditLog({
+    eventType: "governance.permission.created",
+    targetType: "permission",
+    targetId: data.id,
+    metadata: { code: payload.code },
+    actor,
+  });
+
   return data;
 }
 
-export async function assignPermissionToRole(roleId: string, permissionId: string) {
+export async function assignPermissionToRole(roleId: string, permissionId: string, actor?: GovernanceAuditActor) {
   const supabase = createSupabaseAdminClient();
+  const { data: role } = await supabase
+    .from("pgems_roles")
+    .select("organization_id")
+    .eq("id", roleId)
+    .maybeSingle();
+
   const { data, error } = await supabase
     .from("pgems_role_permissions")
     .insert({
@@ -289,6 +361,16 @@ export async function assignPermissionToRole(roleId: string, permissionId: strin
     .single();
 
   if (error) throw error;
+
+  await writeGovernanceAuditLog({
+    organizationId: role?.organization_id ? String(role.organization_id) : undefined,
+    eventType: "governance.role.permission.assigned",
+    targetType: "role_permission",
+    targetId: `${roleId}:${permissionId}`,
+    metadata: { roleId, permissionId },
+    actor,
+  });
+
   return data;
 }
 
@@ -303,8 +385,14 @@ export async function listRolePermissions(roleId: string) {
   return data ?? [];
 }
 
-export async function assignRoleToEmployee(employeeId: string, roleId: string) {
+export async function assignRoleToEmployee(employeeId: string, roleId: string, actor?: GovernanceAuditActor) {
   const supabase = createSupabaseAdminClient();
+  const { data: employee } = await supabase
+    .from("pgems_employees")
+    .select("organization_id")
+    .eq("id", employeeId)
+    .maybeSingle();
+
   const { data, error } = await supabase
     .from("pgems_employee_roles")
     .insert({
@@ -315,12 +403,28 @@ export async function assignRoleToEmployee(employeeId: string, roleId: string) {
     .single();
 
   if (error) throw error;
+
+  await writeGovernanceAuditLog({
+    organizationId: employee?.organization_id ? String(employee.organization_id) : undefined,
+    eventType: "governance.employee.role.assigned",
+    targetType: "employee_role",
+    targetId: `${employeeId}:${roleId}`,
+    metadata: { employeeId, roleId },
+    actor,
+  });
+
   return data;
 }
 
-export async function assignPermissionToEmployee(employeeId: string, permissionId: string, mode: "allow" | "deny") {
+export async function assignPermissionToEmployee(employeeId: string, permissionId: string, mode: "allow" | "deny", actor?: GovernanceAuditActor) {
   const supabase = createSupabaseAdminClient();
   const table = mode === "allow" ? "pgems_employee_extra_permissions" : "pgems_employee_denied_permissions";
+  const { data: employee } = await supabase
+    .from("pgems_employees")
+    .select("organization_id")
+    .eq("id", employeeId)
+    .maybeSingle();
+
   const { data, error } = await supabase
     .from(table)
     .insert({
@@ -331,20 +435,27 @@ export async function assignPermissionToEmployee(employeeId: string, permissionI
     .single();
 
   if (error) throw error;
+
+  await writeGovernanceAuditLog({
+    organizationId: employee?.organization_id ? String(employee.organization_id) : undefined,
+    eventType: mode === "allow" ? "governance.employee.permission.allowed" : "governance.employee.permission.denied",
+    targetType: "employee_permission",
+    targetId: `${employeeId}:${permissionId}`,
+    metadata: { employeeId, permissionId, mode },
+    actor,
+  });
+
   return data;
 }
 
 export async function loadEmployeePermissionContext(employeeId: string) {
   const supabase = createSupabaseAdminClient();
-  const [rolesResult, rolePermissionsResult, allowResult, denyResult] = await Promise.all([
+  const [rolesResult, inheritedPermissionsResult, allowResult, denyResult] = await Promise.all([
     supabase
       .from("pgems_employee_roles")
       .select("role_id")
       .eq("employee_id", employeeId),
-    supabase
-      .from("pgems_employee_roles")
-      .select("pgems_role_permissions(permission_id, pgems_permissions(code))")
-      .eq("employee_id", employeeId),
+    supabase.rpc("pgems_resolve_employee_permission_codes", { p_employee_id: employeeId }),
     supabase
       .from("pgems_employee_extra_permissions")
       .select("permission_id, pgems_permissions(code)")
@@ -356,21 +467,37 @@ export async function loadEmployeePermissionContext(employeeId: string) {
   ]);
 
   if (rolesResult.error) throw rolesResult.error;
-  if (rolePermissionsResult.error) throw rolePermissionsResult.error;
   if (allowResult.error) throw allowResult.error;
   if (denyResult.error) throw denyResult.error;
 
-  const rolePermissionCodes = (rolePermissionsResult.data ?? [])
-    .flatMap((row: Record<string, unknown>) => {
-      const rawPermissions = row.pgems_role_permissions;
-      if (!Array.isArray(rawPermissions)) return [];
-      return rawPermissions.flatMap((permissionEntry) => {
-        const permission = (permissionEntry as Record<string, unknown>).pgems_permissions;
-        if (!permission || Array.isArray(permission)) return [];
-        const code = (permission as Record<string, unknown>).code;
+  let rolePermissionCodes: string[] = [];
+
+  if (!inheritedPermissionsResult.error && Array.isArray(inheritedPermissionsResult.data)) {
+    rolePermissionCodes = inheritedPermissionsResult.data
+      .flatMap((row: Record<string, unknown>) => {
+        const code = row.permission_code;
         return typeof code === "string" ? [code] : [];
       });
-    });
+  } else {
+    const fallbackRolePermissionsResult = await supabase
+      .from("pgems_employee_roles")
+      .select("pgems_role_permissions(permission_id, pgems_permissions(code))")
+      .eq("employee_id", employeeId);
+
+    if (fallbackRolePermissionsResult.error) throw fallbackRolePermissionsResult.error;
+
+    rolePermissionCodes = (fallbackRolePermissionsResult.data ?? [])
+      .flatMap((row: Record<string, unknown>) => {
+        const rawPermissions = row.pgems_role_permissions;
+        if (!Array.isArray(rawPermissions)) return [];
+        return rawPermissions.flatMap((permissionEntry) => {
+          const permission = (permissionEntry as Record<string, unknown>).pgems_permissions;
+          if (!permission || Array.isArray(permission)) return [];
+          const code = (permission as Record<string, unknown>).code;
+          return typeof code === "string" ? [code] : [];
+        });
+      });
+  }
 
   const explicitAllowCodes = (allowResult.data ?? []).flatMap((row: Record<string, unknown>) => {
     const permission = row.pgems_permissions;
@@ -402,4 +529,75 @@ export async function evaluateEmployeePermission(employeeId: string, permissionC
     explicitAllowCodes: context.explicitAllowCodes,
     explicitDenyCodes: context.explicitDenyCodes,
   });
+}
+
+export async function bootstrapCorporateGovernance(organizationId: string, actor?: GovernanceAuditActor) {
+  const supabase = createSupabaseAdminClient();
+  const { error } = await supabase.rpc("pgems_seed_corporate_governance", {
+    p_organization_id: organizationId,
+  });
+
+  if (error) throw error;
+
+  await writeGovernanceAuditLog({
+    organizationId,
+    eventType: "governance.bootstrap.executed",
+    targetType: "organization",
+    targetId: organizationId,
+    severity: "critical",
+    actor,
+  });
+
+  return { organizationId, seeded: true };
+}
+
+export async function upsertGovernanceControls(payload: {
+  organizationId: string;
+  ownerEmployeeId: string;
+  ceoEmployeeId?: string;
+  ownerRoleId?: string;
+  ceoRoleId?: string;
+  immutableOwnerAccount?: boolean;
+  protectCeoAccount?: boolean;
+  emergencyRecoveryEnabled?: boolean;
+}, actor?: GovernanceAuditActor) {
+  const supabase = createSupabaseAdminClient();
+
+  const { data, error } = await supabase
+    .from("pgems_governance_controls")
+    .upsert(
+      {
+        organization_id: payload.organizationId,
+        owner_employee_id: payload.ownerEmployeeId,
+        ceo_employee_id: payload.ceoEmployeeId ?? null,
+        owner_role_id: payload.ownerRoleId ?? null,
+        ceo_role_id: payload.ceoRoleId ?? null,
+        immutable_owner_account: payload.immutableOwnerAccount ?? true,
+        protect_ceo_account: payload.protectCeoAccount ?? true,
+        emergency_recovery_enabled: payload.emergencyRecoveryEnabled ?? true,
+      },
+      { onConflict: "organization_id" }
+    )
+    .select("organization_id, owner_employee_id, ceo_employee_id, owner_role_id, ceo_role_id, immutable_owner_account, protect_ceo_account, emergency_recovery_enabled")
+    .single();
+
+  if (error) throw error;
+
+  await writeGovernanceAuditLog({
+    organizationId: payload.organizationId,
+    eventType: "governance.controls.upserted",
+    targetType: "governance_controls",
+    targetId: payload.organizationId,
+    severity: "critical",
+    metadata: {
+      ownerEmployeeId: payload.ownerEmployeeId,
+      ceoEmployeeId: payload.ceoEmployeeId ?? null,
+      immutableOwnerAccount: payload.immutableOwnerAccount ?? true,
+      protectCeoAccount: payload.protectCeoAccount ?? true,
+      emergencyRecoveryEnabled: payload.emergencyRecoveryEnabled ?? true,
+    },
+    actor,
+  });
+
+  return data;
 }

@@ -77,3 +77,18 @@ export const assignPermissionSchema = z.object({
 export const evaluatePermissionSchema = z.object({
   permissionCode: z.string().trim().min(2).max(160),
 });
+
+export const bootstrapCorporateGovernanceSchema = z.object({
+  organizationId: z.string().uuid(),
+});
+
+export const upsertGovernanceControlsSchema = z.object({
+  organizationId: z.string().uuid(),
+  ownerEmployeeId: z.string().uuid(),
+  ceoEmployeeId: z.string().uuid().optional(),
+  ownerRoleId: z.string().uuid().optional(),
+  ceoRoleId: z.string().uuid().optional(),
+  immutableOwnerAccount: z.boolean().default(true),
+  protectCeoAccount: z.boolean().default(true),
+  emergencyRecoveryEnabled: z.boolean().default(true),
+});

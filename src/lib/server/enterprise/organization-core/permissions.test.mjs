@@ -49,3 +49,27 @@ test("permission evaluation: default deny", () => {
   assert.equal(decision.granted, false);
   assert.equal(decision.source, "default_deny");
 });
+
+test("permission evaluation: wildcard role permission supports fine-grained hierarchies", () => {
+  const decision = evaluateEnterprisePermission({
+    permissionCode: "governance.roles.assign",
+    rolePermissionCodes: ["governance.*"],
+    explicitAllowCodes: [],
+    explicitDenyCodes: [],
+  });
+
+  assert.equal(decision.granted, true);
+  assert.equal(decision.source, "role_permission");
+});
+
+test("permission evaluation: wildcard deny overrides wildcard allow", () => {
+  const decision = evaluateEnterprisePermission({
+    permissionCode: "employees.deactivate",
+    rolePermissionCodes: ["employees.*"],
+    explicitAllowCodes: ["employees.*"],
+    explicitDenyCodes: ["employees.deactivate"],
+  });
+
+  assert.equal(decision.granted, false);
+  assert.equal(decision.source, "explicit_deny");
+});

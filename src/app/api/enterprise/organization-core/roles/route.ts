@@ -38,7 +38,12 @@ export async function POST(request: Request) {
   if (parsed.error) return parsed.error;
 
   try {
-    const data = await createRole(parsed.data);
+    const data = await createRole(parsed.data, {
+      actorAuthUserId: auth.userId,
+      actorRole: auth.role,
+      ipAddress: request.headers.get("x-forwarded-for") ?? undefined,
+      userAgent: request.headers.get("user-agent") ?? undefined,
+    });
     return NextResponse.json({ success: true, data }, { status: 201 });
   } catch (error) {
     return NextResponse.json({ success: false, error: { code: "PGEMS_ROLE_CREATE_FAILED", message: error instanceof Error ? error.message : "Unable to create role" } }, { status: 400 });

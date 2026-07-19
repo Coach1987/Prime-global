@@ -8,6 +8,8 @@ Phase 1.5 extends that foundation with authority and governance architecture onl
 
 The combined Phase 1 and Phase 1.5 scope intentionally excludes AI workflow automation, approval execution engines, finance transaction processing, dashboards, notifications, and any modifications to candidate/employer recruitment or jobs systems.
 
+Phase 1 corporate governance details are documented in docs/PHASE1_CORPORATE_GOVERNANCE.md.
+
 ## Organization Model
 
 The organization foundation is normalized with the following hierarchy:
@@ -193,6 +195,8 @@ Internal enterprise endpoints are available under:
 - /api/enterprise/organization-core/employees/[employeeId]/scopes
 - /api/enterprise/organization-core/delegations
 - /api/enterprise/organization-core/employees/[employeeId]/permissions/governance
+- /api/enterprise/organization-core/governance/bootstrap
+- /api/enterprise/organization-core/governance/controls
 
 Access model:
 
