@@ -22,13 +22,39 @@ type CandidateDetail = {
   prime_global_verification_status?: string | null;
 };
 
+type MatchDetail = {
+  matchId: string;
+  candidateId: string;
+  canonicalProfile: Record<string, unknown> | null;
+  jobId: string;
+  jobTitle: string;
+  reviewStatus: string;
+  overallMatchScore: number;
+  skillsScore: number;
+  experienceScore: number;
+  educationScore: number;
+  certificationScore: number;
+  languageScore: number;
+  locationScore: number;
+  availabilityScore: number;
+  confidenceScore: number;
+  strengths: string[];
+  weaknesses: string[];
+  missingSkills: string[];
+  recommendedImprovements: string[];
+  scoreExplanations: Record<string, string>;
+  staffNotes: string | null;
+  matchingTimestamp: string;
+};
+
 export default function EmployerCandidateProfileDetailPage() {
   const params = useParams<{ locale: string; candidateId: string }>();
   const locale = String(params.locale ?? "en");
   const candidateId = String(params.candidateId ?? "");
   const [hasSession, setHasSession] = useState(false);
   const [profile, setProfile] = useState<CandidateDetail | null>(null);
-  const [matchScore, setMatchScore] = useState<number | null>(null);
+  const [match, setMatch] = useState<MatchDetail | null>(null);
+  const [shortlistApplicationId, setShortlistApplicationId] = useState<string | null>(null);
   const [note, setNote] = useState("");
   const [requestState, setRequestState] = useState<string | null>(null);
   const [csrfToken, setCsrfToken] = useState("");
@@ -41,6 +67,7 @@ export default function EmployerCandidateProfileDetailPage() {
             requestConversation: "طلب محادثة خاضعة للإشراف",
             openConversations: "فتح مركز المحادثات",
             requestInterview: "طلب مقابلة عبر برايم جلوبال",
+            shortlist: "إدراج في القائمة المختصرة",
             downloadPdf: "تحميل ملف المرشح المعتمد",
             contactNote: "معلومات الاتصال محمية، وجميع الخطوات تتم عبر برايم جلوبال.",
           }
@@ -49,6 +76,7 @@ export default function EmployerCandidateProfileDetailPage() {
             requestConversation: "Request Supervised Conversation",
             openConversations: "Open Conversation Center",
             requestInterview: "Request Interview Through Prime Global",
+            shortlist: "Shortlist Candidate",
             downloadPdf: "Download Prime Global Candidate Profile",
             contactNote: "Contact information is protected. All steps are managed through Prime Global.",
           },
@@ -77,13 +105,23 @@ export default function EmployerCandidateProfileDetailPage() {
       .then((payload) => setProfile(payload?.data ?? null))
       .catch(() => undefined);
 
-    fetch("/api/matching/v2/employer-candidates", {
+    fetch("/api/employers/matches", {
       credentials: "include",
     })
       .then((response) => response.json())
       .then((payload) => {
-        const match = (payload?.data?.topCandidates ?? []).find((item: Record<string, unknown>) => item.candidateId === candidateId);
-        setMatchScore(typeof match?.compatibilityScore === "number" ? match.compatibilityScore : null);
+        const matched = (payload?.data?.matches ?? []).find((item: MatchDetail) => String(item.candidateId) === candidateId) ?? null;
+        setMatch(matched);
+      })
+      .catch(() => undefined);
+
+    fetch("/api/employers/applicants", {
+      credentials: "include",
+    })
+      .then((response) => response.json())
+      .then((payload) => {
+        const app = (payload?.data ?? []).find((item: Record<string, unknown>) => String(item.candidate_id) === candidateId);
+        setShortlistApplicationId(app?.id ? String(app.id) : null);
       })
       .catch(() => undefined);
   }, [candidateId, hasSession]);
@@ -96,7 +134,41 @@ export default function EmployerCandidateProfileDetailPage() {
       headers: { "x-csrf-token": csrfToken },
       credentials: "include",
     });
+
+    setRequestState(locale === "ar" ? "تم إرسال طلب المقابلة." : "Interview request submitted.");
   }
+
+  async function shortlistCandidate() {
+    if (!shortlistApplicationId) {
+      setRequestState(locale === "ar" ? "لا يوجد طلب تقديم مرتبط لهذا المرشح." : "No application found to shortlist.");
+      return;
+    }
+
+    const response = await fetch(`/api/hr/applications/${shortlistApplicationId}/status`, {
+      method: "PATCH",
+      credentials: "include",
+      headers: {
+        "Content-Type": "application/json",
+        "x-csrf-token": csrfToken,
+      },
+      body: JSON.stringify({ status: "shortlisted", note: note || "shortlisted_by_employer" }),
+    });
+
+    const payload = await response.json();
+    if (!response.ok || !payload?.success) {
+      setRequestState(payload?.error?.message ?? "Unable to shortlist candidate");
+      return;
+    }
+
+    setRequestState(locale === "ar" ? "تم إدراج المرشح في القائمة المختصرة." : "Candidate shortlisted.");
+  }
+
+  const canonical = (match?.canonicalProfile ?? {}) as Record<string, unknown>;
+  const canonicalSkills = Array.isArray(canonical.skills) ? canonical.skills : [];
+  const canonicalExperiences = Array.isArray(canonical.experiences) ? canonical.experiences : [];
+  const canonicalEducation = Array.isArray(canonical.educations) ? canonical.educations : [];
+  const canonicalLanguages = Array.isArray(canonical.languages) ? canonical.languages : [];
+  const canonicalCertifications = Array.isArray(canonical.certifications) ? canonical.certifications : [];
 
   async function requestConversation() {
     if (!hasSession) return;
@@ -140,29 +212,74 @@ export default function EmployerCandidateProfileDetailPage() {
             <h2 className="mt-2 font-heading text-3xl text-text-primary">{profile?.candidate_reference ?? "-"}</h2>
             <p className="mt-4 text-sm text-text-secondary">{profile?.professional_title ?? profile?.desired_role ?? "Profile pending"}</p>
             <p className="mt-2 text-sm text-text-tertiary">{profile?.general_location ?? "Location protected"}</p>
-            <p className="mt-4 text-sm text-gold">Match score: {matchScore ?? "N/A"}</p>
+            <p className="mt-4 text-sm text-gold">Match score: {match?.overallMatchScore ?? "N/A"}</p>
+            <p className="mt-2 text-sm text-gold">Confidence: {match?.confidenceScore ?? "N/A"}</p>
+            <p className="mt-2 text-sm text-text-secondary">Review status: {match?.reviewStatus ?? "pending_review"}</p>
           </article>
 
           <article className="rounded-2xl border border-gold/15 bg-bg-primary/70 p-5">
             <h2 className="font-heading text-2xl text-text-primary">AI summary</h2>
-            <p className="mt-3 text-sm leading-7 text-text-secondary">{profile?.ai_summary ?? profile?.professional_summary ?? "No summary available."}</p>
+            <p className="mt-3 text-sm leading-7 text-text-secondary">{String(canonical.summary ?? profile?.ai_summary ?? profile?.professional_summary ?? "No summary available.")}</p>
             <div className="mt-5 space-y-2 text-sm text-text-secondary">
               <p><span className="text-text-tertiary">Experience:</span> {profile?.years_of_experience ?? "-"}</p>
               <p><span className="text-text-tertiary">Availability:</span> {profile?.availability ?? "-"}</p>
               <p><span className="text-text-tertiary">Prime Global verification:</span> {profile?.prime_global_verification_status ?? "verified"}</p>
+              <p><span className="text-text-tertiary">Matched job:</span> {match?.jobTitle ?? "-"}</p>
+              <p><span className="text-text-tertiary">Staff notes:</span> {match?.staffNotes ?? "-"}</p>
             </div>
           </article>
         </div>
 
         <div className="mt-6 grid gap-6 lg:grid-cols-2">
           <article className="rounded-2xl border border-gold/15 bg-bg-primary/70 p-5">
-            <h2 className="font-heading text-2xl text-text-primary">Skills and languages</h2>
-            <p className="mt-3 text-sm text-text-secondary">Skills: {(profile?.skills ?? []).join(", ") || "-"}</p>
-            <p className="mt-2 text-sm text-text-secondary">Languages: {(profile?.languages ?? []).join(", ") || "-"}</p>
+            <h2 className="font-heading text-2xl text-text-primary">Canonical Skills and Languages</h2>
+            <p className="mt-3 text-sm text-text-secondary">Skills: {canonicalSkills.map((item) => String((item as Record<string, unknown>).normalizedSkillName ?? (item as Record<string, unknown>).skill ?? item)).join(", ") || "-"}</p>
+            <p className="mt-2 text-sm text-text-secondary">Languages: {canonicalLanguages.map((item) => String((item as Record<string, unknown>).languageName ?? item)).join(", ") || "-"}</p>
+            <p className="mt-2 text-sm text-text-secondary">Strengths: {(match?.strengths ?? []).join(", ") || "-"}</p>
+            <p className="mt-2 text-sm text-text-secondary">Weaknesses: {(match?.weaknesses ?? []).join(", ") || "-"}</p>
+            <p className="mt-2 text-sm text-text-secondary">Missing skills: {(match?.missingSkills ?? []).join(", ") || "-"}</p>
+            <p className="mt-2 text-sm text-text-secondary">Recommended improvements: {(match?.recommendedImprovements ?? []).join(", ") || "-"}</p>
           </article>
           <article className="rounded-2xl border border-gold/15 bg-bg-primary/70 p-5">
-            <h2 className="font-heading text-2xl text-text-primary">Education and certificates</h2>
-            <pre className="mt-3 overflow-auto rounded-xl bg-bg-secondary p-4 text-xs text-text-secondary">{JSON.stringify({ education: profile?.education ?? [], certifications: profile?.certifications ?? [] }, null, 2)}</pre>
+            <h2 className="font-heading text-2xl text-text-primary">Score Breakdown</h2>
+            <ul className="mt-3 space-y-2 text-sm text-text-secondary">
+              <li>Overall: {match?.overallMatchScore ?? 0}</li>
+              <li>Skills: {match?.skillsScore ?? 0}</li>
+              <li>Experience: {match?.experienceScore ?? 0}</li>
+              <li>Education: {match?.educationScore ?? 0}</li>
+              <li>Certification: {match?.certificationScore ?? 0}</li>
+              <li>Language: {match?.languageScore ?? 0}</li>
+              <li>Location: {match?.locationScore ?? 0}</li>
+              <li>Availability: {match?.availabilityScore ?? 0}</li>
+            </ul>
+            <p className="mt-4 text-xs uppercase text-text-tertiary">Score explanations</p>
+            <ul className="mt-2 space-y-1 text-sm text-text-secondary">
+              {Object.entries(match?.scoreExplanations ?? {}).map(([key, value]) => (
+                <li key={key}>{key}: {value}</li>
+              ))}
+            </ul>
+          </article>
+        </div>
+
+        <div className="mt-6 grid gap-6 lg:grid-cols-2">
+          <article className="rounded-2xl border border-gold/15 bg-bg-primary/70 p-5">
+            <h2 className="font-heading text-2xl text-text-primary">Canonical Experience</h2>
+            <ul className="mt-3 space-y-2 text-sm text-text-secondary">
+              {canonicalExperiences.map((item, index) => (
+                <li key={`exp-${index}`}>{String((item as Record<string, unknown>).roleTitle ?? "Role")} @ {String((item as Record<string, unknown>).organizationName ?? "Organization")}</li>
+              ))}
+            </ul>
+          </article>
+          <article className="rounded-2xl border border-gold/15 bg-bg-primary/70 p-5">
+            <h2 className="font-heading text-2xl text-text-primary">Canonical Education and Certifications</h2>
+            <ul className="mt-3 space-y-2 text-sm text-text-secondary">
+              {canonicalEducation.map((item, index) => (
+                <li key={`edu-${index}`}>{String((item as Record<string, unknown>).degreeTitle ?? "Degree")} @ {String((item as Record<string, unknown>).institutionName ?? "Institution")}</li>
+              ))}
+              {canonicalCertifications.map((item, index) => (
+                <li key={`cert-${index}`}>{String((item as Record<string, unknown>).certificationName ?? "Certification")}</li>
+              ))}
+            </ul>
           </article>
         </div>
 
@@ -173,6 +290,9 @@ export default function EmployerCandidateProfileDetailPage() {
           <div className="mt-4 flex flex-wrap gap-3">
             <button onClick={requestConversation} className="rounded-full bg-gold px-5 py-3 text-sm font-semibold text-bg-primary">
               {copy.requestConversation}
+            </button>
+            <button onClick={shortlistCandidate} className="rounded-full border border-gold/30 px-5 py-3 text-sm font-semibold text-gold">
+              {copy.shortlist}
             </button>
             <button onClick={requestInterview} className="rounded-full border border-gold/30 px-5 py-3 text-sm font-semibold text-gold">
               {copy.requestInterview}

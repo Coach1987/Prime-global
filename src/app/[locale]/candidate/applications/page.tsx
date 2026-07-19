@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 type ApplicationItem = {
   id: string;
   status: string;
-  created_at: string;
+  applied_at: string;
   jobs?: {
     id: string;
     title: string;
@@ -99,7 +99,7 @@ export default function CandidateApplicationsPage() {
                 <span className="rounded-full border border-gold/30 px-3 py-1 text-xs text-gold">{application.status}</span>
               </div>
 
-              <p className="mt-3 text-sm text-text-secondary">Submitted: {new Date(application.created_at).toLocaleString()}</p>
+              <p className="mt-3 text-sm text-text-secondary">Submitted: {new Date(application.applied_at).toLocaleString()}</p>
 
               <section className="mt-4 rounded-xl border border-gold/15 bg-bg-primary/70 p-4">
                 <h3 className="text-sm font-semibold text-text-primary">Workflow status history</h3>
