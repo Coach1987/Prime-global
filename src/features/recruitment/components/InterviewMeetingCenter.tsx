@@ -71,6 +71,7 @@ export function InterviewMeetingCenter({
   role: "employer" | "candidate" | "staff";
   interviewId: string;
 }) {
+  const [loading, setLoading] = useState(true);
   const [hasSession, setHasSession] = useState(false);
   const [isAuthorized, setIsAuthorized] = useState(false);
   const [csrfToken, setCsrfToken] = useState("");
@@ -99,17 +100,21 @@ export function InterviewMeetingCenter({
   }, [interviewId, locale]);
 
   useEffect(() => {
-    fetch("/api/auth/me", {
-      credentials: "include",
-    })
-      .then((response) => response.json())
-      .then((payload) => {
-        if (!payload?.success) {
+    Promise.all([
+      fetch("/api/auth/me", {
+        credentials: "include",
+      }),
+      fetch("/api/security/csrf"),
+    ])
+      .then(async ([authResponse, csrfResponse]) => {
+        const [authPayload, csrfPayload] = await Promise.all([authResponse.json(), csrfResponse.json()]);
+
+        if (!authPayload?.success) {
           setError(locale === "ar" ? "فشل التحقق من الجلسة." : "Session verification failed.");
           return;
         }
 
-        const userRole = String(payload?.data?.role ?? "");
+        const userRole = String(authPayload?.data?.role ?? "");
         const roleAllowed =
           (role === "candidate" && userRole === "candidate") ||
           (role === "employer" && userRole === "employer") ||
@@ -122,15 +127,11 @@ export function InterviewMeetingCenter({
 
         setHasSession(true);
         setIsAuthorized(true);
+        setCsrfToken(csrfPayload?.data?.csrfToken ?? "");
+        await loadCenter();
       })
-      .catch(() => setError(locale === "ar" ? "تعذر التحقق من الجلسة." : "Unable to verify session."));
-
-    fetch("/api/security/csrf")
-      .then((response) => response.json())
-      .then((payload) => setCsrfToken(payload?.data?.csrfToken ?? ""))
-      .catch(() => setCsrfToken(""));
-
-    loadCenter().catch(() => setError(locale === "ar" ? "تعذر تحميل المركز." : "Unable to load center."));
+      .catch(() => setError(locale === "ar" ? "تعذر تحميل المركز." : "Unable to load center."))
+      .finally(() => setLoading(false));
   }, [interviewId, locale, role, loadCenter]);
 
   useEffect(() => {
@@ -333,7 +334,7 @@ export function InterviewMeetingCenter({
     return formatDuration((endedRaw - started) / 1000);
   }, [data]);
 
-  if (!data) {
+  if (loading || !hasSession || !isAuthorized || !data) {
     return (
       <main className="mx-auto w-full max-w-[1180px] px-4 pb-20 pt-[124px] sm:px-6 md:px-8">
         <section className="rounded-3xl border border-blue-200/20 bg-[#081223]/82 p-7 text-sm text-text-secondary backdrop-blur-xl md:p-10">

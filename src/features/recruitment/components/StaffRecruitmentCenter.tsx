@@ -37,7 +37,7 @@ function getCopy(locale: string) {
 
 export function StaffRecruitmentCenter({ locale }: { locale: string }) {
   const [hasSession, setHasSession] = useState(false);
-  const [isAuthorized, setIsAuthorized] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [csrfToken, setCsrfToken] = useState("");
   const [data, setData] = useState<StaffOverview | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -73,22 +73,28 @@ export function StaffRecruitmentCenter({ locale }: { locale: string }) {
           return;
         }
         setHasSession(true);
-        setIsAuthorized(true);
+        loadOverview().catch(() => setError(locale === "ar" ? "تعذر تحميل البيانات." : "Unable to load data."));
       })
-      .catch(() => setError(locale === "ar" ? "تعذر التحقق من الجلسة." : "Unable to verify session."));
+      .catch(() => setError(locale === "ar" ? "تعذر التحقق من الجلسة." : "Unable to verify session."))
+      .finally(() => setLoading(false));
 
     fetch("/api/security/csrf")
       .then((response) => response.json())
       .then((payload) => setCsrfToken(payload?.data?.csrfToken ?? ""))
       .catch(() => setCsrfToken(""));
 
-    loadOverview().catch(() => setError(locale === "ar" ? "تعذر تحميل البيانات." : "Unable to load data."));
   }, [loadOverview, locale]);
 
-  useEffect(() => {
-    if (!hasSession || !isAuthorized) return;
-    loadOverview().catch(() => setError(locale === "ar" ? "تعذر تحميل البيانات." : "Unable to load data."));
-  }, [hasSession, isAuthorized, loadOverview, locale]);
+  if (loading) {
+    return (
+      <main className="mx-auto w-full max-w-[1260px] px-4 pb-20 pt-[124px] sm:px-6 md:px-8">
+        <PrimeCard as="section" className="p-7 md:p-10">
+          <PrimePageTitle>{copy.title}</PrimePageTitle>
+          <p className="mt-3 text-sm text-text-secondary">{locale === "ar" ? "جارٍ تحميل مركز التحكم..." : "Loading control center..."}</p>
+        </PrimeCard>
+      </main>
+    );
+  }
 
   async function reviewRequest(requestId: string, action: "assign" | "approve" | "reject") {
     if (!hasSession) return;

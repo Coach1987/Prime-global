@@ -58,6 +58,7 @@ export function ConversationCenter({
   role: "employer" | "candidate";
   detailBasePath: string;
 }) {
+  const [loading, setLoading] = useState(true);
   const [hasSession, setHasSession] = useState(false);
   const [isAuthorized, setIsAuthorized] = useState(false);
   const [requests, setRequests] = useState<ConversationRow[]>([]);
@@ -74,16 +75,19 @@ export function ConversationCenter({
         const currentRole = String(payload?.data?.role ?? "");
         if (!payload?.success) {
           setError(locale === "ar" ? "فشل التحقق من الجلسة." : "Session verification failed.");
+          setLoading(false);
           return;
         }
         if ((role === "candidate" && currentRole !== "candidate") || (role === "employer" && currentRole !== "employer")) {
           setError(locale === "ar" ? "صلاحيات غير كافية." : "Insufficient role privileges.");
+          setLoading(false);
           return;
         }
         setHasSession(true);
         setIsAuthorized(true);
       })
-      .catch(() => setError(locale === "ar" ? "تعذر التحقق من الجلسة." : "Unable to verify session."));
+      .catch(() => setError(locale === "ar" ? "تعذر التحقق من الجلسة." : "Unable to verify session."))
+      .finally(() => setLoading(false));
   }, [locale, role]);
 
   useEffect(() => {
@@ -106,6 +110,17 @@ export function ConversationCenter({
       })
       .catch(() => setError(locale === "ar" ? "تعذر تحميل البيانات." : "Unable to load data."));
   }, [locale, hasSession, isAuthorized]);
+
+  if (loading) {
+    return (
+      <main className="mx-auto w-full max-w-[1180px] px-4 pb-20 pt-[124px] sm:px-6 md:px-8">
+        <PrimeCard as="section" className="p-7 md:p-10">
+          <PrimePageTitle>{copy.title}</PrimePageTitle>
+          <p className="mt-3 text-sm text-text-secondary">{locale === "ar" ? "جارٍ تحميل مركز المقابلات..." : "Loading interview center..."}</p>
+        </PrimeCard>
+      </main>
+    );
+  }
 
   return (
     <main className="mx-auto w-full max-w-[1180px] px-4 pb-20 pt-[124px] sm:px-6 md:px-8">
