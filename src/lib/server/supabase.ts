@@ -3,7 +3,7 @@ import {
   readRequiredEnv,
   readRequiredSupabaseUrl,
   readSupabaseAnonKey,
-} from "./config/env";
+} from "./config/env.ts";
 
 export function createSupabaseAdminClient() {
   const supabaseUrl = readRequiredSupabaseUrl();

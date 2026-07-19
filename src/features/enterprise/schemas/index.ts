@@ -6,3 +6,4 @@ export * from "./notification-engine";
 export * from "./ai-platform";
 export * from "./ai-recruitment-intelligence";
 export * from "./financial-layer";
+export * from "./communication-layer";

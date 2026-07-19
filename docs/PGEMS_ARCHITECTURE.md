@@ -12,6 +12,8 @@ Phase 1 corporate governance details are documented in docs/PHASE1_CORPORATE_GOV
 
 Phase 2 enterprise financial layer details are documented in docs/PHASE2_ENTERPRISE_FINANCIAL_ARCHITECTURE.md.
 
+Phase 3 enterprise communication layer details are documented in docs/PHASE3_ENTERPRISE_COMMUNICATION_ARCHITECTURE.md.
+
 ## Organization Model
 
 The organization foundation is normalized with the following hierarchy:
@@ -216,6 +218,21 @@ Internal enterprise endpoints are available under:
 - /api/enterprise/financial-layer/reconciliation/batches
 - /api/enterprise/financial-layer/disputes
 - /api/enterprise/financial-layer/audit/events
+- /api/enterprise/communication-layer/mail-identities
+- /api/enterprise/communication-layer/mailboxes
+- /api/enterprise/communication-layer/mailboxes/members
+- /api/enterprise/communication-layer/retention-policies
+- /api/enterprise/communication-layer/templates
+- /api/enterprise/communication-layer/templates/versions
+- /api/enterprise/communication-layer/templates/localizations
+- /api/enterprise/communication-layer/templates/approvals
+- /api/enterprise/communication-layer/messaging
+- /api/enterprise/communication-layer/messaging/acknowledge
+- /api/enterprise/communication-layer/providers
+- /api/enterprise/communication-layer/event-subscriptions
+- /api/enterprise/communication-layer/deliveries
+- /api/enterprise/communication-layer/compliance
+- /api/enterprise/communication-layer/audit-events
 
 Access model:
 
