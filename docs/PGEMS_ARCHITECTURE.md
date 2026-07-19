@@ -18,6 +18,8 @@ Phase 4 enterprise identity and security layer details are documented in docs/PH
 
 Phase 5 enterprise observability and operations layer details are documented in docs/PHASE5_ENTERPRISE_OBSERVABILITY_OPERATIONS_ARCHITECTURE.md.
 
+Phase 6 enterprise architecture review and consolidation details are documented in docs/PHASE6_ARCHITECTURE_REVIEW.md.
+
 ## Organization Model
 
 The organization foundation is normalized with the following hierarchy:
