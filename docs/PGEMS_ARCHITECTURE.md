@@ -10,6 +10,8 @@ The combined Phase 1 and Phase 1.5 scope intentionally excludes AI workflow auto
 
 Phase 1 corporate governance details are documented in docs/PHASE1_CORPORATE_GOVERNANCE.md.
 
+Phase 2 enterprise financial layer details are documented in docs/PHASE2_ENTERPRISE_FINANCIAL_ARCHITECTURE.md.
+
 ## Organization Model
 
 The organization foundation is normalized with the following hierarchy:
@@ -197,6 +199,23 @@ Internal enterprise endpoints are available under:
 - /api/enterprise/organization-core/employees/[employeeId]/permissions/governance
 - /api/enterprise/organization-core/governance/bootstrap
 - /api/enterprise/organization-core/governance/controls
+- /api/enterprise/financial-layer/accounts
+- /api/enterprise/financial-layer/ledger/journals
+- /api/enterprise/financial-layer/billing/plans
+- /api/enterprise/financial-layer/subscriptions
+- /api/enterprise/financial-layer/invoices
+- /api/enterprise/financial-layer/payments
+- /api/enterprise/financial-layer/payments/intents
+- /api/enterprise/financial-layer/payments/providers
+- /api/enterprise/financial-layer/commissions
+- /api/enterprise/financial-layer/commissions/policies
+- /api/enterprise/financial-layer/taxes/regimes
+- /api/enterprise/financial-layer/taxes/rules
+- /api/enterprise/financial-layer/currencies
+- /api/enterprise/financial-layer/currencies/exchange-rates
+- /api/enterprise/financial-layer/reconciliation/batches
+- /api/enterprise/financial-layer/disputes
+- /api/enterprise/financial-layer/audit/events
 
 Access model:
 
