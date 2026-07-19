@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { candidateProfessionalProfileSchema } from "@/features/candidates/schemas/professional-profile";
 import { requireAuth, requireRole } from "@/lib/server/security/auth";
-import { enforceRateLimit, parseJsonBody } from "@/lib/server/http";
+import { enforceCsrf, enforceRateLimit, parseJsonBody } from "@/lib/server/http";
 import { syncCandidatePortalAiWorkflow } from "@/lib/server/candidates/portal-ai-workflow";
 import { createSupabaseAdminClient } from "@/lib/server/supabase";
 
@@ -104,6 +104,9 @@ export async function GET(request: Request) {
 export async function PUT(request: Request) {
   const rateLimitResult = enforceRateLimit(request, "candidate-professional-profile-put", 80);
   if (rateLimitResult) return rateLimitResult;
+
+  const csrfResult = enforceCsrf(request);
+  if (csrfResult) return csrfResult;
 
   const auth = await requireAuth(request);
   if (auth instanceof NextResponse) return auth;

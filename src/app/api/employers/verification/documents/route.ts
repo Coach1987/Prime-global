@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { employerVerificationDocumentTypeSchema } from "@/features/employers/schemas/portal";
 import { createAuditLog } from "@/lib/server/security/audit";
 import { requireAuth, requireRole } from "@/lib/server/security/auth";
-import { enforceRateLimit, getRequestContext } from "@/lib/server/http";
+import { enforceCsrf, enforceRateLimit, getRequestContext } from "@/lib/server/http";
 import { getEmployerByAuthUserId } from "@/lib/server/employers";
 import { createSupabaseAdminClient } from "@/lib/server/supabase";
 
@@ -29,6 +29,9 @@ function inferExtension(file: File) {
 export async function POST(request: Request) {
   const rateLimitResult = enforceRateLimit(request, "employer-verification-upload", 24);
   if (rateLimitResult) return rateLimitResult;
+
+  const csrfResult = enforceCsrf(request);
+  if (csrfResult) return csrfResult;
 
   const auth = await requireAuth(request);
   if (auth instanceof NextResponse) return auth;
@@ -140,6 +143,9 @@ export async function POST(request: Request) {
 }
 
 export async function GET(request: Request) {
+  const rateLimitResult = enforceRateLimit(request, "employer-verification-upload-get", 120);
+  if (rateLimitResult) return rateLimitResult;
+
   const auth = await requireAuth(request);
   if (auth instanceof NextResponse) return auth;
 

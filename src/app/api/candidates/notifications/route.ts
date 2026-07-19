@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { requireAuth, requireRole } from "@/lib/server/security/auth";
-import { enforceRateLimit, parseJsonBody } from "@/lib/server/http";
+import { enforceCsrf, enforceRateLimit, parseJsonBody } from "@/lib/server/http";
 import { createSupabaseAdminClient } from "@/lib/server/supabase";
 
 const markNotificationReadSchema = z.object({
@@ -39,6 +39,9 @@ export async function GET(request: Request) {
 export async function PATCH(request: Request) {
   const rateLimitResult = enforceRateLimit(request, "candidate-notifications-patch", 100);
   if (rateLimitResult) return rateLimitResult;
+
+  const csrfResult = enforceCsrf(request);
+  if (csrfResult) return csrfResult;
 
   const auth = await requireAuth(request);
   if (auth instanceof NextResponse) return auth;
