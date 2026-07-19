@@ -873,6 +873,63 @@ The module publishes events through enterprise event infrastructure:
 
 It also supports event consumption hooks for future orchestration triggers.
 
+## Phase 8 Completion: Smart Job Matching Platform
+
+Phase 8 completes advisory Smart Job Matching on top of Candidate Intelligence canonical profiles.
+
+Matching engine principles:
+
+- recommendations are advisory only
+- Prime Global staff keeps final decisions
+- no automatic hiring, rejection, or interview scheduling
+- matching evidence remains traceable to candidate canonical fields and source documents
+
+Matching dimensions and weighting:
+
+- skills (required and preferred): 28%
+- experience (years, industry, specialization, career level, job function): 20%
+- education: 10%
+- certifications: 8%
+- languages: 8%
+- location (country and region): 12%
+- availability (work authorization, employment type, availability): 14%
+
+Match scorecard fields:
+
+- overall_match_score
+- skills_score
+- experience_score
+- education_score
+- certification_score
+- language_score
+- location_score
+- availability_score
+- confidence_score
+- explanation text for each score field
+
+Match categories:
+
+- excellent_match
+- strong_match
+- good_match
+- possible_match
+- weak_match
+- no_match
+
+Human review states:
+
+- pending_review
+- approved_by_staff
+- rejected_by_staff
+- needs_manual_review
+
+Matching events:
+
+- CandidateMatched
+- JobMatched
+- MatchingCompleted
+- MatchingReviewed
+
 ## AI Recruitment Intelligence API Surface
 
 Internal endpoints are available under:
@@ -900,6 +957,9 @@ Internal endpoints are available under:
 - /api/enterprise/ai-recruitment-intelligence/canonical-timeline
 - /api/enterprise/ai-recruitment-intelligence/knowledge-graph/nodes
 - /api/enterprise/ai-recruitment-intelligence/knowledge-graph/edges
+- /api/enterprise/ai-recruitment-intelligence/smart-matching
+- /api/enterprise/ai-recruitment-intelligence/smart-matching/reviews
+- /api/enterprise/ai-recruitment-intelligence/smart-matching/[matchId]/review
 - /api/enterprise/ai-recruitment-intelligence/events/consume
 
 Access model:
@@ -935,7 +995,7 @@ Planned integration points (not implemented in Phase 1):
 
 ## Migration Strategy
 
-Phases 1, 1.5, 2, 3, 4, 5, and 6 use additive migrations only:
+Phases 1, 1.5, 2, 3, 4, 5, 6, 7, and 8 use additive migrations only:
 
 - 202607180001_pgems_organization_core.sql
 - 202607180002_phase15_pgems_authority_foundation.sql
@@ -945,5 +1005,6 @@ Phases 1, 1.5, 2, 3, 4, 5, and 6 use additive migrations only:
 - 202607180006_pgems_ai_orchestration_platform_foundation.sql
 - 202607180007_pgems_ai_recruitment_intelligence_foundation.sql
 - 202607190001_phase7_candidate_intelligence_canonicalization.sql
+- 202607190002_phase8_smart_job_matching_platform.sql
 
 No previous migration files are edited.

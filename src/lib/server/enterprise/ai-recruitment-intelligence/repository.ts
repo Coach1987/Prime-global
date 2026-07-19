@@ -8,6 +8,7 @@ import { createSupabaseAdminClient } from "../../supabase.ts";
 import { consolidateCandidateProfile } from "./canonicalization.ts";
 import { normalizeSkill } from "./normalization.ts";
 import { evaluateAdvisoryRecommendation } from "./review.ts";
+import { buildSmartJobMatch } from "./smart-matching.ts";
 import { buildCandidateTimeline } from "./timeline.ts";
 import type {
   CandidateAiRecommendationRecord,
@@ -30,6 +31,8 @@ import type {
   CandidateReviewStatusRecord,
   CandidateSkillExtractionRecord,
   CandidateTimelineEntryRecord,
+  SmartJobMatchingRecord,
+  SmartJobMatchingReviewRecord,
   SkillAliasRecord,
   SkillTaxonomyRecord,
 } from "./types.ts";
@@ -603,6 +606,256 @@ export async function createCandidateAiRecommendation(payload: {
     advisory_only: payload.advisoryOnly,
     metadata: payload.metadata,
   });
+}
+
+export async function listSmartJobMatches() {
+  return listRows<SmartJobMatchingRecord>("pgems_ai_smart_job_matches");
+}
+
+export async function listSmartJobMatchReviews() {
+  return listRows<SmartJobMatchingReviewRecord>("pgems_ai_smart_job_match_reviews");
+}
+
+export async function createSmartJobMatch(payload: {
+  candidateId: string;
+  canonicalProfileId: string;
+  aiTaskId: string;
+  aiPromptVersionId?: string;
+  locale: string;
+  inputPayload: Record<string, unknown>;
+  aiModelUsed: string;
+  jobProfile: {
+    jobId: string;
+    title: string;
+    requiredSkills: string[];
+    preferredSkills: string[];
+    minimumYearsExperience?: number;
+    requiredEducationLevels: string[];
+    requiredCertifications: string[];
+    requiredLanguages: string[];
+    country?: string;
+    region?: string;
+    workAuthorizationRequired?: boolean;
+    employmentType?: string;
+    industry?: string;
+    specialization?: string;
+    availability?: string;
+    careerLevel?: string;
+    jobFunction?: string;
+  };
+  candidateContext: {
+    yearsExperience?: number;
+    educationLevels?: string[];
+    certifications?: string[];
+    languages?: string[];
+    country?: string;
+    region?: string;
+    workAuthorization?: boolean;
+    employmentType?: string;
+    industry?: string;
+    specialization?: string;
+    availability?: string;
+    careerLevel?: string;
+    jobFunction?: string;
+  };
+  eventRouting: CandidateEventRouting;
+  metadata: Record<string, unknown>;
+}) {
+  const supabase = createSupabaseAdminClient();
+  const { data: canonical, error: canonicalError } = await supabase
+    .from("pgems_ai_candidate_canonical_profiles")
+    .select("*")
+    .eq("id", payload.canonicalProfileId)
+    .single();
+
+  if (canonicalError) throw canonicalError;
+  if (!canonical || canonical.candidate_id !== payload.candidateId) {
+    throw new Error("Canonical profile does not belong to candidate");
+  }
+
+  const aiRequest = await createAiRequest({
+    taskId: payload.aiTaskId,
+    promptVersionId: payload.aiPromptVersionId,
+    correlationId: `candidate:${payload.candidateId}:job:${payload.jobProfile.jobId}:matching`,
+    traceId: `candidate:${payload.candidateId}:job:${payload.jobProfile.jobId}:matching:${Date.now()}`,
+    inputPayload: payload.inputPayload,
+    inputHash: `${payload.candidateId}:${payload.canonicalProfileId}:${payload.jobProfile.jobId}`,
+    locale: payload.locale,
+    status: "created",
+    priority: "normal",
+    metadata: payload.metadata,
+  });
+
+  const aiExecution = await executeAiTaskFoundation({
+    taskId: payload.aiTaskId,
+    requestId: aiRequest.id,
+    dryRun: false,
+  });
+
+  const matchResult = buildSmartJobMatch({
+    canonicalProfile: canonical,
+    candidateContext: payload.candidateContext,
+    jobProfile: payload.jobProfile,
+  });
+
+  const matchingTimestamp = new Date().toISOString();
+  const reviewStatus = matchResult.scorecard.confidenceScore < 55 || matchResult.matchCategory === "weak_match" || matchResult.matchCategory === "no_match"
+    ? "needs_manual_review"
+    : "pending_review";
+
+  const match = await createRow<SmartJobMatchingRecord>("pgems_ai_smart_job_matches", {
+    candidate_id: payload.candidateId,
+    canonical_profile_id: payload.canonicalProfileId,
+    job_id: payload.jobProfile.jobId,
+    job_payload: payload.jobProfile,
+    overall_match_score: matchResult.scorecard.overallMatchScore,
+    skills_score: matchResult.scorecard.skillsScore,
+    experience_score: matchResult.scorecard.experienceScore,
+    education_score: matchResult.scorecard.educationScore,
+    certification_score: matchResult.scorecard.certificationScore,
+    language_score: matchResult.scorecard.languageScore,
+    location_score: matchResult.scorecard.locationScore,
+    availability_score: matchResult.scorecard.availabilityScore,
+    confidence_score: matchResult.scorecard.confidenceScore,
+    match_category: matchResult.matchCategory,
+    score_explanations: matchResult.scorecard.explanations,
+    why_candidate_matches: matchResult.whyCandidateMatches,
+    missing_skills: matchResult.missingSkills,
+    missing_experience: matchResult.missingExperience,
+    strengths: matchResult.strengths,
+    weaknesses: matchResult.weaknesses,
+    recommended_improvements: matchResult.recommendedImprovements,
+    evidence: matchResult.evidence,
+    source_fields: matchResult.sourceFields,
+    ai_model_used: payload.aiModelUsed,
+    matching_timestamp: matchingTimestamp,
+    review_status: reviewStatus,
+    reviewer_staff_id: null,
+    review_notes: "AI recommendation is advisory only; Prime Global staff must review.",
+    metadata: {
+      aiRequestId: aiRequest.id,
+      aiExecution,
+      ...payload.metadata,
+    },
+  });
+
+  const review = await createRow<SmartJobMatchingReviewRecord>("pgems_ai_smart_job_match_reviews", {
+    match_id: match.id,
+    candidate_id: payload.candidateId,
+    canonical_profile_id: payload.canonicalProfileId,
+    job_id: payload.jobProfile.jobId,
+    status: reviewStatus,
+    reviewer_staff_id: null,
+    review_notes: "Initial review status generated by advisory matching engine.",
+    metadata: {},
+  });
+
+  const publishedEvents = await Promise.all([
+    publishCandidateEvent({
+      routing: payload.eventRouting,
+      candidateId: payload.candidateId,
+      profileId: canonical.source_profile_id,
+      eventName: "CandidateMatched",
+      idempotencySuffix: match.id,
+      metadata: {},
+      body: {
+        matchId: match.id,
+        jobId: payload.jobProfile.jobId,
+        overallMatchScore: match.overall_match_score,
+        matchCategory: match.match_category,
+      },
+    }),
+    publishCandidateEvent({
+      routing: payload.eventRouting,
+      candidateId: payload.candidateId,
+      profileId: canonical.source_profile_id,
+      eventName: "JobMatched",
+      idempotencySuffix: `${payload.jobProfile.jobId}:${match.id}`,
+      metadata: {},
+      body: {
+        matchId: match.id,
+        jobId: payload.jobProfile.jobId,
+        overallMatchScore: match.overall_match_score,
+        matchCategory: match.match_category,
+      },
+    }),
+    publishCandidateEvent({
+      routing: payload.eventRouting,
+      candidateId: payload.candidateId,
+      profileId: canonical.source_profile_id,
+      eventName: "MatchingCompleted",
+      idempotencySuffix: `${match.id}:completed`,
+      metadata: {},
+      body: {
+        matchId: match.id,
+        jobId: payload.jobProfile.jobId,
+        reviewStatus: review.status,
+      },
+    }),
+  ]);
+
+  return {
+    aiRequest,
+    aiExecution,
+    match,
+    review,
+    publishedEvents,
+  };
+}
+
+export async function updateSmartJobMatchReview(payload: {
+  matchId: string;
+  status: SmartJobMatchingRecord["review_status"];
+  reviewerStaffId?: string;
+  reviewNotes?: string;
+  eventRouting?: CandidateEventRouting;
+  metadata: Record<string, unknown>;
+}) {
+  const updated = await updateRow<SmartJobMatchingRecord>("pgems_ai_smart_job_matches", { id: payload.matchId }, {
+    review_status: payload.status,
+    reviewer_staff_id: payload.reviewerStaffId ?? null,
+    review_notes: payload.reviewNotes ?? null,
+    metadata: payload.metadata,
+  });
+
+  const review = await createRow<SmartJobMatchingReviewRecord>("pgems_ai_smart_job_match_reviews", {
+    match_id: updated.id,
+    candidate_id: updated.candidate_id,
+    canonical_profile_id: updated.canonical_profile_id,
+    job_id: updated.job_id,
+    status: payload.status,
+    reviewer_staff_id: payload.reviewerStaffId ?? null,
+    review_notes: payload.reviewNotes ?? null,
+    metadata: payload.metadata,
+  });
+
+  if (payload.eventRouting) {
+    const canonical = await createSupabaseAdminClient()
+      .from("pgems_ai_candidate_canonical_profiles")
+      .select("source_profile_id")
+      .eq("id", updated.canonical_profile_id)
+      .single();
+
+    await publishCandidateEvent({
+      routing: payload.eventRouting,
+      candidateId: updated.candidate_id,
+      profileId: canonical.data?.source_profile_id ?? updated.canonical_profile_id,
+      eventName: "MatchingReviewed",
+      idempotencySuffix: `${updated.id}:${review.id}`,
+      metadata: {},
+      body: {
+        matchId: updated.id,
+        jobId: updated.job_id,
+        reviewId: review.id,
+        reviewStatus: payload.status,
+      },
+    });
+  }
+
+  return {
+    match: updated,
+    review,
+  };
 }
 
 function average(values: number[]) {

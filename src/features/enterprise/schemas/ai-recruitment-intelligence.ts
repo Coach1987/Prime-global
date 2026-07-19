@@ -36,6 +36,22 @@ export const candidateConflictStatusSchema = z.enum([
   "dismissed_by_staff",
 ]);
 
+export const smartJobMatchReviewStatusSchema = z.enum([
+  "pending_review",
+  "approved_by_staff",
+  "rejected_by_staff",
+  "needs_manual_review",
+]);
+
+export const smartJobMatchCategorySchema = z.enum([
+  "excellent_match",
+  "strong_match",
+  "good_match",
+  "possible_match",
+  "weak_match",
+  "no_match",
+]);
+
 export const eventRoutingSchema = z.object({
   eventTypeId: z.string().uuid(),
   categoryId: z.string().uuid(),
@@ -214,6 +230,64 @@ export const updateCandidateConflictSchema = z.object({
   status: candidateConflictStatusSchema,
   reviewerStaffId: z.string().uuid().optional(),
   resolutionNotes: z.string().trim().max(4000).optional(),
+  eventRouting: eventRoutingSchema.optional(),
+  metadata: metadataSchema,
+});
+
+const smartJobJobProfileSchema = z.object({
+  jobId: z.string().uuid(),
+  title: z.string().trim().min(1).max(240),
+  requiredSkills: z.array(z.string().trim().min(1).max(160)).default([]),
+  preferredSkills: z.array(z.string().trim().min(1).max(160)).default([]),
+  minimumYearsExperience: z.number().min(0).max(80).optional(),
+  requiredEducationLevels: z.array(z.string().trim().min(1).max(200)).default([]),
+  requiredCertifications: z.array(z.string().trim().min(1).max(200)).default([]),
+  requiredLanguages: z.array(z.string().trim().min(1).max(120)).default([]),
+  country: z.string().trim().max(120).optional(),
+  region: z.string().trim().max(120).optional(),
+  workAuthorizationRequired: z.boolean().default(false),
+  employmentType: z.string().trim().max(80).optional(),
+  industry: z.string().trim().max(160).optional(),
+  specialization: z.string().trim().max(160).optional(),
+  availability: z.string().trim().max(80).optional(),
+  careerLevel: z.string().trim().max(80).optional(),
+  jobFunction: z.string().trim().max(120).optional(),
+});
+
+const smartJobCandidateContextSchema = z.object({
+  yearsExperience: z.number().min(0).max(80).optional(),
+  educationLevels: z.array(z.string().trim().min(1).max(200)).optional(),
+  certifications: z.array(z.string().trim().min(1).max(200)).optional(),
+  languages: z.array(z.string().trim().min(1).max(120)).optional(),
+  country: z.string().trim().max(120).optional(),
+  region: z.string().trim().max(120).optional(),
+  workAuthorization: z.boolean().optional(),
+  employmentType: z.string().trim().max(80).optional(),
+  industry: z.string().trim().max(160).optional(),
+  specialization: z.string().trim().max(160).optional(),
+  availability: z.string().trim().max(80).optional(),
+  careerLevel: z.string().trim().max(80).optional(),
+  jobFunction: z.string().trim().max(120).optional(),
+}).default({});
+
+export const createSmartJobMatchSchema = z.object({
+  candidateId: z.string().uuid(),
+  canonicalProfileId: z.string().uuid(),
+  aiTaskId: z.string().uuid(),
+  aiPromptVersionId: z.string().uuid().optional(),
+  locale: localeSchema,
+  inputPayload: metadataSchema,
+  aiModelUsed: z.string().trim().min(1).max(120),
+  jobProfile: smartJobJobProfileSchema,
+  candidateContext: smartJobCandidateContextSchema,
+  eventRouting: eventRoutingSchema,
+  metadata: metadataSchema,
+});
+
+export const updateSmartJobMatchReviewSchema = z.object({
+  status: smartJobMatchReviewStatusSchema,
+  reviewerStaffId: z.string().uuid().optional(),
+  reviewNotes: z.string().trim().max(4000).optional(),
   eventRouting: eventRoutingSchema.optional(),
   metadata: metadataSchema,
 });

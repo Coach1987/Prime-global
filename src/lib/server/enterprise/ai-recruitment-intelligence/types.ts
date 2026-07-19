@@ -322,3 +322,54 @@ export interface CandidateEventRouting {
   publisherId: string;
   queueId: string;
 }
+
+export type SmartJobMatchReviewStatus = "pending_review" | "approved_by_staff" | "rejected_by_staff" | "needs_manual_review";
+export type SmartJobMatchCategory = "excellent_match" | "strong_match" | "good_match" | "possible_match" | "weak_match" | "no_match";
+
+export interface SmartJobMatchingRecord {
+  id: string;
+  candidate_id: string;
+  canonical_profile_id: string;
+  job_id: string;
+  job_payload: Record<string, unknown>;
+  overall_match_score: number;
+  skills_score: number;
+  experience_score: number;
+  education_score: number;
+  certification_score: number;
+  language_score: number;
+  location_score: number;
+  availability_score: number;
+  confidence_score: number;
+  match_category: SmartJobMatchCategory;
+  score_explanations: Record<string, unknown>;
+  why_candidate_matches: string[];
+  missing_skills: string[];
+  missing_experience: string[];
+  strengths: string[];
+  weaknesses: string[];
+  recommended_improvements: string[];
+  evidence: Array<Record<string, unknown>>;
+  source_fields: string[];
+  ai_model_used: string;
+  matching_timestamp: string;
+  review_status: SmartJobMatchReviewStatus;
+  reviewer_staff_id: string | null;
+  review_notes: string | null;
+  metadata: Record<string, unknown>;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface SmartJobMatchingReviewRecord {
+  id: string;
+  match_id: string;
+  candidate_id: string;
+  canonical_profile_id: string;
+  job_id: string;
+  status: SmartJobMatchReviewStatus;
+  reviewer_staff_id: string | null;
+  review_notes: string | null;
+  metadata: Record<string, unknown>;
+  created_at: string;
+}

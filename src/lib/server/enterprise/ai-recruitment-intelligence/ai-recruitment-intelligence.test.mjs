@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { consolidateCandidateProfile } from "./canonicalization.ts";
 import { canonicalizeSkillKey, normalizeSkill } from "./normalization.ts";
 import { evaluateAdvisoryRecommendation } from "./review.ts";
+import { buildSmartJobMatch } from "./smart-matching.ts";
 import { buildCandidateTimeline } from "./timeline.ts";
 
 test("skill normalization handles aliases and multilingual variants", () => {
@@ -159,4 +160,112 @@ test("canonicalization creates conflict objects and staff review items", () => {
 
   assert.ok(result.conflicts.some((conflict) => conflict.fieldPath.includes("experiences") && conflict.status === "needs_staff_review"));
   assert.ok(result.reviewItems.some((item) => item.itemType === "conflict"));
+});
+
+test("smart job matching computes weighted scorecard and category", () => {
+  const result = buildSmartJobMatch({
+    canonicalProfile: {
+      id: "canonical_1",
+      candidate_id: "candidate_1",
+      source_profile_id: "profile_1",
+      locale: "en",
+      source_document_analysis_ids: ["doc_1"],
+      canonical_payload: {
+        skills: [{ skill: "typescript" }, { skill: "node.js" }],
+        experiences: [{ startDate: "2020-01-01", endDate: "2025-01-01" }],
+        educations: [{ degreeTitle: "Bachelor of Computer Science" }],
+        certifications: [{ certificationName: "aws solutions architect" }],
+        languages: [{ languageName: "english" }],
+        country: "uae",
+        region: "dubai",
+        workAuthorization: true,
+        employmentType: "full_time",
+        industry: "technology",
+        specialization: "backend",
+        availability: "immediate",
+        careerLevel: "senior",
+        jobFunction: "engineering",
+      },
+      metadata: {},
+      created_at: "2026-07-19T00:00:00Z",
+      updated_at: "2026-07-19T00:00:00Z",
+    },
+    candidateContext: {},
+    jobProfile: {
+      jobId: "11111111-1111-1111-1111-111111111111",
+      title: "Senior Backend Engineer",
+      requiredSkills: ["typescript", "node.js"],
+      preferredSkills: ["postgresql"],
+      minimumYearsExperience: 4,
+      requiredEducationLevels: ["bachelor of computer science"],
+      requiredCertifications: ["aws solutions architect"],
+      requiredLanguages: ["english"],
+      country: "uae",
+      region: "dubai",
+      workAuthorizationRequired: true,
+      employmentType: "full_time",
+      industry: "technology",
+      specialization: "backend",
+      availability: "immediate",
+      careerLevel: "senior",
+      jobFunction: "engineering",
+    },
+  });
+
+  assert.ok(result.scorecard.overallMatchScore >= 80);
+  assert.equal(result.matchCategory, "excellent_match");
+  assert.ok(result.scorecard.explanations.skillsScore.length > 0);
+  assert.ok(result.sourceFields.includes("skills"));
+});
+
+test("smart job matching reports missing skills and weak category when gaps are high", () => {
+  const result = buildSmartJobMatch({
+    canonicalProfile: {
+      id: "canonical_2",
+      candidate_id: "candidate_2",
+      source_profile_id: "profile_2",
+      locale: "en",
+      source_document_analysis_ids: ["doc_2"],
+      canonical_payload: {
+        skills: [{ skill: "excel" }],
+        experiences: [{ startDate: "2025-01-01", endDate: "2025-12-01" }],
+        educations: [],
+        certifications: [],
+        languages: [{ languageName: "arabic" }],
+        country: "egypt",
+        region: "cairo",
+        workAuthorization: false,
+        employmentType: "part_time",
+        availability: "30_days",
+      },
+      metadata: {},
+      created_at: "2026-07-19T00:00:00Z",
+      updated_at: "2026-07-19T00:00:00Z",
+    },
+    candidateContext: {},
+    jobProfile: {
+      jobId: "22222222-2222-2222-2222-222222222222",
+      title: "Lead AI Engineer",
+      requiredSkills: ["python", "machine learning", "system design"],
+      preferredSkills: ["typescript"],
+      minimumYearsExperience: 8,
+      requiredEducationLevels: ["master"],
+      requiredCertifications: ["azure ai engineer"],
+      requiredLanguages: ["english"],
+      country: "uae",
+      region: "abudhabi",
+      workAuthorizationRequired: true,
+      employmentType: "full_time",
+      industry: "technology",
+      specialization: "ai",
+      availability: "immediate",
+      careerLevel: "lead",
+      jobFunction: "engineering",
+    },
+  });
+
+  assert.ok(result.scorecard.overallMatchScore < 45);
+  assert.ok(result.matchCategory === "possible_match" || result.matchCategory === "weak_match" || result.matchCategory === "no_match");
+  assert.ok(result.missingSkills.length >= 2);
+  assert.ok(result.weaknesses.length > 0);
 });

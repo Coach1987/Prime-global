@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import {
   consumeRecruitmentEventSchema,
+  createSmartJobMatchSchema,
   createCandidateAiRecommendationSchema,
   createCandidateCertificationExtractionSchema,
   createCandidateConfidenceScoreSchema,
@@ -17,6 +18,7 @@ import {
   generateCandidateProfileSchema,
   updateCandidateConflictSchema,
   updateCandidateReviewStatusSchema,
+  updateSmartJobMatchReviewSchema,
 } from "@/features/enterprise/schemas";
 import { enforceCsrf, enforceRateLimit, parseJsonBody } from "@/lib/server/http";
 import { canonicalizeSkillKey } from "@/lib/server/enterprise/ai-recruitment-intelligence";
@@ -54,10 +56,14 @@ import {
   listCandidateReviewStatuses,
   listCandidateSkillExtractions,
   listCandidateTimelineEntries,
+  listSmartJobMatches,
+  listSmartJobMatchReviews,
   listSkillAliases,
   listSkillTaxonomy,
+  createSmartJobMatch,
   updateCandidateConflictStatus,
   updateCandidateReviewStatus,
+  updateSmartJobMatchReview,
 } from "../../../../../lib/server/enterprise/ai-recruitment-intelligence/repository";
 import { requireAiRecruitmentIntelligenceAccess } from "../_shared.ts";
 
@@ -524,6 +530,63 @@ async function handleRecommendations(request: Request) {
   return jsonError("METHOD_NOT_ALLOWED", "Method not allowed", 405);
 }
 
+async function handleSmartMatching(request: Request, segments: string[]) {
+  if (segments.length === 1) {
+    if (request.method === "GET") return NextResponse.json({ success: true, data: await listSmartJobMatches() });
+
+    if (request.method === "POST") {
+      const parsed = await parseJsonBody(request, createSmartJobMatchSchema);
+      if (parsed.error) return parsed.error;
+
+      const data = await createSmartJobMatch({
+        candidateId: parsed.data.candidateId,
+        canonicalProfileId: parsed.data.canonicalProfileId,
+        aiTaskId: parsed.data.aiTaskId,
+        aiPromptVersionId: parsed.data.aiPromptVersionId,
+        locale: parsed.data.locale ?? "en",
+        inputPayload: parsed.data.inputPayload ?? {},
+        aiModelUsed: parsed.data.aiModelUsed,
+        jobProfile: {
+          ...parsed.data.jobProfile,
+          requiredSkills: parsed.data.jobProfile.requiredSkills ?? [],
+          preferredSkills: parsed.data.jobProfile.preferredSkills ?? [],
+          requiredEducationLevels: parsed.data.jobProfile.requiredEducationLevels ?? [],
+          requiredCertifications: parsed.data.jobProfile.requiredCertifications ?? [],
+          requiredLanguages: parsed.data.jobProfile.requiredLanguages ?? [],
+          workAuthorizationRequired: parsed.data.jobProfile.workAuthorizationRequired ?? false,
+        },
+        candidateContext: parsed.data.candidateContext ?? {},
+        eventRouting: parsed.data.eventRouting,
+        metadata: parsed.data.metadata ?? {},
+      });
+
+      return NextResponse.json({ success: true, data }, { status: 201 });
+    }
+  }
+
+  if (segments.length === 2 && segments[1] === "reviews" && request.method === "GET") {
+    return NextResponse.json({ success: true, data: await listSmartJobMatchReviews() });
+  }
+
+  if (segments.length === 3 && segments[2] === "review" && request.method === "POST") {
+    const parsed = await parseJsonBody(request, updateSmartJobMatchReviewSchema);
+    if (parsed.error) return parsed.error;
+
+    const data = await updateSmartJobMatchReview({
+      matchId: segments[1],
+      status: parsed.data.status,
+      reviewerStaffId: parsed.data.reviewerStaffId,
+      reviewNotes: parsed.data.reviewNotes,
+      eventRouting: parsed.data.eventRouting,
+      metadata: parsed.data.metadata ?? {},
+    });
+
+    return NextResponse.json({ success: true, data });
+  }
+
+  return jsonError("NOT_FOUND", "Smart matching endpoint not found", 404);
+}
+
 async function handleEvents(request: Request, segments: string[]) {
   if (segments.length === 2 && segments[1] === "consume" && request.method === "POST") {
     const parsed = await parseJsonBody(request, consumeRecruitmentEventSchema);
@@ -561,6 +624,7 @@ async function dispatch(request: Request, segments: string[]) {
   if (root === "review-items") return handleReviewItems(request);
   if (root === "canonical-timeline") return handleCanonicalTimeline(request);
   if (root === "knowledge-graph") return handleKnowledgeGraph(request, segments);
+  if (root === "smart-matching") return handleSmartMatching(request, segments);
   if (root === "events") return handleEvents(request, segments);
 
   return jsonError("NOT_FOUND", "Recruitment intelligence endpoint not found", 404);
