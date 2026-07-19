@@ -62,6 +62,27 @@ async function updateRow<T>(table: string, filter: Record<string, unknown>, payl
   return data as T;
 }
 
+async function notifyCandidate(candidateId: string, title: string, body: string, entityType: string, entityId: string) {
+  const supabase = createSupabaseAdminClient();
+  const { data: candidate } = await supabase
+    .from("candidate_profiles")
+    .select("auth_user_id")
+    .eq("id", candidateId)
+    .maybeSingle();
+
+  if (!candidate?.auth_user_id) return;
+
+  await supabase.from("notification_events").insert({
+    auth_user_id: candidate.auth_user_id,
+    category: "status_change",
+    title,
+    body,
+    entity_type: entityType,
+    entity_id: entityId,
+    delivery_channels: ["dashboard", "realtime"],
+  });
+}
+
 export async function listCandidateDocumentAnalyses() {
   return listRows<CandidateDocumentAnalysisRecord>("pgems_ai_candidate_document_analyses");
 }
@@ -829,6 +850,16 @@ export async function updateSmartJobMatchReview(payload: {
     metadata: payload.metadata,
   });
 
+  if (payload.status === "approved_by_staff" || payload.status === "rejected_by_staff") {
+    await notifyCandidate(
+      updated.candidate_id,
+      "Matching review completed",
+      `A staff review decision was recorded for one of your job matches (${payload.status}).`,
+      "smart_job_match_review",
+      review.id
+    );
+  }
+
   if (payload.eventRouting) {
     const canonical = await createSupabaseAdminClient()
       .from("pgems_ai_candidate_canonical_profiles")
@@ -1500,6 +1531,16 @@ export async function updateCandidateReviewStatus(payload: {
     review_notes: payload.reviewNotes ?? null,
     metadata: payload.metadata,
   });
+
+  if (payload.status === "approved_by_staff" || payload.status === "rejected_by_staff") {
+    await notifyCandidate(
+      updated.candidate_id,
+      "Review completed",
+      `Your profile review has been completed with status: ${payload.status}.`,
+      "candidate_review",
+      updated.id
+    );
+  }
 
   if (payload.eventRouting) {
     await publishCandidateEvent({

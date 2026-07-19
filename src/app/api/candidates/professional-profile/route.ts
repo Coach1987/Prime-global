@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { candidateProfessionalProfileSchema } from "@/features/candidates/schemas/professional-profile";
 import { requireAuth, requireRole } from "@/lib/server/security/auth";
 import { enforceRateLimit, parseJsonBody } from "@/lib/server/http";
+import { syncCandidatePortalAiWorkflow } from "@/lib/server/candidates/portal-ai-workflow";
 import { createSupabaseAdminClient } from "@/lib/server/supabase";
 
 async function getCandidateId(authUserId: string) {
@@ -50,7 +51,54 @@ export async function GET(request: Request) {
     );
   }
 
-  return NextResponse.json({ success: true, data: data ?? null });
+  const [canonicalProfile, reviewStatus, confidence, reviewItems, canonicalTimeline] = await Promise.all([
+    supabase
+      .from("pgems_ai_candidate_canonical_profiles")
+      .select("id, source_profile_id, canonical_payload, created_at, updated_at")
+      .eq("candidate_id", candidateId)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle(),
+    supabase
+      .from("pgems_ai_candidate_review_statuses")
+      .select("id, status, review_notes, created_at, updated_at")
+      .eq("candidate_id", candidateId)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle(),
+    supabase
+      .from("pgems_ai_candidate_confidence_scores")
+      .select("overall_confidence, skills_confidence, experience_confidence, education_confidence, certification_confidence, language_confidence, created_at")
+      .eq("candidate_id", candidateId)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle(),
+    supabase
+      .from("pgems_ai_candidate_review_items")
+      .select("id, item_type, severity, field_path, reason_code, status, created_at")
+      .eq("candidate_id", candidateId)
+      .order("created_at", { ascending: false })
+      .limit(100),
+    supabase
+      .from("pgems_ai_candidate_canonical_timeline_entries")
+      .select("id, entry_type, title, description, start_date, end_date, verified, created_at")
+      .eq("candidate_id", candidateId)
+      .order("start_date", { ascending: true })
+      .limit(200),
+  ]);
+
+  return NextResponse.json({
+    success: true,
+    data: data ?? null,
+    intelligence: {
+      canonicalProfile: canonicalProfile.data ?? null,
+      reviewStatus: reviewStatus.data ?? null,
+      confidence: confidence.data ?? null,
+      missingInformation: (reviewItems.data ?? []).filter((item) => item.item_type === "missing_information"),
+      reviewItems: reviewItems.data ?? [],
+      canonicalTimeline: canonicalTimeline.data ?? [],
+    },
+  });
 }
 
 export async function PUT(request: Request) {
@@ -109,6 +157,12 @@ export async function PUT(request: Request) {
       { status: 400 }
     );
   }
+
+  await syncCandidatePortalAiWorkflow({
+    candidateId,
+    authUserId: auth.userId,
+    trigger: "profile_update",
+  }).catch(() => undefined);
 
   return NextResponse.json({ success: true, data });
 }

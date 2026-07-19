@@ -21,6 +21,7 @@ import {
   safeSetPrimaryResume,
   supersedeActiveCandidateDocuments,
 } from "@/lib/server/candidates/document-verification-workflow";
+import { syncCandidatePortalAiWorkflow } from "@/lib/server/candidates/portal-ai-workflow";
 
 const CANDIDATE_RESUMES_BUCKET = process.env.SUPABASE_CANDIDATE_RESUMES_BUCKET ?? "candidate-resumes";
 
@@ -449,6 +450,12 @@ export async function POST(request: Request) {
       restricted_to_prime_global: true,
     });
   }
+
+  await syncCandidatePortalAiWorkflow({
+    candidateId,
+    authUserId: auth.userId,
+    trigger: "document_upload",
+  }).catch(() => undefined);
 
   return NextResponse.json(
     {

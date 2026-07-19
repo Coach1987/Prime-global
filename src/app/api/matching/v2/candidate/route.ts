@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { requireAuth, requireRole } from "@/lib/server/security/auth";
 import { enforceRateLimit } from "@/lib/server/http";
 import { createSupabaseAdminClient } from "@/lib/server/supabase";
-import { buildCandidateMatchInsight } from "@/lib/server/matching/engine-v2";
+import { syncCandidatePortalAiWorkflow } from "@/lib/server/candidates/portal-ai-workflow";
 
 export async function GET(request: Request) {
   const rateLimitResult = enforceRateLimit(request, "candidate-matching-v2", 90);
@@ -16,8 +16,13 @@ export async function GET(request: Request) {
   const supabase = createSupabaseAdminClient();
 
   const [{ data: candidate, error: candidateError }, { data: jobs, error: jobsError }] = await Promise.all([
-    supabase.from("candidate_profiles").select("id, full_name, professional_title, country, city, settings").eq("auth_user_id", auth.userId).single(),
-    supabase.from("jobs").select("id, title, country, city, department, required_skills, experience, education").eq("status", "published").order("publish_date", { ascending: false }).limit(200),
+    supabase.from("candidate_profiles").select("id, auth_user_id, full_name").eq("auth_user_id", auth.userId).single(),
+    supabase
+      .from("jobs")
+      .select("id, title, country, city, employment_type, required_skills, education, experience")
+      .eq("status", "published")
+      .order("publish_date", { ascending: false })
+      .limit(200),
   ]);
 
   if (candidateError || !candidate) {
@@ -28,30 +33,62 @@ export async function GET(request: Request) {
     return NextResponse.json({ success: false, error: { code: "JOBS_FETCH_FAILED", message: jobsError.message } }, { status: 500 });
   }
 
-  const matches = (jobs ?? []).map((job) => ({ jobId: job.id, jobTitle: job.title, ...buildCandidateMatchInsight(candidate, job) })).sort((left, right) => right.compatibilityScore - left.compatibilityScore);
+  let smartMatches = await supabase
+    .from("pgems_ai_smart_job_matches")
+    .select("*")
+    .eq("candidate_id", candidate.id)
+    .order("matching_timestamp", { ascending: false })
+    .limit(200);
 
-  if (matches.length > 0) {
-    await supabase.from("matching_insights_v2").upsert(
-      matches.slice(0, 25).map((item) => ({
-        entity_type: "candidate",
-        entity_id: candidate.id,
-        target_id: item.jobId,
-        compatibility_score: item.compatibilityScore,
-        confidence_score: item.confidenceScore,
-        strengths: item.strengths,
-        risks: item.risks,
-        recommendations: item.recommendations,
-        explanation: item.explanation,
-      })),
-      { onConflict: "entity_type,entity_id,target_id" }
-    );
+  if ((smartMatches.data?.length ?? 0) === 0) {
+    await syncCandidatePortalAiWorkflow({
+      candidateId: String(candidate.id),
+      authUserId: auth.userId,
+      trigger: "matching_refresh",
+    }).catch(() => undefined);
+
+    smartMatches = await supabase
+      .from("pgems_ai_smart_job_matches")
+      .select("*")
+      .eq("candidate_id", candidate.id)
+      .order("matching_timestamp", { ascending: false })
+      .limit(200);
   }
+
+  const jobById = new Map((jobs ?? []).map((job) => [String(job.id), job]));
+  const matches = (smartMatches.data ?? [])
+    .map((entry) => {
+      const job = jobById.get(String(entry.job_id));
+      return {
+        matchId: entry.id,
+        jobId: entry.job_id,
+        jobTitle: job?.title ?? String((entry.job_payload as Record<string, unknown>)?.title ?? "Job"),
+        reviewStatus: entry.review_status,
+        matchCategory: entry.match_category,
+        overallMatchScore: entry.overall_match_score,
+        skillsScore: entry.skills_score,
+        experienceScore: entry.experience_score,
+        educationScore: entry.education_score,
+        certificationScore: entry.certification_score,
+        languageScore: entry.language_score,
+        locationScore: entry.location_score,
+        availabilityScore: entry.availability_score,
+        confidenceScore: entry.confidence_score,
+        strengths: entry.strengths ?? [],
+        weaknesses: entry.weaknesses ?? [],
+        missingSkills: entry.missing_skills ?? [],
+        recommendedImprovements: entry.recommended_improvements ?? [],
+        scoreExplanations: entry.score_explanations ?? {},
+        matchingTimestamp: entry.matching_timestamp,
+      };
+    })
+    .sort((left, right) => Number(right.overallMatchScore) - Number(left.overallMatchScore));
 
   return NextResponse.json({
     success: true,
     data: {
       bestMatches: matches.slice(0, 5),
-      recommendedJobs: matches.slice(0, 20),
+      recommendedJobs: matches.slice(0, 30),
       generatedAt: new Date().toISOString(),
     },
   });

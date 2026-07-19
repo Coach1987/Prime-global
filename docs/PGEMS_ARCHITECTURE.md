@@ -930,6 +930,46 @@ Matching events:
 - MatchingCompleted
 - MatchingReviewed
 
+## Phase 9 Completion: Candidate Portal Integration
+
+Phase 9 completes the candidate-facing vertical slice by wiring existing AI capabilities into one end-to-end portal journey without introducing any new engine.
+
+Integrated journey:
+
+1. Candidate account and profile onboarding using existing candidate/auth modules.
+2. Candidate document uploads through existing resume and private-document APIs.
+3. Candidate Intelligence document analysis reuses existing AI recruitment intelligence repositories.
+4. Canonical Candidate Profile generation is triggered from portal workflow orchestration.
+5. Candidate Intelligence canonical fields, confidence, review items, and timeline are exposed in candidate profile APIs.
+6. Staff review lifecycle starts automatically via existing review status and review item persistence.
+7. Candidate portal surfaces current review status and missing information directly from canonical intelligence outputs.
+8. Smart Job Matching runs on canonical profile and published jobs using the existing advisory matching module.
+9. Matching results are exposed on candidate endpoints with score breakdown and explanations.
+10. Candidate job application flow reuses existing apply and application status infrastructure.
+11. Application tracking uses workflow history from status events to show current stage and progression.
+
+Architecture reuse boundary:
+
+- Organization Core, Authority Foundation, Workflow Engine, Event Engine, Notification Engine, AI Platform, Candidate Intelligence, and Smart Job Matching were reused as-is.
+- No new subsystem or parallel workflow engine was introduced.
+- Event publication continues through existing enterprise event routing contracts.
+- Notifications continue through existing notification event records and delivery channels.
+
+Candidate portal pages and data contracts:
+
+- Profile page: canonical professional summary, skills, experience, education, languages, certifications, timeline, completion, review status, confidence, missing information.
+- Documents page: uploaded documents, verification status, AI processing history, review history, extraction-related activity.
+- Matching page: advisory matches, overall score, dimension breakdown, strengths, weaknesses, missing skills, recommended improvements, confidence, and matching timestamp.
+- Applications page: apply, withdraw, status timeline, workflow progress, current stage.
+
+Notification scenarios covered through existing Notification Engine tables/services:
+
+- Profile Ready
+- Review Requested
+- Review Completed
+- New Matching Jobs
+- Application Updated
+
 ## AI Recruitment Intelligence API Surface
 
 Internal endpoints are available under:

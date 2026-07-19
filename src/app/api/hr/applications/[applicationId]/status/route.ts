@@ -55,6 +55,22 @@ export async function PATCH(
     }
   }
 
+  const { data: existingApplication, error: existingApplicationError } = await supabase
+    .from("job_applications_v2")
+    .select("id, status, candidate_id")
+    .eq("id", applicationId)
+    .single();
+
+  if (existingApplicationError || !existingApplication) {
+    return NextResponse.json(
+      {
+        success: false,
+        error: { code: "APPLICATION_NOT_FOUND", message: existingApplicationError?.message ?? "Application not found" },
+      },
+      { status: 404 }
+    );
+  }
+
   const { data, error } = await supabase
     .from("job_applications_v2")
     .update({ status: parsed.data.status })
@@ -72,10 +88,28 @@ export async function PATCH(
   if (parsed.data.note) {
     await supabase.from("job_application_status_events").insert({
       application_id: applicationId,
-      previous_status: null,
+      previous_status: existingApplication.status,
       next_status: parsed.data.status,
       changed_by_auth_user_id: auth.userId,
       note: parsed.data.note,
+    });
+  }
+
+  const { data: candidate } = await supabase
+    .from("candidate_profiles")
+    .select("auth_user_id")
+    .eq("id", existingApplication.candidate_id)
+    .maybeSingle();
+
+  if (candidate?.auth_user_id) {
+    await supabase.from("notification_events").insert({
+      auth_user_id: candidate.auth_user_id,
+      category: "status_change",
+      title: "Application updated",
+      body: `Your application status changed to ${parsed.data.status}.`,
+      entity_type: "job_application",
+      entity_id: applicationId,
+      delivery_channels: ["dashboard", "realtime"],
     });
   }
 

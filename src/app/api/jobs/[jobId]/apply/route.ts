@@ -29,7 +29,7 @@ async function loadApplicationContext({
     await Promise.all([
       supabase
         .from("jobs")
-        .select("id, title, status, application_deadline")
+        .select("id, employer_id, title, status, application_deadline")
         .eq("id", jobId)
         .maybeSingle(),
       candidateId
@@ -340,6 +340,53 @@ export async function POST(
   }
 
   const { ipAddress, userAgent } = getRequestContext(request);
+
+  await supabase.from("job_application_status_events").insert({
+    application_id: data.id,
+    previous_status: null,
+    next_status: "new",
+    changed_by_auth_user_id: auth.userId,
+    note: "application_created",
+  });
+
+  const [{ data: employer }, { data: candidateProfile }] = await Promise.all([
+    supabase
+      .from("employers")
+      .select("auth_user_id")
+      .eq("id", context.job!.employer_id)
+      .maybeSingle(),
+    supabase
+      .from("candidate_profiles")
+      .select("full_name")
+      .eq("id", context.candidateId)
+      .maybeSingle(),
+  ]);
+
+  await supabase.from("notification_events").insert([
+    {
+      auth_user_id: auth.userId,
+      category: "status_change",
+      title: "Application submitted",
+      body: `Your application for ${context.job!.title} was submitted successfully.`,
+      entity_type: "job_application",
+      entity_id: data.id,
+      delivery_channels: ["dashboard", "realtime"],
+    },
+    ...(employer?.auth_user_id
+      ? [
+          {
+            auth_user_id: employer.auth_user_id,
+            category: "dashboard",
+            title: "New candidate application",
+            body: `${candidateProfile?.full_name ?? "A candidate"} applied for ${context.job!.title}.`,
+            entity_type: "job_application",
+            entity_id: data.id,
+            delivery_channels: ["dashboard", "realtime"],
+          },
+        ]
+      : []),
+  ]);
+
   await createAuditLog({
     actorAuthUserId: auth.userId,
     actorRole: auth.role,

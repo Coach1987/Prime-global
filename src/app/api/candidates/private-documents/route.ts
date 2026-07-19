@@ -19,6 +19,7 @@ import {
   resolveDocumentType,
   supersedeActiveCandidateDocuments,
 } from "@/lib/server/candidates/document-verification-workflow";
+import { syncCandidatePortalAiWorkflow } from "@/lib/server/candidates/portal-ai-workflow";
 
 const PRIVATE_BUCKET = "candidate-private-documents";
 const ALLOWED_MIME_TYPES = new Set([
@@ -443,6 +444,12 @@ export async function POST(request: Request) {
         { status: 500 }
       );
     }
+
+    await syncCandidatePortalAiWorkflow({
+      candidateId: String(profile.candidate.id),
+      authUserId: auth.userId,
+      trigger: "document_upload",
+    }).catch(() => undefined);
   }
 
   return NextResponse.json(
