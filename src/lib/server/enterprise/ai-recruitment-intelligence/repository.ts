@@ -5,18 +5,28 @@ import {
   publishAiPlatformEvent,
 } from "../ai-platform/index";
 import { createSupabaseAdminClient } from "../../supabase.ts";
+import { consolidateCandidateProfile } from "./canonicalization.ts";
 import { normalizeSkill } from "./normalization.ts";
 import { evaluateAdvisoryRecommendation } from "./review.ts";
 import { buildCandidateTimeline } from "./timeline.ts";
 import type {
   CandidateAiRecommendationRecord,
+  CandidateCanonicalProfileFieldRecord,
+  CandidateCanonicalProfileRecord,
+  CandidateCanonicalTimelineEntryRecord,
   CandidateCertificationExtractionRecord,
+  CandidateConflictRecord,
+  CandidateConflictStatus,
   CandidateConfidenceScoreRecord,
   CandidateDocumentAnalysisRecord,
   CandidateEducationExtractionRecord,
   CandidateExperienceExtractionRecord,
+  CandidateEventRouting,
+  CandidateKnowledgeGraphEdgeRecord,
+  CandidateKnowledgeGraphNodeRecord,
   CandidateLanguageExtractionRecord,
   CandidateProfessionalProfileRecord,
+  CandidateReviewItemRecord,
   CandidateReviewStatusRecord,
   CandidateSkillExtractionRecord,
   CandidateTimelineEntryRecord,
@@ -93,6 +103,182 @@ export async function createCandidateProfessionalProfile(payload: {
     summary: payload.summary,
     locale: payload.locale,
     source_document_analysis_ids: payload.sourceDocumentAnalysisIds,
+    metadata: payload.metadata,
+  });
+}
+
+export async function listCandidateCanonicalProfiles() {
+  return listRows<CandidateCanonicalProfileRecord>("pgems_ai_candidate_canonical_profiles");
+}
+
+export async function createCandidateCanonicalProfile(payload: {
+  candidateId: string;
+  sourceProfileId: string;
+  locale: string;
+  sourceDocumentAnalysisIds: string[];
+  canonicalPayload: Record<string, unknown>;
+  metadata: Record<string, unknown>;
+}) {
+  return createRow<CandidateCanonicalProfileRecord>("pgems_ai_candidate_canonical_profiles", {
+    candidate_id: payload.candidateId,
+    source_profile_id: payload.sourceProfileId,
+    locale: payload.locale,
+    source_document_analysis_ids: payload.sourceDocumentAnalysisIds,
+    canonical_payload: payload.canonicalPayload,
+    metadata: payload.metadata,
+  });
+}
+
+export async function listCandidateCanonicalProfileFields() {
+  return listRows<CandidateCanonicalProfileFieldRecord>("pgems_ai_candidate_canonical_profile_fields");
+}
+
+export async function createCandidateCanonicalProfileField(payload: {
+  canonicalProfileId: string;
+  candidateId: string;
+  fieldPath: string;
+  canonicalValue: unknown;
+  fieldStatus: CandidateCanonicalProfileFieldRecord["field_status"];
+  confidenceScore: number;
+  evidence: Array<Record<string, unknown>>;
+  sourceCount: number;
+  metadata: Record<string, unknown>;
+}) {
+  return createRow<CandidateCanonicalProfileFieldRecord>("pgems_ai_candidate_canonical_profile_fields", {
+    canonical_profile_id: payload.canonicalProfileId,
+    candidate_id: payload.candidateId,
+    field_path: payload.fieldPath,
+    canonical_value: payload.canonicalValue,
+    field_status: payload.fieldStatus,
+    confidence_score: payload.confidenceScore,
+    evidence: payload.evidence,
+    source_count: payload.sourceCount,
+    metadata: payload.metadata,
+  });
+}
+
+export async function listCandidateConflicts() {
+  return listRows<CandidateConflictRecord>("pgems_ai_candidate_conflicts");
+}
+
+export async function createCandidateConflict(payload: {
+  canonicalProfileId: string;
+  candidateId: string;
+  fieldPath: string;
+  conflictKind: CandidateConflictRecord["conflict_kind"];
+  conflictPayload: Record<string, unknown>;
+  status: CandidateConflictRecord["status"];
+  metadata: Record<string, unknown>;
+}) {
+  return createRow<CandidateConflictRecord>("pgems_ai_candidate_conflicts", {
+    canonical_profile_id: payload.canonicalProfileId,
+    candidate_id: payload.candidateId,
+    field_path: payload.fieldPath,
+    conflict_kind: payload.conflictKind,
+    conflict_payload: payload.conflictPayload,
+    status: payload.status,
+    metadata: payload.metadata,
+  });
+}
+
+export async function listCandidateReviewItems() {
+  return listRows<CandidateReviewItemRecord>("pgems_ai_candidate_review_items");
+}
+
+export async function createCandidateReviewItem(payload: {
+  canonicalProfileId: string;
+  candidateId: string;
+  itemType: CandidateReviewItemRecord["item_type"];
+  severity: CandidateReviewItemRecord["severity"];
+  fieldPath?: string;
+  reasonCode: string;
+  payload: Record<string, unknown>;
+  status: CandidateReviewItemRecord["status"];
+  metadata: Record<string, unknown>;
+}) {
+  return createRow<CandidateReviewItemRecord>("pgems_ai_candidate_review_items", {
+    canonical_profile_id: payload.canonicalProfileId,
+    candidate_id: payload.candidateId,
+    item_type: payload.itemType,
+    severity: payload.severity,
+    field_path: payload.fieldPath ?? null,
+    reason_code: payload.reasonCode,
+    payload: payload.payload,
+    status: payload.status,
+    metadata: payload.metadata,
+  });
+}
+
+export async function listCandidateCanonicalTimelineEntries() {
+  return listRows<CandidateCanonicalTimelineEntryRecord>("pgems_ai_candidate_canonical_timeline_entries");
+}
+
+export async function createCandidateCanonicalTimelineEntry(payload: {
+  canonicalProfileId: string;
+  candidateId: string;
+  entryType: CandidateCanonicalTimelineEntryRecord["entry_type"];
+  title: string;
+  description: string;
+  startDate?: string | null;
+  endDate?: string | null;
+  verified: boolean;
+  sourceEvidence: Array<Record<string, unknown>>;
+  metadata: Record<string, unknown>;
+}) {
+  return createRow<CandidateCanonicalTimelineEntryRecord>("pgems_ai_candidate_canonical_timeline_entries", {
+    canonical_profile_id: payload.canonicalProfileId,
+    candidate_id: payload.candidateId,
+    entry_type: payload.entryType,
+    title: payload.title,
+    description: payload.description,
+    start_date: payload.startDate ?? null,
+    end_date: payload.endDate ?? null,
+    verified: payload.verified,
+    source_evidence: payload.sourceEvidence,
+    metadata: payload.metadata,
+  });
+}
+
+export async function listCandidateKnowledgeGraphNodes() {
+  return listRows<CandidateKnowledgeGraphNodeRecord>("pgems_ai_candidate_knowledge_graph_nodes");
+}
+
+export async function createCandidateKnowledgeGraphNode(payload: {
+  canonicalProfileId: string;
+  candidateId: string;
+  nodeType: CandidateKnowledgeGraphNodeRecord["node_type"];
+  nodeKey: string;
+  nodeLabel: string;
+  metadata: Record<string, unknown>;
+}) {
+  return createRow<CandidateKnowledgeGraphNodeRecord>("pgems_ai_candidate_knowledge_graph_nodes", {
+    canonical_profile_id: payload.canonicalProfileId,
+    candidate_id: payload.candidateId,
+    node_type: payload.nodeType,
+    node_key: payload.nodeKey,
+    node_label: payload.nodeLabel,
+    metadata: payload.metadata,
+  });
+}
+
+export async function listCandidateKnowledgeGraphEdges() {
+  return listRows<CandidateKnowledgeGraphEdgeRecord>("pgems_ai_candidate_knowledge_graph_edges");
+}
+
+export async function createCandidateKnowledgeGraphEdge(payload: {
+  canonicalProfileId: string;
+  candidateId: string;
+  fromNodeId: string;
+  toNodeId: string;
+  relationType: string;
+  metadata: Record<string, unknown>;
+}) {
+  return createRow<CandidateKnowledgeGraphEdgeRecord>("pgems_ai_candidate_knowledge_graph_edges", {
+    canonical_profile_id: payload.canonicalProfileId,
+    candidate_id: payload.candidateId,
+    from_node_id: payload.fromNodeId,
+    to_node_id: payload.toNodeId,
+    relation_type: payload.relationType,
     metadata: payload.metadata,
   });
 }
@@ -424,6 +610,38 @@ function average(values: number[]) {
   return values.reduce((sum, item) => sum + item, 0) / values.length;
 }
 
+async function publishCandidateEvent(payload: {
+  routing: CandidateEventRouting;
+  candidateId: string;
+  profileId: string;
+  eventName: string;
+  idempotencySuffix: string;
+  metadata: Record<string, unknown>;
+  body?: Record<string, unknown>;
+}) {
+  return publishAiPlatformEvent({
+    eventTypeId: payload.routing.eventTypeId,
+    categoryId: payload.routing.categoryId,
+    channelId: payload.routing.channelId,
+    publisherId: payload.routing.publisherId,
+    queueId: payload.routing.queueId,
+    kind: "domain",
+    priority: "normal",
+    status: "queued",
+    correlationId: `candidate:${payload.candidateId}:profile`,
+    traceId: `candidate:${payload.candidateId}:profile:${Date.now()}`,
+    idempotencyKey: `${payload.eventName.toLowerCase()}:${payload.idempotencySuffix}`,
+    payload: {
+      eventName: payload.eventName,
+      candidateId: payload.candidateId,
+      profileId: payload.profileId,
+      ...(payload.body ?? {}),
+    },
+    metadata: payload.metadata,
+    maxRetryCount: 5,
+  });
+}
+
 export async function generateCandidateProfileFromDocuments(payload: {
   candidateId: string;
   documentAnalysisIds: string[];
@@ -723,6 +941,127 @@ export async function generateCandidateProfileFromDocuments(payload: {
     )
   );
 
+  const canonicalized = consolidateCandidateProfile({
+    profileDraft: payload.profileDraft,
+    skills: skillRows,
+    experiences: experienceRows,
+    educations: educationRows,
+    certifications: certificationRows,
+    languages: languageRows,
+  });
+
+  const canonicalProfile = await createCandidateCanonicalProfile({
+    candidateId: payload.candidateId,
+    sourceProfileId: profile.id,
+    locale: payload.locale,
+    sourceDocumentAnalysisIds: payload.documentAnalysisIds,
+    canonicalPayload: canonicalized.canonicalPayload,
+    metadata: {
+      aiRequestId: aiRequest.id,
+      phase: "phase7_candidate_intelligence_completion",
+    },
+  });
+
+  const canonicalFields = await Promise.all(
+    canonicalized.fields.map((field) =>
+      createCandidateCanonicalProfileField({
+        canonicalProfileId: canonicalProfile.id,
+        candidateId: payload.candidateId,
+        fieldPath: field.fieldPath,
+        canonicalValue: field.canonicalValue,
+        fieldStatus: field.fieldStatus,
+        confidenceScore: field.confidenceScore,
+        evidence: field.evidence,
+        sourceCount: field.sourceCount,
+        metadata: field.metadata,
+      })
+    )
+  );
+
+  const conflictRows = await Promise.all(
+    canonicalized.conflicts.map((conflict) =>
+      createCandidateConflict({
+        canonicalProfileId: canonicalProfile.id,
+        candidateId: payload.candidateId,
+        fieldPath: conflict.fieldPath,
+        conflictKind: conflict.conflictKind,
+        conflictPayload: conflict.conflictPayload,
+        status: conflict.status,
+        metadata: conflict.metadata,
+      })
+    )
+  );
+
+  const reviewItems = await Promise.all(
+    canonicalized.reviewItems.map((item) =>
+      createCandidateReviewItem({
+        canonicalProfileId: canonicalProfile.id,
+        candidateId: payload.candidateId,
+        itemType: item.itemType,
+        severity: item.severity,
+        fieldPath: item.fieldPath,
+        reasonCode: item.reasonCode,
+        payload: item.payload,
+        status: item.status,
+        metadata: item.metadata,
+      })
+    )
+  );
+
+  const canonicalTimelineRows = await Promise.all(
+    canonicalized.timeline.map((entry) =>
+      createCandidateCanonicalTimelineEntry({
+        canonicalProfileId: canonicalProfile.id,
+        candidateId: payload.candidateId,
+        entryType: entry.entryType,
+        title: entry.title,
+        description: entry.description,
+        startDate: entry.startDate,
+        endDate: entry.endDate,
+        verified: true,
+        sourceEvidence: entry.sourceEvidence,
+        metadata: entry.metadata,
+      })
+    )
+  );
+
+  const graphNodeRows = await Promise.all(
+    canonicalized.graph.nodes.map((node) =>
+      createCandidateKnowledgeGraphNode({
+        canonicalProfileId: canonicalProfile.id,
+        candidateId: payload.candidateId,
+        nodeType: node.nodeType,
+        nodeKey: node.nodeKey,
+        nodeLabel: node.nodeLabel,
+        metadata: node.metadata,
+      })
+    )
+  );
+
+  const nodeByRef = new Map<string, string>();
+  for (const node of graphNodeRows) {
+    const key = `${node.node_type}:${node.node_key}`;
+    nodeByRef.set(key, node.id);
+  }
+
+  const graphEdgeRows = await Promise.all(
+    canonicalized.graph.edges
+      .map((edge) => {
+        const fromNodeId = nodeByRef.get(edge.fromNodeKeyRef);
+        const toNodeId = nodeByRef.get(edge.toNodeKeyRef);
+        if (!fromNodeId || !toNodeId) return null;
+        return createCandidateKnowledgeGraphEdge({
+          canonicalProfileId: canonicalProfile.id,
+          candidateId: payload.candidateId,
+          fromNodeId,
+          toNodeId,
+          relationType: edge.relationType,
+          metadata: edge.metadata,
+        });
+      })
+      .filter((value): value is Promise<CandidateKnowledgeGraphEdgeRecord> => value !== null)
+  );
+
   const skillsConfidence = average(skillRows.map((item) => item.confidence_score));
   const experienceConfidence = average(experienceRows.map((item) => item.confidence_score));
   const educationConfidence = average(educationRows.map((item) => item.confidence_score));
@@ -752,7 +1091,7 @@ export async function generateCandidateProfileFromDocuments(payload: {
 
   const advisory = evaluateAdvisoryRecommendation({
     overallConfidence,
-    needsManualReview: false,
+    needsManualReview: reviewItems.length > 0 || conflictRows.length > 0,
   });
 
   const review = await createCandidateReviewStatus({
@@ -776,63 +1115,87 @@ export async function generateCandidateProfileFromDocuments(payload: {
     },
   });
 
-  const eventBase = {
-    eventTypeId: payload.eventRouting.eventTypeId,
-    categoryId: payload.eventRouting.categoryId,
-    channelId: payload.eventRouting.channelId,
-    publisherId: payload.eventRouting.publisherId,
-    queueId: payload.eventRouting.queueId,
-    kind: "domain" as const,
-    priority: "normal" as const,
-    status: "queued" as const,
-    correlationId: `candidate:${payload.candidateId}:profile`,
-    traceId: `candidate:${payload.candidateId}:profile:${Date.now()}`,
-    maxRetryCount: 5,
-  };
-
-  const publishedEvents = await Promise.all([
-    publishAiPlatformEvent({
-      ...eventBase,
-      idempotencyKey: `candidate-profile-created:${profile.id}`,
-      payload: {
-        eventName: "CandidateProfileCreated",
-        candidateId: payload.candidateId,
-        profileId: profile.id,
-      },
+  const baseEvents = await Promise.all([
+    publishCandidateEvent({
+      routing: payload.eventRouting,
+      candidateId: payload.candidateId,
+      profileId: profile.id,
+      eventName: "CandidateProfileCreated",
+      idempotencySuffix: profile.id,
       metadata: {},
     }),
-    publishAiPlatformEvent({
-      ...eventBase,
-      idempotencyKey: `candidate-extraction-completed:${profile.id}`,
-      payload: {
-        eventName: "CandidateExtractionCompleted",
-        candidateId: payload.candidateId,
-        profileId: profile.id,
-      },
+    publishCandidateEvent({
+      routing: payload.eventRouting,
+      candidateId: payload.candidateId,
+      profileId: profile.id,
+      eventName: "CandidateExtractionCompleted",
+      idempotencySuffix: profile.id,
       metadata: {},
     }),
-    publishAiPlatformEvent({
-      ...eventBase,
-      idempotencyKey: `candidate-review-requested:${profile.id}`,
-      payload: {
-        eventName: "CandidateReviewRequested",
-        candidateId: payload.candidateId,
-        profileId: profile.id,
+    publishCandidateEvent({
+      routing: payload.eventRouting,
+      candidateId: payload.candidateId,
+      profileId: profile.id,
+      eventName: "CandidateReviewRequested",
+      idempotencySuffix: `${profile.id}:requested`,
+      metadata: {},
+      body: {
         reviewStatus: review.status,
       },
+    }),
+    publishCandidateEvent({
+      routing: payload.eventRouting,
+      candidateId: payload.candidateId,
+      profileId: profile.id,
+      eventName: "CandidateProfileUpdated",
+      idempotencySuffix: `${profile.id}:updated`,
       metadata: {},
     }),
-    publishAiPlatformEvent({
-      ...eventBase,
-      idempotencyKey: `candidate-profile-updated:${profile.id}`,
-      payload: {
-        eventName: "CandidateProfileUpdated",
-        candidateId: payload.candidateId,
-        profileId: profile.id,
-      },
+    publishCandidateEvent({
+      routing: payload.eventRouting,
+      candidateId: payload.candidateId,
+      profileId: profile.id,
+      eventName: "CandidateProfileCanonicalized",
+      idempotencySuffix: canonicalProfile.id,
       metadata: {},
+      body: {
+        canonicalProfileId: canonicalProfile.id,
+      },
+    }),
+    publishCandidateEvent({
+      routing: payload.eventRouting,
+      candidateId: payload.candidateId,
+      profileId: profile.id,
+      eventName: "CandidateReviewUpdated",
+      idempotencySuffix: `${review.id}:${review.updated_at}`,
+      metadata: {},
+      body: {
+        reviewId: review.id,
+        reviewStatus: review.status,
+      },
     }),
   ]);
+
+  const conflictEvents = await Promise.all(
+    conflictRows.map((conflict) =>
+      publishCandidateEvent({
+        routing: payload.eventRouting,
+        candidateId: payload.candidateId,
+        profileId: profile.id,
+        eventName: "CandidateConflictDetected",
+        idempotencySuffix: conflict.id,
+        metadata: {},
+        body: {
+          canonicalProfileId: canonicalProfile.id,
+          conflictId: conflict.id,
+          fieldPath: conflict.field_path,
+          status: conflict.status,
+        },
+      })
+    )
+  );
+
+  const publishedEvents = [...baseEvents, ...conflictEvents];
 
   return {
     aiRequest,
@@ -844,6 +1207,13 @@ export async function generateCandidateProfileFromDocuments(payload: {
     certificationRows,
     languageRows,
     timelineRows,
+    canonicalProfile,
+    canonicalFields,
+    conflictRows,
+    reviewItems,
+    canonicalTimelineRows,
+    graphNodeRows,
+    graphEdgeRows,
     confidence,
     review,
     recommendation,
@@ -868,12 +1238,73 @@ export async function updateCandidateReviewStatus(payload: {
   status: CandidateReviewStatusRecord["status"];
   reviewerStaffId?: string;
   reviewNotes?: string;
+  eventRouting?: CandidateEventRouting;
   metadata: Record<string, unknown>;
 }) {
-  return updateRow<CandidateReviewStatusRecord>("pgems_ai_candidate_review_statuses", { id: payload.reviewId }, {
+  const updated = await updateRow<CandidateReviewStatusRecord>("pgems_ai_candidate_review_statuses", { id: payload.reviewId }, {
     status: payload.status,
     reviewer_staff_id: payload.reviewerStaffId ?? null,
     review_notes: payload.reviewNotes ?? null,
     metadata: payload.metadata,
   });
+
+  if (payload.eventRouting) {
+    await publishCandidateEvent({
+      routing: payload.eventRouting,
+      candidateId: updated.candidate_id,
+      profileId: updated.profile_id,
+      eventName: "CandidateReviewUpdated",
+      idempotencySuffix: `${updated.id}:${updated.updated_at}`,
+      metadata: {},
+      body: {
+        reviewId: updated.id,
+        reviewStatus: updated.status,
+      },
+    });
+  }
+
+  return updated;
+}
+
+export async function updateCandidateConflictStatus(payload: {
+  conflictId: string;
+  status: CandidateConflictStatus;
+  reviewerStaffId?: string;
+  resolutionNotes?: string;
+  eventRouting?: CandidateEventRouting;
+  metadata: Record<string, unknown>;
+}) {
+  const updated = await updateRow<CandidateConflictRecord>("pgems_ai_candidate_conflicts", { id: payload.conflictId }, {
+    status: payload.status,
+    reviewer_staff_id: payload.reviewerStaffId ?? null,
+    resolution_notes: payload.resolutionNotes ?? null,
+    resolved_at: payload.status === "resolved_by_staff" || payload.status === "dismissed_by_staff" ? new Date().toISOString() : null,
+    metadata: payload.metadata,
+  });
+
+  if (payload.eventRouting) {
+    const canonical = await createSupabaseAdminClient()
+      .from("pgems_ai_candidate_canonical_profiles")
+      .select("source_profile_id")
+      .eq("id", updated.canonical_profile_id)
+      .single();
+
+    const profileId = canonical.data?.source_profile_id ?? updated.canonical_profile_id;
+
+    await publishCandidateEvent({
+      routing: payload.eventRouting,
+      candidateId: updated.candidate_id,
+      profileId,
+      eventName: "CandidateReviewUpdated",
+      idempotencySuffix: `${updated.id}:${updated.updated_at}`,
+      metadata: {},
+      body: {
+        conflictId: updated.id,
+        conflictStatus: updated.status,
+        fieldPath: updated.field_path,
+      },
+    });
+  }
+
+  return updated;
 }

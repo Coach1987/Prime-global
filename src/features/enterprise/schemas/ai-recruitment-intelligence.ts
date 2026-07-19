@@ -29,6 +29,21 @@ export const candidateRecommendationSchema = z.enum([
   "advisory_needs_manual_review",
 ]);
 
+export const candidateConflictStatusSchema = z.enum([
+  "needs_staff_review",
+  "in_review",
+  "resolved_by_staff",
+  "dismissed_by_staff",
+]);
+
+export const eventRoutingSchema = z.object({
+  eventTypeId: z.string().uuid(),
+  categoryId: z.string().uuid(),
+  channelId: z.string().uuid(),
+  publisherId: z.string().uuid(),
+  queueId: z.string().uuid(),
+});
+
 export const extractionEvidenceSchema = z.object({
   confidenceScore: z.number().min(0).max(1),
   extractionSource: z.string().trim().min(1).max(120),
@@ -178,17 +193,27 @@ export const generateCandidateProfileSchema = z.object({
     certifications: z.array(createCandidateCertificationExtractionSchema.omit({ profileId: true, candidateId: true })).default([]),
     languages: z.array(createCandidateLanguageExtractionSchema.omit({ profileId: true, candidateId: true })).default([]),
   }).default({ skills: [], experiences: [], educations: [], certifications: [], languages: [] }),
-  eventRouting: z.object({
-    eventTypeId: z.string().uuid(),
-    categoryId: z.string().uuid(),
-    channelId: z.string().uuid(),
-    publisherId: z.string().uuid(),
-    queueId: z.string().uuid(),
-  }),
+  eventRouting: eventRoutingSchema,
   metadata: metadataSchema,
 });
 
 export const consumeRecruitmentEventSchema = z.object({
   eventId: z.string().uuid(),
+  metadata: metadataSchema,
+});
+
+export const updateCandidateReviewStatusSchema = z.object({
+  status: candidateReviewStatusSchema.default("pending_review"),
+  reviewerStaffId: z.string().uuid().optional(),
+  reviewNotes: z.string().trim().max(4000).optional(),
+  eventRouting: eventRoutingSchema.optional(),
+  metadata: metadataSchema,
+});
+
+export const updateCandidateConflictSchema = z.object({
+  status: candidateConflictStatusSchema,
+  reviewerStaffId: z.string().uuid().optional(),
+  resolutionNotes: z.string().trim().max(4000).optional(),
+  eventRouting: eventRoutingSchema.optional(),
   metadata: metadataSchema,
 });

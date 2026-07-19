@@ -748,9 +748,11 @@ Access model:
 - Does not change authentication behavior.
 - Exposes internal metadata and orchestration contracts only.
 
-## Phase 6 Foundation: AI Recruitment Intelligence
+## Phase 6-7 Completion: AI Recruitment Intelligence
 
-Phase 6 introduces the first business-facing AI module on top of the AI platform foundation.
+Phase 6 introduced the first business-facing AI module on top of the AI platform foundation.
+
+Phase 7 completes Candidate Intelligence by canonicalizing extracted data into one professional candidate profile used as the module source of truth.
 
 This module transforms candidate documents into structured professional profile intelligence while preserving strict advisory boundaries.
 
@@ -777,6 +779,12 @@ The recruitment intelligence foundation models:
 - Candidate Confidence Scores
 - Candidate Review Status
 - Candidate AI Recommendation
+- Candidate Canonical Professional Profile
+- Candidate Canonical Field Evidence
+- Candidate Conflict Objects
+- Candidate Review Queue Items
+- Candidate Canonical Timeline
+- Candidate Knowledge Graph Nodes/Edges
 
 Original document safety:
 
@@ -813,6 +821,15 @@ Every extracted field stores:
 - AI model used
 - extraction timestamp
 
+Canonical fields also preserve evidence arrays that include:
+
+- original document
+- source page (when available)
+- extraction method
+- AI model
+- confidence score
+- extraction timestamp
+
 Confidence is also aggregated into profile-level dimensions:
 
 - skills
@@ -835,6 +852,13 @@ Review lifecycle statuses:
 
 Recommendations are explicitly advisory and include rationale metadata for staff decisioning.
 
+Conflict handling and review obligations:
+
+- conflicting values are persisted as conflict objects with `needs_staff_review`
+- low-confidence canonical fields are persisted as review items
+- missing information is persisted as review items
+- no conflict is auto-resolved by AI
+
 ## Event Integration
 
 The module publishes events through enterprise event infrastructure:
@@ -843,6 +867,9 @@ The module publishes events through enterprise event infrastructure:
 - CandidateProfileUpdated
 - CandidateExtractionCompleted
 - CandidateReviewRequested
+- CandidateProfileCanonicalized
+- CandidateConflictDetected
+- CandidateReviewUpdated
 
 It also supports event consumption hooks for future orchestration triggers.
 
@@ -865,6 +892,14 @@ Internal endpoints are available under:
 - /api/enterprise/ai-recruitment-intelligence/review-status
 - /api/enterprise/ai-recruitment-intelligence/review-status/[reviewId]/update
 - /api/enterprise/ai-recruitment-intelligence/recommendations
+- /api/enterprise/ai-recruitment-intelligence/canonical-profiles
+- /api/enterprise/ai-recruitment-intelligence/canonical-fields
+- /api/enterprise/ai-recruitment-intelligence/conflicts
+- /api/enterprise/ai-recruitment-intelligence/conflicts/[conflictId]/update
+- /api/enterprise/ai-recruitment-intelligence/review-items
+- /api/enterprise/ai-recruitment-intelligence/canonical-timeline
+- /api/enterprise/ai-recruitment-intelligence/knowledge-graph/nodes
+- /api/enterprise/ai-recruitment-intelligence/knowledge-graph/edges
 - /api/enterprise/ai-recruitment-intelligence/events/consume
 
 Access model:
@@ -909,5 +944,6 @@ Phases 1, 1.5, 2, 3, 4, 5, and 6 use additive migrations only:
 - 202607180005_pgems_notification_engine_foundation.sql
 - 202607180006_pgems_ai_orchestration_platform_foundation.sql
 - 202607180007_pgems_ai_recruitment_intelligence_foundation.sql
+- 202607190001_phase7_candidate_intelligence_canonicalization.sql
 
 No previous migration files are edited.

@@ -1,3 +1,4 @@
+export * from "./canonicalization.ts";
 export * from "./normalization.ts";
 export * from "./repository.ts";
 export * from "./review.ts";

@@ -15,6 +15,8 @@ import {
   createSkillAliasSchema,
   createSkillTaxonomySchema,
   generateCandidateProfileSchema,
+  updateCandidateConflictSchema,
+  updateCandidateReviewStatusSchema,
 } from "@/features/enterprise/schemas";
 import { enforceCsrf, enforceRateLimit, parseJsonBody } from "@/lib/server/http";
 import { canonicalizeSkillKey } from "@/lib/server/enterprise/ai-recruitment-intelligence";
@@ -35,18 +37,26 @@ import {
   createSkillTaxonomyEntry,
   generateCandidateProfileFromDocuments,
   listCandidateAiRecommendations,
+  listCandidateCanonicalProfileFields,
+  listCandidateCanonicalProfiles,
+  listCandidateCanonicalTimelineEntries,
   listCandidateCertificationExtractions,
+  listCandidateConflicts,
   listCandidateConfidenceScores,
   listCandidateDocumentAnalyses,
   listCandidateEducationExtractions,
   listCandidateExperienceExtractions,
+  listCandidateKnowledgeGraphEdges,
+  listCandidateKnowledgeGraphNodes,
   listCandidateLanguageExtractions,
   listCandidateProfessionalProfiles,
+  listCandidateReviewItems,
   listCandidateReviewStatuses,
   listCandidateSkillExtractions,
   listCandidateTimelineEntries,
   listSkillAliases,
   listSkillTaxonomy,
+  updateCandidateConflictStatus,
   updateCandidateReviewStatus,
 } from "../../../../../lib/server/enterprise/ai-recruitment-intelligence/repository";
 import { requireAiRecruitmentIntelligenceAccess } from "../_shared.ts";
@@ -420,7 +430,7 @@ async function handleReviewStatus(request: Request, segments: string[]) {
   }
 
   if (segments.length === 3 && segments[2] === "update" && request.method === "POST") {
-    const parsed = await parseJsonBody(request, createCandidateReviewStatusSchema.omit({ profileId: true, candidateId: true }));
+    const parsed = await parseJsonBody(request, updateCandidateReviewStatusSchema);
     if (parsed.error) return parsed.error;
 
     const data = await updateCandidateReviewStatus({
@@ -428,6 +438,7 @@ async function handleReviewStatus(request: Request, segments: string[]) {
       status: parsed.data.status ?? "pending_review",
       reviewerStaffId: parsed.data.reviewerStaffId,
       reviewNotes: parsed.data.reviewNotes,
+      eventRouting: parsed.data.eventRouting,
       metadata: parsed.data.metadata ?? {},
     });
 
@@ -435,6 +446,60 @@ async function handleReviewStatus(request: Request, segments: string[]) {
   }
 
   return jsonError("NOT_FOUND", "Review status endpoint not found", 404);
+}
+
+async function handleCanonicalProfiles(request: Request) {
+  if (request.method === "GET") return NextResponse.json({ success: true, data: await listCandidateCanonicalProfiles() });
+  return jsonError("METHOD_NOT_ALLOWED", "Method not allowed", 405);
+}
+
+async function handleCanonicalFields(request: Request) {
+  if (request.method === "GET") return NextResponse.json({ success: true, data: await listCandidateCanonicalProfileFields() });
+  return jsonError("METHOD_NOT_ALLOWED", "Method not allowed", 405);
+}
+
+async function handleConflicts(request: Request, segments: string[]) {
+  if (segments.length === 1 && request.method === "GET") {
+    return NextResponse.json({ success: true, data: await listCandidateConflicts() });
+  }
+
+  if (segments.length === 3 && segments[2] === "update" && request.method === "POST") {
+    const parsed = await parseJsonBody(request, updateCandidateConflictSchema);
+    if (parsed.error) return parsed.error;
+
+    const data = await updateCandidateConflictStatus({
+      conflictId: segments[1],
+      status: parsed.data.status,
+      reviewerStaffId: parsed.data.reviewerStaffId,
+      resolutionNotes: parsed.data.resolutionNotes,
+      eventRouting: parsed.data.eventRouting,
+      metadata: parsed.data.metadata ?? {},
+    });
+
+    return NextResponse.json({ success: true, data });
+  }
+
+  return jsonError("NOT_FOUND", "Conflicts endpoint not found", 404);
+}
+
+async function handleReviewItems(request: Request) {
+  if (request.method === "GET") return NextResponse.json({ success: true, data: await listCandidateReviewItems() });
+  return jsonError("METHOD_NOT_ALLOWED", "Method not allowed", 405);
+}
+
+async function handleCanonicalTimeline(request: Request) {
+  if (request.method === "GET") return NextResponse.json({ success: true, data: await listCandidateCanonicalTimelineEntries() });
+  return jsonError("METHOD_NOT_ALLOWED", "Method not allowed", 405);
+}
+
+async function handleKnowledgeGraph(request: Request, segments: string[]) {
+  if (segments.length === 2 && segments[1] === "nodes" && request.method === "GET") {
+    return NextResponse.json({ success: true, data: await listCandidateKnowledgeGraphNodes() });
+  }
+  if (segments.length === 2 && segments[1] === "edges" && request.method === "GET") {
+    return NextResponse.json({ success: true, data: await listCandidateKnowledgeGraphEdges() });
+  }
+  return jsonError("NOT_FOUND", "Knowledge graph endpoint not found", 404);
 }
 
 async function handleRecommendations(request: Request) {
@@ -490,6 +555,12 @@ async function dispatch(request: Request, segments: string[]) {
   if (root === "confidence-scores") return handleConfidenceScores(request);
   if (root === "review-status") return handleReviewStatus(request, segments);
   if (root === "recommendations") return handleRecommendations(request);
+  if (root === "canonical-profiles") return handleCanonicalProfiles(request);
+  if (root === "canonical-fields") return handleCanonicalFields(request);
+  if (root === "conflicts") return handleConflicts(request, segments);
+  if (root === "review-items") return handleReviewItems(request);
+  if (root === "canonical-timeline") return handleCanonicalTimeline(request);
+  if (root === "knowledge-graph") return handleKnowledgeGraph(request, segments);
   if (root === "events") return handleEvents(request, segments);
 
   return jsonError("NOT_FOUND", "Recruitment intelligence endpoint not found", 404);

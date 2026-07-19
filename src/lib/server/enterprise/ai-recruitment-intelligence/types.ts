@@ -213,3 +213,112 @@ export interface AdvisoryReviewDecision {
   reviewStatus: CandidateReviewStatus;
   reason: string;
 }
+
+export interface CandidateCanonicalProfileRecord {
+  id: string;
+  candidate_id: string;
+  source_profile_id: string;
+  locale: string;
+  source_document_analysis_ids: string[];
+  canonical_payload: Record<string, unknown>;
+  metadata: Record<string, unknown>;
+  created_at: string;
+  updated_at: string;
+}
+
+export type CandidateCanonicalFieldStatus = "verified" | "conflict" | "low_confidence" | "missing";
+
+export interface CandidateCanonicalProfileFieldRecord {
+  id: string;
+  canonical_profile_id: string;
+  candidate_id: string;
+  field_path: string;
+  canonical_value: unknown;
+  field_status: CandidateCanonicalFieldStatus;
+  confidence_score: number;
+  evidence: Array<Record<string, unknown>>;
+  source_count: number;
+  metadata: Record<string, unknown>;
+  created_at: string;
+  updated_at: string;
+}
+
+export type CandidateConflictStatus = "needs_staff_review" | "in_review" | "resolved_by_staff" | "dismissed_by_staff";
+
+export interface CandidateConflictRecord {
+  id: string;
+  canonical_profile_id: string;
+  candidate_id: string;
+  field_path: string;
+  conflict_kind: "value_mismatch" | "source_disagreement" | "low_confidence";
+  conflict_payload: Record<string, unknown>;
+  status: CandidateConflictStatus;
+  reviewer_staff_id: string | null;
+  resolution_notes: string | null;
+  metadata: Record<string, unknown>;
+  created_at: string;
+  updated_at: string;
+  resolved_at: string | null;
+}
+
+export interface CandidateReviewItemRecord {
+  id: string;
+  canonical_profile_id: string;
+  candidate_id: string;
+  item_type: "conflict" | "low_confidence" | "missing_information";
+  severity: "high" | "medium" | "low";
+  field_path: string | null;
+  reason_code: string;
+  payload: Record<string, unknown>;
+  status: "needs_staff_review" | "in_review" | "resolved";
+  reviewer_staff_id: string | null;
+  review_notes: string | null;
+  metadata: Record<string, unknown>;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CandidateCanonicalTimelineEntryRecord {
+  id: string;
+  canonical_profile_id: string;
+  candidate_id: string;
+  entry_type: CandidateTimelineEntryRecord["entry_type"];
+  title: string;
+  description: string;
+  start_date: string | null;
+  end_date: string | null;
+  verified: boolean;
+  source_evidence: Array<Record<string, unknown>>;
+  metadata: Record<string, unknown>;
+  created_at: string;
+}
+
+export interface CandidateKnowledgeGraphNodeRecord {
+  id: string;
+  canonical_profile_id: string;
+  candidate_id: string;
+  node_type: "skill" | "experience" | "education" | "certificate" | "language" | "project" | "employer" | "country";
+  node_key: string;
+  node_label: string;
+  metadata: Record<string, unknown>;
+  created_at: string;
+}
+
+export interface CandidateKnowledgeGraphEdgeRecord {
+  id: string;
+  canonical_profile_id: string;
+  candidate_id: string;
+  from_node_id: string;
+  to_node_id: string;
+  relation_type: string;
+  metadata: Record<string, unknown>;
+  created_at: string;
+}
+
+export interface CandidateEventRouting {
+  eventTypeId: string;
+  categoryId: string;
+  channelId: string;
+  publisherId: string;
+  queueId: string;
+}
