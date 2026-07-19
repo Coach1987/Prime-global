@@ -16,6 +16,8 @@ Phase 3 enterprise communication layer details are documented in docs/PHASE3_ENT
 
 Phase 4 enterprise identity and security layer details are documented in docs/PHASE4_ENTERPRISE_IDENTITY_SECURITY_ARCHITECTURE.md.
 
+Phase 5 enterprise observability and operations layer details are documented in docs/PHASE5_ENTERPRISE_OBSERVABILITY_OPERATIONS_ARCHITECTURE.md.
+
 ## Organization Model
 
 The organization foundation is normalized with the following hierarchy:
@@ -249,6 +251,20 @@ Internal enterprise endpoints are available under:
 - /api/enterprise/identity-security-layer/policies
 - /api/enterprise/identity-security-layer/monitoring
 - /api/enterprise/identity-security-layer/audit-events
+- /api/enterprise/observability-operations-layer/monitoring
+- /api/enterprise/observability-operations-layer/logging
+- /api/enterprise/observability-operations-layer/metrics
+- /api/enterprise/observability-operations-layer/tracing
+- /api/enterprise/observability-operations-layer/health
+- /api/enterprise/observability-operations-layer/incidents
+- /api/enterprise/observability-operations-layer/incidents/timeline
+- /api/enterprise/observability-operations-layer/feature-flags
+- /api/enterprise/observability-operations-layer/configuration
+- /api/enterprise/observability-operations-layer/disaster-recovery
+- /api/enterprise/observability-operations-layer/performance
+- /api/enterprise/observability-operations-layer/reliability
+- /api/enterprise/observability-operations-layer/security-operations
+- /api/enterprise/observability-operations-layer/audit-events
 
 Access model:
 
