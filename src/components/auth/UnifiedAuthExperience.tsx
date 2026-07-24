@@ -12,6 +12,7 @@ import { InternationalPhoneInput } from "@/components/ui/InternationalPhoneInput
 import { SegmentedTabs } from "@/components/ui/SegmentedTabs";
 import { getPostLoginHref, normalizeAuthRole } from "@/lib/auth/routing";
 import { resolveCandidatePostAuthHref, sanitizeLocalizedJobReturnTo } from "@/lib/auth/return-to";
+import { emitAuthSessionChanged } from "@/lib/auth/client-session-sync";
 
 type AuthMode = "signin" | "register";
 type AuthAudience = "candidate" | "employer";
@@ -83,6 +84,22 @@ async function readJsonResponse<T>(response: Response) {
   }
 }
 
+async function finalizeAuthStateForNavigation() {
+  const response = await fetch("/api/auth/me", {
+    credentials: "include",
+    cache: "no-store",
+  }).catch(() => null);
+
+  if (!response) return;
+  const payload = await readJsonResponse<{ success?: boolean; data?: { role?: string; displayName?: string | null } }>(response);
+  if (!payload?.success) return;
+
+  emitAuthSessionChanged({
+    role: typeof payload.data?.role === "string" ? payload.data.role : null,
+    displayName: payload.data?.displayName ?? null,
+  });
+}
+
 export function UnifiedAuthExperience() {
   const locale = useLocale();
   const isArabic = locale === "ar";
@@ -126,6 +143,8 @@ export function UnifiedAuthExperience() {
 
         const role = normalizeAuthRole(String(authPayload?.data?.role ?? ""));
         if (authPayload?.success && role) {
+          await finalizeAuthStateForNavigation();
+
           if (role === "candidate" && safeReturnTo) {
             router.push(safeReturnTo as never);
             return;
@@ -378,17 +397,22 @@ function CandidateSignInForm({
         body: JSON.stringify({ email, password, role: "candidate" }),
       });
 
-      const payload = await readJsonResponse<{ success?: boolean; data?: { profileCompletion?: { completed?: boolean } } }>(response);
+      const payload = await readJsonResponse<{
+        success?: boolean;
+        data?: { user?: { profileCompletion?: { completed?: boolean } } };
+      }>(response);
       if (!response.ok || !payload?.success) {
         setError(isArabic ? "تعذر تسجيل الدخول الآن. حاول مرة أخرى." : "We couldn't sign you in right now. Please try again.");
         return;
       }
 
+      await finalizeAuthStateForNavigation();
+
       const redirectTarget = resolveCandidatePostAuthHref({
         locale,
         returnTo: safeReturnTo,
         fallback: getPostLoginHref("candidate", {
-          profileCompletion: payload?.data?.profileCompletion,
+          profileCompletion: payload?.data?.user?.profileCompletion,
         }),
       });
 
@@ -472,6 +496,8 @@ function EmployerSignInForm({
         setError(isArabic ? "تعذر تسجيل الدخول الآن. حاول مرة أخرى." : "We couldn't sign you in right now. Please try again.");
         return;
       }
+
+      await finalizeAuthStateForNavigation();
 
       router.push(
         getPostLoginHref("employer", {
@@ -600,6 +626,8 @@ function CandidateRegisterForm({
         setError(isArabic ? "تعذر إنشاء الحساب الآن. حاول مرة أخرى." : "We couldn't create your account right now. Please try again.");
         return;
       }
+
+      await finalizeAuthStateForNavigation();
 
       const destination = resolveCandidatePostAuthHref({
         locale,
@@ -798,6 +826,8 @@ function EmployerRegisterForm({
         );
         return;
       }
+
+      await finalizeAuthStateForNavigation();
 
       router.push("/employer/pending-approval");
     } catch {
