@@ -11,7 +11,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ jobI
 
   const { data, error } = await supabase
     .from("jobs")
-    .select("id, title, department, employment_type, country, city, publish_date, responsibilities, requirements, employers!inner(id, company_name, verification_status)")
+    .select("id, title, department, employment_type, country, city, publish_date, application_deadline, required_skills, responsibilities, requirements, employers!inner(id, company_name, verification_status)")
     .eq("id", jobId)
     .eq("status", "published")
     .eq("employers.verification_status", "verified")
@@ -44,6 +44,8 @@ export async function GET(request: Request, { params }: { params: Promise<{ jobI
       specialization: null,
       employment_type: data.employment_type,
       publish_date: data.publish_date,
+      application_deadline: data.application_deadline,
+      skills: Array.isArray(data.required_skills) ? data.required_skills : [],
       description: data.responsibilities,
       requirements: data.requirements,
       company_display_name: employer?.company_name ?? null,

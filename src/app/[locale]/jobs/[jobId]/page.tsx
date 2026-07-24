@@ -14,6 +14,8 @@ type JobDetail = {
   specialization: string | null;
   employment_type: string | null;
   publish_date: string | null;
+  application_deadline: string | null;
+  skills: string[];
   description: string | null;
   requirements: string | null;
   company_display_name: string | null;
@@ -142,6 +144,7 @@ export default function JobDetailPage() {
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [autoIntentHandled, setAutoIntentHandled] = useState(false);
+  const [existingApplicationStatus, setExistingApplicationStatus] = useState<string | null>(null);
 
   const copy = useMemo(
     () =>
@@ -176,7 +179,10 @@ export default function JobDetailPage() {
             description: "الوصف",
             requirements: "المتطلبات",
             published: "تاريخ النشر",
+            deadline: "آخر موعد للتقديم",
             employmentType: "نوع التوظيف",
+            currentApplicationStatus: "حالة طلبك الحالي",
+            skills: "المهارات",
             confirmationTitle: "تأكيد تقديم الطلب",
             confirmationDescription: "راجع جاهزية ملفك قبل إرسال طلبك. لن يتم الإرسال إلا بعد الضغط على زر الإرسال.",
           }
@@ -210,7 +216,10 @@ export default function JobDetailPage() {
             description: "Description",
             requirements: "Requirements",
             published: "Published",
+            deadline: "Application deadline",
             employmentType: "Employment type",
+            currentApplicationStatus: "Your Current Application Status",
+            skills: "Skills",
             confirmationTitle: "Confirm Application",
             confirmationDescription: "Review your profile readiness before submitting. Submission happens only after explicit confirmation.",
           },
@@ -250,9 +259,21 @@ export default function JobDetailPage() {
 
         const authData = authPayload as AuthPayload;
         if (authResponse.ok && authData.success && authData.data?.role) {
-          setAuthRole(String(authData.data.role));
+          const nextRole = String(authData.data.role);
+          setAuthRole(nextRole);
+
+          if (nextRole === "candidate") {
+            const appsResponse = await fetch("/api/candidates/applications", { credentials: "include" });
+            const appsPayload = await appsResponse.json().catch(() => null);
+
+            if (appsResponse.ok && appsPayload?.success && Array.isArray(appsPayload?.data)) {
+              const matched = appsPayload.data.find((item: { job_id?: string }) => String(item.job_id ?? "") === jobId);
+              setExistingApplicationStatus(matched?.status ? String(matched.status) : null);
+            }
+          }
         } else {
           setAuthRole(null);
+          setExistingApplicationStatus(null);
         }
       })
       .catch(() => {
@@ -400,6 +421,14 @@ export default function JobDetailPage() {
             <p className="mt-2 text-xs text-text-tertiary">
               {copy.published}: {job.publish_date ? new Date(job.publish_date).toLocaleDateString(locale) : "-"}
             </p>
+            <p className="mt-2 text-xs text-text-tertiary">
+              {copy.deadline}: {job.application_deadline ? new Date(job.application_deadline).toLocaleDateString(locale) : "-"}
+            </p>
+            {existingApplicationStatus ? (
+              <p className="mt-2 text-sm text-emerald-200">
+                {copy.currentApplicationStatus}: {existingApplicationStatus.replace(/_/g, " ")}
+              </p>
+            ) : null}
 
             <section className="mt-5">
               <h3 className="text-sm font-semibold uppercase tracking-[0.12em] text-blue-200">{copy.description}</h3>
@@ -409,6 +438,21 @@ export default function JobDetailPage() {
             <section className="mt-5">
               <h3 className="text-sm font-semibold uppercase tracking-[0.12em] text-blue-200">{copy.requirements}</h3>
               <p className="mt-2 whitespace-pre-wrap text-sm leading-7 text-text-secondary">{job.requirements ?? "-"}</p>
+            </section>
+
+            <section className="mt-5">
+              <h3 className="text-sm font-semibold uppercase tracking-[0.12em] text-blue-200">{copy.skills}</h3>
+              {job.skills.length > 0 ? (
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {job.skills.map((skill) => (
+                    <span key={skill} className="rounded-full border border-gold/30 px-3 py-1 text-xs text-gold">
+                      {skill}
+                    </span>
+                  ))}
+                </div>
+              ) : (
+                <p className="mt-2 text-sm text-text-secondary">-</p>
+              )}
             </section>
 
             {authRole && authRole !== "candidate" ? (

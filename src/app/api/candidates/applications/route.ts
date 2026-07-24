@@ -34,7 +34,7 @@ export async function GET(request: Request) {
 
   const { data, error } = await supabase
     .from("job_applications_v2")
-    .select("*, jobs(*), candidate_profiles!inner(auth_user_id)")
+    .select("*, jobs(id, title, city, country, employers(company_name)), candidate_profiles!inner(auth_user_id)")
     .eq("candidate_id", candidate.id)
     .order("applied_at", { ascending: false });
 
@@ -69,13 +69,26 @@ export async function GET(request: Request) {
     eventByApplication.set(key, current);
   }
 
-  const enriched = (data ?? []).map((application) => ({
-    ...application,
-    workflowStatus: {
-      current: application.status,
-      history: eventByApplication.get(String(application.id)) ?? [],
-    },
-  }));
+  const enriched = (data ?? []).map((application) => {
+    const job = Array.isArray(application.jobs) ? application.jobs[0] : application.jobs;
+    const employer = Array.isArray(job?.employers) ? job.employers[0] : job?.employers;
+    const location = [job?.city, job?.country].filter(Boolean).join(", ");
+
+    return {
+      ...application,
+      jobs: job
+        ? {
+            ...job,
+            company_name: employer?.company_name ?? null,
+            location,
+          }
+        : null,
+      workflowStatus: {
+        current: application.status,
+        history: eventByApplication.get(String(application.id)) ?? [],
+      },
+    };
+  });
 
   return NextResponse.json({ success: true, data: enriched });
 }

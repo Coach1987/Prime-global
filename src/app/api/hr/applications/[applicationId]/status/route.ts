@@ -3,7 +3,7 @@ import { updateApplicationStatusSchema } from "@/features/candidates/schemas/can
 import { createAuditLog } from "@/lib/server/security/audit";
 import { requireAuth, requireRole } from "@/lib/server/security/auth";
 import { enforceCsrf, enforceRateLimit, getRequestContext, parseJsonBody } from "@/lib/server/http";
-import { getEmployerByAuthUserId } from "@/lib/server/employers";
+import { getEmployerByAuthUserId, requireVerifiedEmployerStatus } from "@/lib/server/employers";
 import { createSupabaseAdminClient } from "@/lib/server/supabase";
 
 export async function PATCH(
@@ -28,6 +28,11 @@ export async function PATCH(
       { success: false, error: { code: "EMPLOYER_NOT_FOUND", message: "Employer profile missing" } },
       { status: 404 }
     );
+  }
+
+  if (employer) {
+    const verificationGate = requireVerifiedEmployerStatus(employer.verification_status as string | null | undefined);
+    if (verificationGate) return verificationGate;
   }
 
   const parsed = await parseJsonBody(request, updateApplicationStatusSchema);
@@ -85,15 +90,13 @@ export async function PATCH(
     );
   }
 
-  if (parsed.data.note) {
-    await supabase.from("job_application_status_events").insert({
-      application_id: applicationId,
-      previous_status: existingApplication.status,
-      next_status: parsed.data.status,
-      changed_by_auth_user_id: auth.userId,
-      note: parsed.data.note,
-    });
-  }
+  await supabase.from("job_application_status_events").insert({
+    application_id: applicationId,
+    previous_status: existingApplication.status,
+    next_status: parsed.data.status,
+    changed_by_auth_user_id: auth.userId,
+    note: parsed.data.note ?? `status_updated_to_${parsed.data.status}`,
+  });
 
   const { data: candidate } = await supabase
     .from("candidate_profiles")

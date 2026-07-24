@@ -77,6 +77,11 @@ type ApiPayload = {
   documentVersions?: CertificateVersion[];
 };
 
+type CountResponse = {
+  data?: Array<unknown>;
+  success?: boolean;
+};
+
 async function readJsonResponse<T>(response: Response, fallbackMessage: string) {
   const contentType = response.headers.get("content-type") ?? "";
   const bodyText = await response.text().catch(() => "");
@@ -133,6 +138,9 @@ export default function CandidateProfilePage() {
   const [certificateVersions, setCertificateVersions] = useState<CertificateVersion[]>([]);
   const [hasPhoto, setHasPhoto] = useState(false);
   const [photoVersion, setPhotoVersion] = useState(0);
+  const [applicationsCount, setApplicationsCount] = useState(0);
+  const [interviewsCount, setInterviewsCount] = useState(0);
+  const [notificationsCount, setNotificationsCount] = useState(0);
 
   useEffect(() => {
     async function bootstrap() {
@@ -155,6 +163,9 @@ export default function CandidateProfilePage() {
           resumesResponse,
           privateDocsResponse,
           photoResponse,
+          applicationsResponse,
+          interviewsResponse,
+          notificationsResponse,
         ] = await Promise.all([
           fetch("/api/candidates/profile", { credentials: "include" }),
           fetch("/api/candidates/professional-profile", { credentials: "include" }),
@@ -163,6 +174,9 @@ export default function CandidateProfilePage() {
           fetch("/api/candidates/resumes", { credentials: "include" }),
           fetch("/api/candidates/private-documents", { credentials: "include" }),
           fetch("/api/candidates/profile-photo", { credentials: "include" }),
+          fetch("/api/candidates/applications", { credentials: "include" }),
+          fetch("/api/interviews", { credentials: "include" }),
+          fetch("/api/candidates/notifications", { credentials: "include" }),
         ]);
 
         const [
@@ -173,6 +187,9 @@ export default function CandidateProfilePage() {
           resumesPayload,
           privateDocsPayload,
           photoPayload,
+          applicationsPayload,
+          interviewsPayload,
+          notificationsPayload,
         ] = await Promise.all([
           readJsonResponse<ApiPayload & { data?: CandidateProfile | null }>(
             profileResponse,
@@ -202,6 +219,9 @@ export default function CandidateProfilePage() {
             photoResponse,
             isArabic ? "تعذر تحميل صورة الملف الشخصي." : "Unable to load profile photo."
           ),
+          readJsonResponse<CountResponse>(applicationsResponse, ""),
+          readJsonResponse<CountResponse>(interviewsResponse, ""),
+          readJsonResponse<CountResponse>(notificationsResponse, ""),
         ]);
 
         if (!profileResponse.ok || !isApiSuccess(profilePayload.payload)) {
@@ -224,6 +244,20 @@ export default function CandidateProfilePage() {
 
         setHasPhoto(Boolean(photoPayload.payload?.data?.hasPhoto));
         setPhotoVersion((prev) => prev + 1);
+
+        const nextApplications = Array.isArray(applicationsPayload.payload?.data)
+          ? applicationsPayload.payload?.data.length
+          : 0;
+        const nextInterviews = Array.isArray(interviewsPayload.payload?.data)
+          ? interviewsPayload.payload?.data.length
+          : 0;
+        const nextNotifications = Array.isArray(notificationsPayload.payload?.data)
+          ? notificationsPayload.payload?.data.length
+          : 0;
+
+        setApplicationsCount(nextApplications);
+        setInterviewsCount(nextInterviews);
+        setNotificationsCount(nextNotifications);
       } catch {
         setError(isArabic ? "تعذر تحميل الملف المهني." : "Unable to load profile.");
       } finally {
@@ -235,6 +269,13 @@ export default function CandidateProfilePage() {
   }, [isArabic, router]);
 
   const fullName = useMemo(() => profile?.full_name?.trim() || (isArabic ? "مرشح برايم جلوبال" : "Prime Global Candidate"), [isArabic, profile?.full_name]);
+  const nameParts = useMemo(() => {
+    const parts = fullName.split(/\s+/).filter(Boolean);
+    return {
+      firstName: parts[0] ?? "-",
+      lastName: parts.length > 1 ? parts.slice(1).join(" ") : "-",
+    };
+  }, [fullName]);
   const headline = professional?.headline?.trim() || profile?.professional_title?.trim() || (isArabic ? "المسمى غير مضاف" : "Professional title not provided");
   const summary = professional?.biography?.trim() || profile?.bio?.trim() || "";
   const location = [profile?.country?.trim(), profile?.city?.trim()].filter(Boolean).join(" - ");
@@ -320,7 +361,34 @@ export default function CandidateProfilePage() {
             <p className="text-xs uppercase tracking-[0.14em] text-text-tertiary">{isArabic ? "آخر تحديث" : "Last update"}</p>
             <p className="mt-2 text-sm font-semibold text-text-primary">{lastUpdatedAt}</p>
           </article>
+          <article className="rounded-2xl border border-blue-200/20 bg-[#061123]/80 p-4">
+            <p className="text-xs uppercase tracking-[0.14em] text-text-tertiary">{isArabic ? "الطلبات" : "Applications"}</p>
+            <p className="mt-2 text-2xl font-semibold text-silver">{applicationsCount}</p>
+          </article>
+          <article className="rounded-2xl border border-blue-200/20 bg-[#061123]/80 p-4">
+            <p className="text-xs uppercase tracking-[0.14em] text-text-tertiary">{isArabic ? "المقابلات" : "Interviews"}</p>
+            <p className="mt-2 text-2xl font-semibold text-silver">{interviewsCount}</p>
+          </article>
+          <article className="rounded-2xl border border-blue-200/20 bg-[#061123]/80 p-4">
+            <p className="text-xs uppercase tracking-[0.14em] text-text-tertiary">{isArabic ? "الإشعارات" : "Notifications"}</p>
+            <p className="mt-2 text-2xl font-semibold text-silver">{notificationsCount}</p>
+          </article>
         </div>
+
+        <section className="mt-8 rounded-2xl border border-blue-200/20 bg-[#071428]/80 p-5">
+          <h2 className="font-heading text-xl text-text-primary">{isArabic ? "بيانات الهوية" : "Identity"}</h2>
+          <div className="mt-4 grid gap-3 sm:grid-cols-2 text-sm text-text-secondary">
+            <p>
+              <span className="font-semibold text-text-primary">{isArabic ? "الاسم الأول:" : "First name:"}</span> {nameParts.firstName}
+            </p>
+            <p>
+              <span className="font-semibold text-text-primary">{isArabic ? "اسم العائلة:" : "Last name:"}</span> {nameParts.lastName}
+            </p>
+            <p className="sm:col-span-2">
+              <span className="font-semibold text-text-primary">{isArabic ? "الاسم الكامل:" : "Full name:"}</span> {fullName}
+            </p>
+          </div>
+        </section>
 
         <section className="mt-8 rounded-2xl border border-blue-200/20 bg-[#071428]/80 p-5">
           <h2 className="font-heading text-xl text-text-primary">{isArabic ? "الملخص المهني" : "Professional Summary"}</h2>

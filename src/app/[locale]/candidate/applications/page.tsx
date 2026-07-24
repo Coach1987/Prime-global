@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useLocale } from "next-intl";
+import { Link } from "@/i18n/routing";
 
 type ApplicationItem = {
   id: string;
@@ -32,6 +34,8 @@ type ApplicationItem = {
 };
 
 export default function CandidateApplicationsPage() {
+  const locale = useLocale();
+  const isArabic = locale === "ar";
   const [loading, setLoading] = useState(true);
   const [applications, setApplications] = useState<ApplicationItem[]>([]);
   const [csrfToken, setCsrfToken] = useState("");
@@ -88,6 +92,22 @@ export default function CandidateApplicationsPage() {
 
         {message ? <p className="mt-4 text-sm text-emerald-200">{message}</p> : null}
 
+        {!loading && applications.length === 0 ? (
+          <div className="mt-6 rounded-2xl border border-dashed border-gold/30 bg-bg-primary/50 px-6 py-10 text-center">
+            <p className="text-sm text-text-secondary">
+              {isArabic ? "لا توجد طلبات توظيف حتى الآن." : "You have not submitted any job applications yet."}
+            </p>
+            <div className="mt-4">
+              <Link
+                href="/jobs"
+                className="inline-flex items-center rounded-full border border-gold/40 px-5 py-2 text-sm font-semibold text-gold hover:bg-gold/10"
+              >
+                {isArabic ? "ابحث عن وظائف" : "Find Jobs"}
+              </Link>
+            </div>
+          </div>
+        ) : null}
+
         <div className="mt-6 space-y-4">
           {applications.map((application) => (
             <article key={application.id} className="rounded-2xl border border-gold/20 bg-bg-primary/60 p-5">
@@ -114,6 +134,12 @@ export default function CandidateApplicationsPage() {
               </section>
 
               <div className="mt-4">
+                <Link
+                  href={`/candidate/applications/${application.id}`}
+                  className="mr-3 inline-flex rounded-full border border-blue-300/40 px-5 py-2 text-sm font-semibold text-blue-100 hover:bg-blue-500/10"
+                >
+                  {isArabic ? "عرض التفاصيل" : "Open Details"}
+                </Link>
                 <button
                   type="button"
                   onClick={() => withdraw(application.id)}
