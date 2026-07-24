@@ -1,175 +1,445 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useLocale } from "next-intl";
+import { Link, useRouter } from "@/i18n/routing";
+import { PrimeCard } from "@/components/ui/prime/PrimeCard";
+import { PrimePageTitle } from "@/components/ui/prime/PrimePageTitle";
+import { primeButtonClasses } from "@/components/ui/prime/PrimeButton";
 
-type ProfilePayload = Record<string, unknown> | null;
-
-type ProfessionalResponse = {
-  data: ProfilePayload;
-  intelligence?: {
-    canonicalProfile?: Record<string, unknown> | null;
-    reviewStatus?: Record<string, unknown> | null;
-    confidence?: Record<string, unknown> | null;
-    missingInformation?: Array<Record<string, unknown>>;
-    reviewItems?: Array<Record<string, unknown>>;
-    canonicalTimeline?: Array<Record<string, unknown>>;
-  };
+type CandidateProfile = {
+  full_name?: string | null;
+  professional_title?: string | null;
+  country?: string | null;
+  city?: string | null;
+  bio?: string | null;
+  updated_at?: string | null;
 };
+
+type ExperienceEntry = {
+  company?: string;
+  role?: string;
+  startDate?: string;
+  endDate?: string;
+  summary?: string;
+};
+
+type EducationEntry = {
+  institution?: string;
+  degree?: string;
+  year?: string;
+};
+
+type CertificateEntry = {
+  title?: string;
+  issuer?: string;
+  year?: string;
+};
+
+type ProfessionalProfile = {
+  headline?: string | null;
+  biography?: string | null;
+  experiences?: ExperienceEntry[];
+  education_entries?: EducationEntry[];
+  certificates?: CertificateEntry[];
+  skills?: string[];
+  languages?: string[];
+  updated_at?: string | null;
+};
+
+type CompletionData = {
+  completed?: boolean;
+  completionPercent?: number;
+};
+
+type VerificationCase = {
+  status?: string | null;
+  candidate_message?: string | null;
+  updated_at?: string | null;
+};
+
+type ResumeVersion = {
+  verification_status?: string | null;
+  created_at?: string | null;
+};
+
+type CertificateVersion = {
+  original_filename?: string | null;
+  verification_status?: string | null;
+  created_at?: string | null;
+};
+
+type ApiPayload = {
+  ok?: boolean;
+  success?: boolean;
+  message?: string;
+  data?: unknown;
+  documentVersions?: CertificateVersion[];
+};
+
+async function readJsonResponse<T>(response: Response, fallbackMessage: string) {
+  const contentType = response.headers.get("content-type") ?? "";
+  const bodyText = await response.text().catch(() => "");
+
+  if (!contentType.includes("application/json")) {
+    return { payload: null as T | null, errorMessage: fallbackMessage };
+  }
+
+  try {
+    return { payload: (bodyText ? (JSON.parse(bodyText) as T) : null) as T | null, errorMessage: null };
+  } catch {
+    return { payload: null as T | null, errorMessage: fallbackMessage };
+  }
+}
+
+function isApiSuccess(payload: ApiPayload | null | undefined) {
+  return payload?.ok === true || payload?.success === true;
+}
+
+function toDisplayDate(value: string | null | undefined) {
+  if (!value) return "-";
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return "-";
+  return parsed.toLocaleDateString();
+}
+
+function sortByDateDesc<T extends { startDate?: string; year?: string; created_at?: string | null }>(items: T[]) {
+  return [...items].sort((a, b) => {
+    const first = Date.parse(a.startDate ?? a.year ?? a.created_at ?? "");
+    const second = Date.parse(b.startDate ?? b.year ?? b.created_at ?? "");
+    const firstSafe = Number.isNaN(first) ? 0 : first;
+    const secondSafe = Number.isNaN(second) ? 0 : second;
+    return secondSafe - firstSafe;
+  });
+}
+
+function EmptyState({ text }: { text: string }) {
+  return <p className="text-sm text-text-tertiary">{text}</p>;
+}
 
 export default function CandidateProfilePage() {
   const locale = useLocale();
+  const isArabic = locale === "ar";
+  const router = useRouter();
+
   const [loading, setLoading] = useState(true);
-  const [professional, setProfessional] = useState<ProfessionalResponse | null>(null);
-  const [completion, setCompletion] = useState<Record<string, unknown> | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const [profile, setProfile] = useState<CandidateProfile | null>(null);
+  const [professional, setProfessional] = useState<ProfessionalProfile | null>(null);
+  const [completion, setCompletion] = useState<CompletionData | null>(null);
+  const [verificationCase, setVerificationCase] = useState<VerificationCase | null>(null);
+  const [cvStatus, setCvStatus] = useState<string>("pending_ai_analysis");
+  const [certificateVersions, setCertificateVersions] = useState<CertificateVersion[]>([]);
+  const [hasPhoto, setHasPhoto] = useState(false);
+  const [photoVersion, setPhotoVersion] = useState(0);
 
   useEffect(() => {
-    Promise.all([
-      fetch("/api/candidates/professional-profile", { credentials: "include" }),
-      fetch("/api/candidates/profile-completion", { credentials: "include" }),
-    ])
-      .then(async ([professionalRes, completionRes]) => {
-        const [professionalPayload, completionPayload] = await Promise.all([
-          professionalRes.json(),
-          completionRes.json(),
+    async function bootstrap() {
+      const authFallback = isArabic ? "تعذر التحقق من الجلسة." : "Unable to verify your session.";
+
+      try {
+        const authResponse = await fetch("/api/auth/me", { credentials: "include" });
+        const authPayload = await readJsonResponse<ApiPayload & { data?: { role?: string } }>(authResponse, authFallback);
+
+        if (!authResponse.ok || !isApiSuccess(authPayload.payload) || authPayload.payload?.data?.role !== "candidate") {
+          router.replace("/auth?mode=signin&audience=candidate");
+          return;
+        }
+
+        const [
+          profileResponse,
+          professionalResponse,
+          completionResponse,
+          verificationResponse,
+          resumesResponse,
+          privateDocsResponse,
+          photoResponse,
+        ] = await Promise.all([
+          fetch("/api/candidates/profile", { credentials: "include" }),
+          fetch("/api/candidates/professional-profile", { credentials: "include" }),
+          fetch("/api/candidates/profile-completion", { credentials: "include" }),
+          fetch("/api/candidates/document-verification", { credentials: "include" }),
+          fetch("/api/candidates/resumes", { credentials: "include" }),
+          fetch("/api/candidates/private-documents", { credentials: "include" }),
+          fetch("/api/candidates/profile-photo", { credentials: "include" }),
         ]);
-        if (professionalRes.ok && professionalPayload?.success) setProfessional(professionalPayload as ProfessionalResponse);
-        if (completionRes.ok && completionPayload?.success) setCompletion(completionPayload.data ?? null);
-      })
-      .finally(() => setLoading(false));
-  }, []);
+
+        const [
+          profilePayload,
+          professionalPayload,
+          completionPayload,
+          verificationPayload,
+          resumesPayload,
+          privateDocsPayload,
+          photoPayload,
+        ] = await Promise.all([
+          readJsonResponse<ApiPayload & { data?: CandidateProfile | null }>(
+            profileResponse,
+            isArabic ? "تعذر تحميل بيانات الحساب." : "Unable to load account details."
+          ),
+          readJsonResponse<ApiPayload & { data?: ProfessionalProfile | null }>(
+            professionalResponse,
+            isArabic ? "تعذر تحميل الملف المهني." : "Unable to load professional profile."
+          ),
+          readJsonResponse<ApiPayload & { data?: CompletionData }>(
+            completionResponse,
+            isArabic ? "تعذر تحميل نسبة اكتمال الملف." : "Unable to load profile completion."
+          ),
+          readJsonResponse<ApiPayload & { data?: { cases?: VerificationCase[] } }>(
+            verificationResponse,
+            isArabic ? "تعذر تحميل حالة التحقق." : "Unable to load verification status."
+          ),
+          readJsonResponse<ApiPayload & { documentVersions?: ResumeVersion[] }>(
+            resumesResponse,
+            isArabic ? "تعذر تحميل حالة السيرة الذاتية." : "Unable to load CV status."
+          ),
+          readJsonResponse<ApiPayload & { documentVersions?: CertificateVersion[] }>(
+            privateDocsResponse,
+            isArabic ? "تعذر تحميل بيانات الشهادات." : "Unable to load certificates."
+          ),
+          readJsonResponse<ApiPayload & { data?: { hasPhoto?: boolean } }>(
+            photoResponse,
+            isArabic ? "تعذر تحميل صورة الملف الشخصي." : "Unable to load profile photo."
+          ),
+        ]);
+
+        if (!profileResponse.ok || !isApiSuccess(profilePayload.payload)) {
+          setError(profilePayload.errorMessage ?? (isArabic ? "تعذر تحميل الملف المهني." : "Unable to load profile."));
+          return;
+        }
+
+        const completionData = (completionPayload.payload?.data ?? null) as CompletionData | null;
+
+        setProfile((profilePayload.payload?.data ?? null) as CandidateProfile | null);
+        setProfessional((professionalPayload.payload?.data ?? null) as ProfessionalProfile | null);
+        setCompletion(completionData);
+
+        const latestCase = verificationPayload.payload?.data?.cases?.[0] ?? null;
+        setVerificationCase(latestCase);
+
+        const latestCvVersion = resumesPayload.payload?.documentVersions?.[0] ?? null;
+        setCvStatus(String(latestCvVersion?.verification_status ?? "pending_ai_analysis"));
+        setCertificateVersions(Array.isArray(privateDocsPayload.payload?.documentVersions) ? privateDocsPayload.payload.documentVersions : []);
+
+        setHasPhoto(Boolean(photoPayload.payload?.data?.hasPhoto));
+        setPhotoVersion((prev) => prev + 1);
+      } catch {
+        setError(isArabic ? "تعذر تحميل الملف المهني." : "Unable to load profile.");
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    void bootstrap();
+  }, [isArabic, router]);
+
+  const fullName = useMemo(() => profile?.full_name?.trim() || (isArabic ? "مرشح برايم جلوبال" : "Prime Global Candidate"), [isArabic, profile?.full_name]);
+  const headline = professional?.headline?.trim() || profile?.professional_title?.trim() || (isArabic ? "المسمى غير مضاف" : "Professional title not provided");
+  const summary = professional?.biography?.trim() || profile?.bio?.trim() || "";
+  const location = [profile?.country?.trim(), profile?.city?.trim()].filter(Boolean).join(" - ");
+
+  const skills = Array.isArray(professional?.skills) ? professional.skills.filter(Boolean) : [];
+  const languages = Array.isArray(professional?.languages) ? professional.languages.filter(Boolean) : [];
+  const experiences = sortByDateDesc(Array.isArray(professional?.experiences) ? professional.experiences : []);
+  const educationEntries = sortByDateDesc(Array.isArray(professional?.education_entries) ? professional.education_entries : []);
+  const certificates = sortByDateDesc(Array.isArray(professional?.certificates) ? professional.certificates : []);
+
+  const lastUpdatedAt = toDisplayDate(professional?.updated_at ?? profile?.updated_at ?? null);
+  const completionPercent = Number(completion?.completionPercent ?? 0);
 
   if (loading) {
-    return <main className="mx-auto w-full max-w-[1100px] px-4 pb-20 pt-[124px] sm:px-6 md:px-8">Loading profile...</main>;
+    return (
+      <main className="mx-auto w-full max-w-[1120px] px-4 pb-20 pt-[124px] sm:px-6 md:px-8">
+        <PrimeCard as="section" className="p-7 md:p-10">
+          <p className="text-sm text-text-secondary">{isArabic ? "جارٍ تحميل الملف المهني..." : "Loading career profile..."}</p>
+        </PrimeCard>
+      </main>
+    );
   }
 
-  const intelligence = professional?.intelligence ?? {};
-  const canonical = (intelligence.canonicalProfile?.canonical_payload as Record<string, unknown> | undefined) ?? {};
-  const skills = Array.isArray(canonical.skills) ? canonical.skills : [];
-  const experiences = Array.isArray(canonical.experiences) ? canonical.experiences : [];
-  const educations = Array.isArray(canonical.educations) ? canonical.educations : [];
-  const languages = Array.isArray(canonical.languages) ? canonical.languages : [];
-  const certifications = Array.isArray(canonical.certifications) ? canonical.certifications : [];
-  const timeline = Array.isArray(intelligence.canonicalTimeline) ? intelligence.canonicalTimeline : [];
-  const missing = Array.isArray(intelligence.missingInformation) ? intelligence.missingInformation : [];
+  if (error) {
+    return (
+      <main className="mx-auto w-full max-w-[1120px] px-4 pb-20 pt-[124px] sm:px-6 md:px-8">
+        <PrimeCard as="section" className="p-7 md:p-10">
+          <p className="text-sm text-red-300">{error}</p>
+          <Link href="/auth?mode=signin&audience=candidate" className={`${primeButtonClasses("secondary")} mt-4`}>
+            {isArabic ? "تسجيل الدخول" : "Sign in"}
+          </Link>
+        </PrimeCard>
+      </main>
+    );
+  }
 
   return (
-    <main className="mx-auto w-full max-w-[1100px] px-4 pb-20 pt-[124px] sm:px-6 md:px-8">
-      <section className="rounded-3xl border border-gold/20 bg-bg-secondary/80 p-7 backdrop-blur-xl md:p-10">
-        <h1 className="font-heading text-3xl text-text-primary">Candidate Professional Profile</h1>
-        <p className="mt-3 text-sm text-text-secondary">Advisory AI profile built from your uploaded evidence and reviewed by Prime Global staff.</p>
-
-        <div className="mt-6 grid gap-4 md:grid-cols-4">
-          <article className="rounded-2xl border border-gold/20 bg-bg-primary/60 p-4">
-            <p className="text-xs text-text-tertiary">Profile completion</p>
-            <p className="mt-2 text-xl font-semibold text-gold">{String(completion?.completionPercent ?? 0)}%</p>
-          </article>
-          <article className="rounded-2xl border border-gold/20 bg-bg-primary/60 p-4">
-            <p className="text-xs text-text-tertiary">Review status</p>
-            <p className="mt-2 text-xl font-semibold text-gold">{String(intelligence.reviewStatus?.status ?? "pending_review")}</p>
-          </article>
-          <article className="rounded-2xl border border-gold/20 bg-bg-primary/60 p-4">
-            <p className="text-xs text-text-tertiary">Confidence</p>
-            <p className="mt-2 text-xl font-semibold text-gold">{Number((Number(intelligence.confidence?.overall_confidence ?? 0) * 100).toFixed(1))}%</p>
-          </article>
-          <article className="rounded-2xl border border-gold/20 bg-bg-primary/60 p-4">
-            <p className="text-xs text-text-tertiary">Missing information</p>
-            <p className="mt-2 text-xl font-semibold text-gold">{missing.length}</p>
-          </article>
-        </div>
-
-        <div className="mt-8 grid gap-6 lg:grid-cols-2">
-          <section className="rounded-2xl border border-gold/20 bg-bg-primary/60 p-5">
-            <h2 className="font-heading text-xl text-text-primary">Professional Profile</h2>
-            <p className="mt-3 text-sm text-text-secondary">{String(canonical.summary ?? "No summary yet")}</p>
-            <p className="mt-2 text-sm text-text-secondary">Headline: {String(canonical.headline ?? "-")}</p>
-            <p className="mt-2 text-sm text-text-secondary">Country: {String(canonical.country ?? "-")}</p>
-          </section>
-
-          <section className="rounded-2xl border border-gold/20 bg-bg-primary/60 p-5">
-            <h2 className="font-heading text-xl text-text-primary">Confidence Indicators</h2>
-            <ul className="mt-3 space-y-2 text-sm text-text-secondary">
-              <li>Skills: {Number((Number(intelligence.confidence?.skills_confidence ?? 0) * 100).toFixed(1))}%</li>
-              <li>Experience: {Number((Number(intelligence.confidence?.experience_confidence ?? 0) * 100).toFixed(1))}%</li>
-              <li>Education: {Number((Number(intelligence.confidence?.education_confidence ?? 0) * 100).toFixed(1))}%</li>
-              <li>Certifications: {Number((Number(intelligence.confidence?.certification_confidence ?? 0) * 100).toFixed(1))}%</li>
-              <li>Languages: {Number((Number(intelligence.confidence?.language_confidence ?? 0) * 100).toFixed(1))}%</li>
-            </ul>
-          </section>
-        </div>
-
-        <div className="mt-8 grid gap-6 lg:grid-cols-2">
-          <section className="rounded-2xl border border-gold/20 bg-bg-primary/60 p-5">
-            <h2 className="font-heading text-xl text-text-primary">Skills</h2>
-            <div className="mt-3 flex flex-wrap gap-2">
-              {skills.map((item, index) => (
-                <span key={`skill-${index}`} className="rounded-full border border-gold/25 px-3 py-1 text-xs text-gold">
-                  {String((item as Record<string, unknown>).skill ?? (item as Record<string, unknown>).normalizedSkillName ?? "skill")}
-                </span>
-              ))}
+    <main className="mx-auto w-full max-w-[1120px] px-4 pb-20 pt-[124px] sm:px-6 md:px-8">
+      <PrimeCard as="section" className="p-7 md:p-10">
+        <div className="flex flex-col gap-5 border-b border-blue-200/15 pb-6 md:flex-row md:items-center md:justify-between">
+          <div className="flex items-center gap-4">
+            <div className="h-20 w-20 overflow-hidden rounded-full border border-blue-200/25 bg-[#0d1d38]">
+              {hasPhoto ? (
+                <img
+                  src={`/api/candidates/profile-photo/content?v=${photoVersion}`}
+                  alt={isArabic ? "صورة المرشح" : "Candidate profile photo"}
+                  className="h-full w-full object-cover"
+                />
+              ) : (
+                <div className="flex h-full w-full items-center justify-center text-xl font-semibold text-text-tertiary">
+                  {fullName.charAt(0).toUpperCase()}
+                </div>
+              )}
             </div>
-          </section>
 
-          <section className="rounded-2xl border border-gold/20 bg-bg-primary/60 p-5">
-            <h2 className="font-heading text-xl text-text-primary">Languages</h2>
-            <ul className="mt-3 space-y-2 text-sm text-text-secondary">
-              {languages.map((item, index) => (
-                <li key={`language-${index}`}>{String((item as Record<string, unknown>).languageName ?? "language")}</li>
-              ))}
-            </ul>
-          </section>
+            <div>
+              <PrimePageTitle>{isArabic ? "الملف المهني" : "Career Profile"}</PrimePageTitle>
+              <p className="mt-1 text-lg font-semibold text-text-primary">{fullName}</p>
+              <p className="mt-1 text-sm text-text-secondary">{headline}</p>
+              <p className="mt-1 text-sm text-text-tertiary">{location || (isArabic ? "الموقع غير مضاف" : "Location not provided")}</p>
+            </div>
+          </div>
+
+          <Link href="/candidate/settings" className={primeButtonClasses("primary")}>
+            {isArabic ? "تعديل الملف" : "Edit Profile"}
+          </Link>
         </div>
 
-        <div className="mt-8 grid gap-6 lg:grid-cols-3">
-          <section className="rounded-2xl border border-gold/20 bg-bg-primary/60 p-5">
-            <h2 className="font-heading text-xl text-text-primary">Experience</h2>
-            <ul className="mt-3 space-y-2 text-sm text-text-secondary">
-              {experiences.map((item, index) => (
-                <li key={`exp-${index}`}>
-                  {String((item as Record<string, unknown>).roleTitle ?? "Role")} @ {String((item as Record<string, unknown>).organizationName ?? "Organization")}
-                </li>
-              ))}
-            </ul>
-          </section>
-
-          <section className="rounded-2xl border border-gold/20 bg-bg-primary/60 p-5">
-            <h2 className="font-heading text-xl text-text-primary">Education</h2>
-            <ul className="mt-3 space-y-2 text-sm text-text-secondary">
-              {educations.map((item, index) => (
-                <li key={`edu-${index}`}>
-                  {String((item as Record<string, unknown>).degreeTitle ?? "Degree")} @ {String((item as Record<string, unknown>).institutionName ?? "Institution")}
-                </li>
-              ))}
-            </ul>
-          </section>
-
-          <section className="rounded-2xl border border-gold/20 bg-bg-primary/60 p-5">
-            <h2 className="font-heading text-xl text-text-primary">Certificates</h2>
-            <ul className="mt-3 space-y-2 text-sm text-text-secondary">
-              {certifications.map((item, index) => (
-                <li key={`cert-${index}`}>{String((item as Record<string, unknown>).certificationName ?? "Certificate")}</li>
-              ))}
-            </ul>
-          </section>
+        <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <article className="rounded-2xl border border-blue-200/20 bg-[#061123]/80 p-4">
+            <p className="text-xs uppercase tracking-[0.14em] text-text-tertiary">{isArabic ? "اكتمال الملف" : "Profile completion"}</p>
+            <p className="mt-2 text-2xl font-semibold text-silver">{completionPercent}%</p>
+          </article>
+          <article className="rounded-2xl border border-blue-200/20 bg-[#061123]/80 p-4">
+            <p className="text-xs uppercase tracking-[0.14em] text-text-tertiary">{isArabic ? "حالة التحقق" : "Verification"}</p>
+            <p className="mt-2 text-sm font-semibold text-text-primary">{verificationCase?.status ?? "pending_ai_analysis"}</p>
+          </article>
+          <article className="rounded-2xl border border-blue-200/20 bg-[#061123]/80 p-4">
+            <p className="text-xs uppercase tracking-[0.14em] text-text-tertiary">{isArabic ? "حالة السيرة الذاتية" : "Current CV status"}</p>
+            <p className="mt-2 text-sm font-semibold text-text-primary">{cvStatus}</p>
+          </article>
+          <article className="rounded-2xl border border-blue-200/20 bg-[#061123]/80 p-4">
+            <p className="text-xs uppercase tracking-[0.14em] text-text-tertiary">{isArabic ? "آخر تحديث" : "Last update"}</p>
+            <p className="mt-2 text-sm font-semibold text-text-primary">{lastUpdatedAt}</p>
+          </article>
         </div>
 
-        <section className="mt-8 rounded-2xl border border-gold/20 bg-bg-primary/60 p-5">
-          <h2 className="font-heading text-xl text-text-primary">Timeline</h2>
-          <ul className="mt-3 space-y-2 text-sm text-text-secondary">
-            {timeline.map((entry, index) => (
-              <li key={`timeline-${index}`}>
-                {String(entry.title ?? "Entry")} ({String(entry.entry_type ?? "milestone")})
-              </li>
-            ))}
-          </ul>
+        <section className="mt-8 rounded-2xl border border-blue-200/20 bg-[#071428]/80 p-5">
+          <h2 className="font-heading text-xl text-text-primary">{isArabic ? "الملخص المهني" : "Professional Summary"}</h2>
+          {summary ? <p className="mt-3 text-sm leading-7 text-text-secondary">{summary}</p> : <EmptyState text={isArabic ? "لم تتم إضافة ملخص مهني بعد." : "No professional summary added yet."} />}
         </section>
 
-        <div className="mt-8 flex gap-3">
-          <a href={`/${locale}/candidate/documents`} className="rounded-full border border-gold/30 px-5 py-2 text-sm font-semibold text-gold">Documents</a>
-          <a href={`/${locale}/candidate/matching`} className="rounded-full border border-gold/30 px-5 py-2 text-sm font-semibold text-gold">Matching</a>
-          <a href={`/${locale}/candidate/applications`} className="rounded-full border border-gold/30 px-5 py-2 text-sm font-semibold text-gold">Applications</a>
+        <div className="mt-8 grid gap-6 lg:grid-cols-2">
+          <section className="rounded-2xl border border-blue-200/20 bg-[#071428]/80 p-5">
+            <h2 className="font-heading text-xl text-text-primary">{isArabic ? "المهارات" : "Key Skills"}</h2>
+            {skills.length > 0 ? (
+              <div className="mt-3 flex flex-wrap gap-2">
+                {skills.map((skill, index) => (
+                  <span key={`${skill}-${index}`} className="rounded-full border border-blue-200/30 px-3 py-1 text-xs text-silver">
+                    {skill}
+                  </span>
+                ))}
+              </div>
+            ) : (
+              <div className="mt-3">
+                <EmptyState text={isArabic ? "لا توجد مهارات مضافة بعد." : "No skills added yet."} />
+              </div>
+            )}
+          </section>
+
+          <section className="rounded-2xl border border-blue-200/20 bg-[#071428]/80 p-5">
+            <h2 className="font-heading text-xl text-text-primary">{isArabic ? "اللغات" : "Languages"}</h2>
+            {languages.length > 0 ? (
+              <ul className="mt-3 space-y-2 text-sm text-text-secondary">
+                {languages.map((language, index) => (
+                  <li key={`${language}-${index}`}>{language}</li>
+                ))}
+              </ul>
+            ) : (
+              <div className="mt-3">
+                <EmptyState text={isArabic ? "لا توجد لغات مضافة بعد." : "No languages added yet."} />
+              </div>
+            )}
+          </section>
         </div>
-      </section>
+
+        <div className="mt-8 grid gap-6 lg:grid-cols-2">
+          <section className="rounded-2xl border border-blue-200/20 bg-[#071428]/80 p-5">
+            <h2 className="font-heading text-xl text-text-primary">{isArabic ? "الخبرة العملية" : "Work Experience"}</h2>
+            {experiences.length > 0 ? (
+              <ol className="mt-4 space-y-4 text-sm text-text-secondary">
+                {experiences.map((entry, index) => (
+                  <li key={`experience-${index}`} className="border-l border-blue-200/20 pl-4">
+                    <p className="font-semibold text-text-primary">{entry.role || (isArabic ? "مسمى غير مضاف" : "Role not provided")}</p>
+                    <p>{entry.company || (isArabic ? "جهة العمل غير مضافة" : "Company not provided")}</p>
+                    <p className="text-xs text-text-tertiary">
+                      {(entry.startDate || "-") + " - " + (entry.endDate || (isArabic ? "حتى الآن" : "Present"))}
+                    </p>
+                    {entry.summary ? <p className="mt-2">{entry.summary}</p> : null}
+                  </li>
+                ))}
+              </ol>
+            ) : (
+              <div className="mt-3">
+                <EmptyState text={isArabic ? "لا توجد خبرات مضافة بعد." : "No work experience added yet."} />
+              </div>
+            )}
+          </section>
+
+          <section className="rounded-2xl border border-blue-200/20 bg-[#071428]/80 p-5">
+            <h2 className="font-heading text-xl text-text-primary">{isArabic ? "التعليم" : "Education"}</h2>
+            {educationEntries.length > 0 ? (
+              <ol className="mt-4 space-y-4 text-sm text-text-secondary">
+                {educationEntries.map((entry, index) => (
+                  <li key={`education-${index}`} className="border-l border-blue-200/20 pl-4">
+                    <p className="font-semibold text-text-primary">{entry.degree || (isArabic ? "مؤهل غير مضاف" : "Degree not provided")}</p>
+                    <p>{entry.institution || (isArabic ? "المؤسسة غير مضافة" : "Institution not provided")}</p>
+                    <p className="text-xs text-text-tertiary">{entry.year || "-"}</p>
+                  </li>
+                ))}
+              </ol>
+            ) : (
+              <div className="mt-3">
+                <EmptyState text={isArabic ? "لا توجد بيانات تعليمية بعد." : "No education entries added yet."} />
+              </div>
+            )}
+          </section>
+        </div>
+
+        <section className="mt-8 rounded-2xl border border-blue-200/20 bg-[#071428]/80 p-5">
+          <h2 className="font-heading text-xl text-text-primary">{isArabic ? "الشهادات والدبلومات" : "Certificates & Diplomas"}</h2>
+          {certificates.length > 0 || certificateVersions.length > 0 ? (
+            <ul className="mt-4 space-y-3 text-sm text-text-secondary">
+              {certificates.map((item, index) => (
+                <li key={`certificate-${index}`}>
+                  <span className="font-semibold text-text-primary">{item.title || (isArabic ? "شهادة" : "Certificate")}</span>
+                  {item.issuer ? ` - ${item.issuer}` : ""}
+                  {item.year ? ` (${item.year})` : ""}
+                </li>
+              ))}
+              {certificateVersions.map((item, index) => (
+                <li key={`certificate-version-${index}`}>
+                  <span className="font-semibold text-text-primary">{item.original_filename || (isArabic ? "وثيقة" : "Document")}</span>
+                  <span className="text-xs text-text-tertiary"> {`(${item.verification_status ?? "pending_verification"})`}</span>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <div className="mt-3">
+              <EmptyState text={isArabic ? "لا توجد شهادات أو دبلومات بعد." : "No certificates or diplomas uploaded yet."} />
+            </div>
+          )}
+        </section>
+
+        <section className="mt-8 rounded-2xl border border-blue-200/20 bg-[#071428]/80 p-5">
+          <h2 className="font-heading text-xl text-text-primary">{isArabic ? "ملاحظات التحقق" : "Verification Notes"}</h2>
+          {verificationCase?.candidate_message ? (
+            <p className="mt-3 text-sm text-text-secondary">{verificationCase.candidate_message}</p>
+          ) : (
+            <div className="mt-3">
+              <EmptyState text={isArabic ? "لا توجد ملاحظات تحقق حالياً." : "No verification notes at the moment."} />
+            </div>
+          )}
+        </section>
+      </PrimeCard>
     </main>
   );
 }
