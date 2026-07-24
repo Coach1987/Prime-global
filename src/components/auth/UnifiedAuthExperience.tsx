@@ -1,7 +1,7 @@
 "use client";
 
 import { FormEvent, useEffect, useMemo, useState } from "react";
-import { useRouter } from "@/i18n/routing";
+import { Link, useRouter } from "@/i18n/routing";
 import { useLocale } from "next-intl";
 import { useSearchParams } from "next/navigation";
 import { PrimeCheckbox, PrimeInput, PrimeLabel, PrimeSelect, PrimeTextarea } from "@/components/ui/prime/PrimeInput";
@@ -25,6 +25,7 @@ type CandidateRegisterState = {
   phoneNumberRaw: string;
   phoneNumber: string;
   acceptTerms: boolean;
+  acceptPrivacyPolicy: boolean;
 };
 
 type EmployerRegisterState = {
@@ -67,6 +68,21 @@ function buildAuthHref(mode: AuthMode, audience: AuthAudience, returnTo: string 
   return `/auth?${params.toString()}`;
 }
 
+async function readJsonResponse<T>(response: Response) {
+  const contentType = response.headers.get("content-type") ?? "";
+  const bodyText = await response.text().catch(() => "");
+
+  if (!contentType.includes("application/json")) {
+    return null as T | null;
+  }
+
+  try {
+    return bodyText ? (JSON.parse(bodyText) as T) : null;
+  } catch {
+    return null;
+  }
+}
+
 export function UnifiedAuthExperience() {
   const locale = useLocale();
   const isArabic = locale === "ar";
@@ -92,7 +108,17 @@ export function UnifiedAuthExperience() {
           fetch("/api/auth/me", { credentials: "include" }),
         ]);
 
-        const [csrfPayload, authPayload] = await Promise.all([csrfResponse.json(), authResponse.json()]);
+        const [csrfPayload, authPayload] = await Promise.all([
+          readJsonResponse<{ data?: { csrfToken?: string } }>(csrfResponse),
+          readJsonResponse<{
+            success?: boolean;
+            data?: {
+              role?: string;
+              profileCompletion?: { completed?: boolean };
+              verificationStatus?: string | null;
+            };
+          }>(authResponse),
+        ]);
 
         if (!cancelled) {
           setCsrfToken(csrfPayload?.data?.csrfToken ?? "");
@@ -276,6 +302,40 @@ export function UnifiedAuthExperience() {
               />
             ) : null}
           </div>
+
+          <div className="mt-7 border-t border-white/10 pt-5">
+            <p className="text-xs uppercase tracking-[0.18em] text-blue-200/80">
+              {isArabic ? "مستندات قانونية" : "Legal Documents"}
+            </p>
+            <div className="mt-3 flex flex-wrap gap-x-5 gap-y-2 text-sm text-text-secondary">
+              {[
+                {
+                  href: "/legal/terms-of-service",
+                  label: isArabic ? "شروط الاستخدام" : "Terms of Service",
+                },
+                {
+                  href: "/legal/privacy-policy",
+                  label: isArabic ? "سياسة الخصوصية" : "Privacy Policy",
+                },
+                {
+                  href: "/legal/cookie-policy",
+                  label: isArabic ? "سياسة ملفات تعريف الارتباط" : "Cookie Policy",
+                },
+                {
+                  href: "/legal/security-policy",
+                  label: isArabic ? "سياسة الأمان" : "Security Policy",
+                },
+              ].map((linkItem) => (
+                <Link
+                  key={linkItem.href}
+                  href={linkItem.href}
+                  className="font-medium text-blue-200 transition-colors hover:text-blue-100"
+                >
+                  {linkItem.label}
+                </Link>
+              ))}
+            </div>
+          </div>
         </div>
       </section>
     </main>
@@ -318,9 +378,9 @@ function CandidateSignInForm({
         body: JSON.stringify({ email, password, role: "candidate" }),
       });
 
-      const payload = await response.json();
-      if (!response.ok || !payload.success) {
-        setError(payload?.error?.message ?? (isArabic ? "تعذر تسجيل الدخول." : "Unable to sign in"));
+      const payload = await readJsonResponse<{ success?: boolean; data?: { profileCompletion?: { completed?: boolean } } }>(response);
+      if (!response.ok || !payload?.success) {
+        setError(isArabic ? "تعذر تسجيل الدخول الآن. حاول مرة أخرى." : "We couldn't sign you in right now. Please try again.");
         return;
       }
 
@@ -407,9 +467,9 @@ function EmployerSignInForm({
         body: JSON.stringify({ email, password, role: "employer" }),
       });
 
-      const payload = await response.json();
-      if (!response.ok || !payload.success) {
-        setError(payload?.error?.message ?? (isArabic ? "تعذر تسجيل الدخول." : "Unable to login"));
+      const payload = await readJsonResponse<{ success?: boolean; data?: { user?: { verificationStatus?: string | null } } }>(response);
+      if (!response.ok || !payload?.success) {
+        setError(isArabic ? "تعذر تسجيل الدخول الآن. حاول مرة أخرى." : "We couldn't sign you in right now. Please try again.");
         return;
       }
 
@@ -484,6 +544,7 @@ function CandidateRegisterForm({
     phoneNumberRaw: "",
     phoneNumber: "",
     acceptTerms: false,
+    acceptPrivacyPolicy: false,
   });
 
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
@@ -495,8 +556,12 @@ function CandidateRegisterForm({
       return;
     }
 
-    if (!form.acceptTerms) {
-      setError(isArabic ? "يجب الموافقة على الشروط وسياسة الخصوصية." : "You must accept the Terms and Privacy Policy.");
+    if (!form.acceptTerms || !form.acceptPrivacyPolicy) {
+      setError(
+        isArabic
+          ? "يجب الموافقة على شروط الاستخدام وسياسة الخصوصية."
+          : "You must accept the Terms of Service and Privacy Policy."
+      );
       return;
     }
 
@@ -525,13 +590,14 @@ function CandidateRegisterForm({
           password: form.password,
           country: form.countryCode,
           phoneNumber: form.phoneNumber,
-          acceptTerms: form.acceptTerms,
+          acceptTermsOfService: form.acceptTerms,
+          acceptPrivacyPolicy: form.acceptPrivacyPolicy,
         }),
       });
 
-      const payload = await response.json();
-      if (!response.ok || !payload.success) {
-        setError(payload?.error?.message ?? (isArabic ? "تعذر إنشاء الحساب." : "Unable to create account."));
+      const payload = await readJsonResponse<{ success?: boolean }>(response);
+      if (!response.ok || !payload?.success) {
+        setError(isArabic ? "تعذر إنشاء الحساب الآن. حاول مرة أخرى." : "We couldn't create your account right now. Please try again.");
         return;
       }
 
@@ -610,7 +676,26 @@ function CandidateRegisterForm({
           checked={form.acceptTerms}
           onChange={(event) => setForm((prev) => ({ ...prev, acceptTerms: event.target.checked }))}
         />
-        <span>{isArabic ? "أوافق على الشروط وسياسة الخصوصية وإجراءات التنسيق الخاصة بالتوظيف." : "I accept the Terms, Privacy Policy, and recruitment coordination process."}</span>
+        <span>
+          {isArabic ? "أوافق على " : "I agree to the "}
+          <Link href="/legal/terms-of-service" className="font-semibold text-blue-200 underline underline-offset-4 hover:text-blue-100">
+            {isArabic ? "شروط الاستخدام" : "Terms of Service"}
+          </Link>
+        </span>
+      </label>
+
+      <label className="flex min-h-12 items-start gap-3 rounded-2xl border border-blue-200/20 bg-[#071428]/75 px-4 py-3 text-sm text-text-secondary">
+        <PrimeCheckbox
+          type="checkbox"
+          checked={form.acceptPrivacyPolicy}
+          onChange={(event) => setForm((prev) => ({ ...prev, acceptPrivacyPolicy: event.target.checked }))}
+        />
+        <span>
+          {isArabic ? "أوافق على " : "I agree to the "}
+          <Link href="/legal/privacy-policy" className="font-semibold text-blue-200 underline underline-offset-4 hover:text-blue-100">
+            {isArabic ? "سياسة الخصوصية" : "Privacy Policy"}
+          </Link>
+        </span>
       </label>
 
       {error ? <p className="text-sm text-red-300">{error}</p> : null}
@@ -649,6 +734,8 @@ function EmployerRegisterForm({
   const [error, setError] = useState<string | null>(null);
   const [confirmPassword, setConfirmPassword] = useState("");
   const [acceptTerms, setAcceptTerms] = useState(false);
+  const [acceptEmployerAgreement, setAcceptEmployerAgreement] = useState(false);
+  const [acceptPrivacyPolicy, setAcceptPrivacyPolicy] = useState(false);
   const [form, setForm] = useState<EmployerRegisterState>({
     email: "",
     password: "",
@@ -675,8 +762,12 @@ function EmployerRegisterForm({
       return;
     }
 
-    if (!acceptTerms) {
-      setError(isArabic ? "يجب الموافقة على الشروط وسياسة الخصوصية." : "You must accept the Terms and Privacy Policy.");
+    if (!acceptTerms || !acceptEmployerAgreement || !acceptPrivacyPolicy) {
+      setError(
+        isArabic
+          ? "يجب الموافقة على شروط الاستخدام واتفاقية صاحب العمل وسياسة الخصوصية."
+          : "You must accept the Terms of Service, Employer Agreement, and Privacy Policy."
+      );
       return;
     }
 
@@ -690,12 +781,21 @@ function EmployerRegisterForm({
           "Content-Type": "application/json",
           "x-csrf-token": csrfToken,
         },
-        body: JSON.stringify(form),
+        body: JSON.stringify({
+          ...form,
+          acceptTermsOfService: acceptTerms,
+          acceptPrivacyPolicy,
+          acceptEmployerAgreement,
+        }),
       });
 
-      const payload = await response.json();
-      if (!response.ok || !payload.success) {
-        setError(payload?.error?.message ?? (isArabic ? "تعذر تسجيل الشركة." : "Unable to register company"));
+      const payload = await readJsonResponse<{ success?: boolean }>(response);
+      if (!response.ok || !payload?.success) {
+        setError(
+          isArabic
+            ? "تعذر إكمال تسجيل الشركة الآن. حاول مرة أخرى."
+            : "We couldn't complete company registration right now. Please try again."
+        );
         return;
       }
 
@@ -763,7 +863,49 @@ function EmployerRegisterForm({
 
       <label className="md:col-span-2 flex min-h-12 items-start gap-3 rounded-2xl border border-blue-200/20 bg-[#071428]/75 px-4 py-3 text-sm text-text-secondary">
         <PrimeCheckbox type="checkbox" checked={acceptTerms} onChange={(event) => setAcceptTerms(event.target.checked)} />
-        <span>{isArabic ? "أوافق على الشروط وسياسة الخصوصية ومتطلبات التحقق من الشركة." : "I accept the Terms, Privacy Policy, and company verification requirements."}</span>
+        <span>
+          {isArabic ? "أوافق على " : "I agree to the "}
+          <Link
+            href="/legal/terms-of-service"
+            className="font-semibold text-blue-200 underline underline-offset-4 hover:text-blue-100"
+          >
+            {isArabic ? "شروط الاستخدام" : "Terms of Service"}
+          </Link>
+        </span>
+      </label>
+
+      <label className="md:col-span-2 flex min-h-12 items-start gap-3 rounded-2xl border border-blue-200/20 bg-[#071428]/75 px-4 py-3 text-sm text-text-secondary">
+        <PrimeCheckbox
+          type="checkbox"
+          checked={acceptEmployerAgreement}
+          onChange={(event) => setAcceptEmployerAgreement(event.target.checked)}
+        />
+        <span>
+          {isArabic ? "أوافق على " : "I agree to the "}
+          <Link
+            href="/legal/employer-agreement"
+            className="font-semibold text-blue-200 underline underline-offset-4 hover:text-blue-100"
+          >
+            {isArabic ? "اتفاقية صاحب العمل" : "Employer Agreement"}
+          </Link>
+        </span>
+      </label>
+
+      <label className="md:col-span-2 flex min-h-12 items-start gap-3 rounded-2xl border border-blue-200/20 bg-[#071428]/75 px-4 py-3 text-sm text-text-secondary">
+        <PrimeCheckbox
+          type="checkbox"
+          checked={acceptPrivacyPolicy}
+          onChange={(event) => setAcceptPrivacyPolicy(event.target.checked)}
+        />
+        <span>
+          {isArabic ? "أوافق على " : "I agree to the "}
+          <Link
+            href="/legal/privacy-policy"
+            className="font-semibold text-blue-200 underline underline-offset-4 hover:text-blue-100"
+          >
+            {isArabic ? "سياسة الخصوصية" : "Privacy Policy"}
+          </Link>
+        </span>
       </label>
 
       {error ? <p className="text-sm text-red-300 md:col-span-2">{error}</p> : null}

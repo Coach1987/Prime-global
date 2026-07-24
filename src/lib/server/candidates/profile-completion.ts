@@ -71,18 +71,12 @@ export async function evaluateCandidateProfileCompletion(authUserId: string): Pr
   const professional = (professionalResult.data ?? null) as Record<string, unknown> | null;
   const privateProfile = (privateProfileResult.data ?? null) as Record<string, unknown> | null;
 
-  const verificationStatus =
-    typeof privateProfile?.identity_verification_status === "string"
-      ? privateProfile.identity_verification_status
-      : null;
-  const isIdentityApproved = verificationStatus === "approved" || verificationStatus === null;
-
-  const hasCv = !resumesResult.error && (resumesResult.data?.length ?? 0) > 0 && isIdentityApproved;
+  const hasCv = !resumesResult.error && (resumesResult.data?.length ?? 0) > 0;
   const documents = Array.isArray(privateProfile?.original_documents_paths)
     ? (privateProfile?.original_documents_paths as unknown[])
     : [];
   const certificates = Array.isArray(professional?.certificates) ? (professional?.certificates as unknown[]) : [];
-  const hasDiploma = (documents.length > 0 || certificates.length > 0) && isIdentityApproved;
+  const hasDiploma = documents.length > 0 || certificates.length > 0;
   const hasSummary =
     typeof professional?.biography === "string"
       ? professional.biography.trim().length >= 20

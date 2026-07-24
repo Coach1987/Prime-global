@@ -66,6 +66,21 @@ function labelForRequirement(key: string, locale: "en" | "ar") {
   return REQUIREMENT_LABELS[key]?.[locale] ?? key;
 }
 
+async function readJsonResponse<T>(response: Response, fallbackMessage: string) {
+  const contentType = response.headers.get("content-type") ?? "";
+  const bodyText = await response.text().catch(() => "");
+
+  if (!contentType.includes("application/json")) {
+    return { payload: null as T | null, errorMessage: fallbackMessage };
+  }
+
+  try {
+    return { payload: (bodyText ? (JSON.parse(bodyText) as T) : null) as T | null, errorMessage: null };
+  } catch {
+    return { payload: null as T | null, errorMessage: fallbackMessage };
+  }
+}
+
 export default function CandidateOnboardingPage() {
   const locale = useLocale();
   const tDoc = useTranslations("candidateDocumentVerification");
@@ -103,7 +118,10 @@ export default function CandidateOnboardingPage() {
 
   async function loadCompletion() {
     const response = await fetch("/api/candidates/profile-completion", { credentials: "include" });
-    const payload = await response.json();
+    const { payload } = await readJsonResponse<{ success?: boolean; data?: ProfileCompletion }>(
+      response,
+      isArabic ? "تعذر تحميل نسبة اكتمال الملف." : "Unable to load profile completion."
+    );
     if (response.ok && payload?.success) {
       setCompletion(payload.data as ProfileCompletion);
     }
@@ -111,7 +129,10 @@ export default function CandidateOnboardingPage() {
 
   async function loadVerificationTimeline() {
     const response = await fetch("/api/candidates/document-verification", { credentials: "include" });
-    const payload = await response.json();
+    const { payload } = await readJsonResponse<{ success?: boolean; data?: CandidateVerificationTimeline }>(
+      response,
+      isArabic ? "تعذر تحميل حالة الوثائق." : "Unable to load document verification status."
+    );
     if (response.ok && payload?.success) {
       setVerificationTimeline({
         versions: Array.isArray(payload?.data?.versions) ? payload.data.versions : [],
@@ -121,46 +142,63 @@ export default function CandidateOnboardingPage() {
   }
 
   useEffect(() => {
-    fetch("/api/security/csrf")
-      .then((response) => response.json())
-      .then((payload) => setCsrfToken(payload?.data?.csrfToken ?? ""))
-      .catch(() => setCsrfToken(""));
+    async function bootstrap() {
+      try {
+        const csrfResponse = await fetch("/api/security/csrf");
+        const csrfPayload = await readJsonResponse<{ data?: { csrfToken?: string } }>(csrfResponse, "");
+        setCsrfToken(csrfPayload.payload?.data?.csrfToken ?? "");
 
-    Promise.all([
-      fetch("/api/auth/me", { credentials: "include" }),
-      fetch("/api/candidates/profile", { credentials: "include" }),
-      fetch("/api/candidates/professional-profile", { credentials: "include" }),
-      fetch("/api/candidates/profile-completion", { credentials: "include" }),
-      fetch("/api/candidates/document-verification", { credentials: "include" }),
-    ])
-      .then(async ([authResponse, profileResponse, professionalResponse, completionResponse, verificationResponse]) => {
-        const [authPayload, profilePayload, professionalPayload, completionPayload, verificationPayload] = await Promise.all([
-          authResponse.json(),
-          profileResponse.json(),
-          professionalResponse.json(),
-          completionResponse.json(),
-          verificationResponse.json(),
-        ]);
+        const authResponse = await fetch("/api/auth/me", { credentials: "include" });
+        const authPayload = await readJsonResponse<{ success?: boolean; data?: { role?: string } }>(
+          authResponse,
+          isArabic ? "تعذر التحقق من الجلسة." : "Unable to verify your session."
+        );
 
-        if (!authResponse.ok || !authPayload?.success || authPayload?.data?.role !== "candidate") {
+        if (!authResponse.ok || !authPayload.payload?.success || authPayload.payload?.data?.role !== "candidate") {
           setError(isArabic ? "هذه الصفحة مخصصة للمرشحين المسجلين فقط." : "This page is only for authenticated candidates.");
           return;
         }
 
-        if (!profileResponse.ok || !profilePayload?.success) {
-          setError(profilePayload?.error?.message ?? (isArabic ? "تعذر تحميل الملف الشخصي." : "Unable to load profile."));
+        const [profileResponse, professionalResponse, completionResponse, verificationResponse] = await Promise.all([
+          fetch("/api/candidates/profile", { credentials: "include" }),
+          fetch("/api/candidates/professional-profile", { credentials: "include" }),
+          fetch("/api/candidates/profile-completion", { credentials: "include" }),
+          fetch("/api/candidates/document-verification", { credentials: "include" }),
+        ]);
+
+        const [profilePayload, professionalPayload, completionPayload, verificationPayload] = await Promise.all([
+          readJsonResponse<{ success?: boolean; data?: CandidateProfile | null }>(
+            profileResponse,
+            isArabic ? "تعذر تحميل الملف الشخصي." : "Unable to load profile."
+          ),
+          readJsonResponse<{ success?: boolean; data?: Record<string, unknown> }>(
+            professionalResponse,
+            isArabic ? "تعذر تحميل الملف المهني." : "Unable to load professional profile."
+          ),
+          readJsonResponse<{ success?: boolean; data?: ProfileCompletion }>(
+            completionResponse,
+            isArabic ? "تعذر تحميل نسبة الاكتمال." : "Unable to load completion data."
+          ),
+          readJsonResponse<{ success?: boolean; data?: CandidateVerificationTimeline }>(
+            verificationResponse,
+            isArabic ? "تعذر تحميل حالة التحقق." : "Unable to load verification timeline."
+          ),
+        ]);
+
+        if (!profileResponse.ok || !profilePayload.payload?.success) {
+          setError(profilePayload.errorMessage ?? (isArabic ? "تعذر تحميل الملف الشخصي." : "Unable to load profile."));
           return;
         }
 
-        const nextProfile = (profilePayload.data ?? null) as CandidateProfile | null;
-        const professional = (professionalPayload?.data ?? {}) as Record<string, unknown>;
+        const nextProfile = (profilePayload.payload.data ?? null) as CandidateProfile | null;
+        const professional = (professionalPayload.payload?.data ?? {}) as Record<string, unknown>;
         setVerificationTimeline({
-          versions: Array.isArray(verificationPayload?.data?.versions) ? verificationPayload.data.versions : [],
-          cases: Array.isArray(verificationPayload?.data?.cases) ? verificationPayload.data.cases : [],
+          versions: Array.isArray(verificationPayload.payload?.data?.versions) ? verificationPayload.payload.data.versions : [],
+          cases: Array.isArray(verificationPayload.payload?.data?.cases) ? verificationPayload.payload.data.cases : [],
         });
 
         setProfile(nextProfile);
-        setCompletion(completionPayload?.data ?? null);
+        setCompletion(completionPayload.payload?.data ?? null);
         setForm((prev) => ({
           ...prev,
           city: String(nextProfile?.city ?? ""),
@@ -173,9 +211,14 @@ export default function CandidateOnboardingPage() {
           languages: Array.isArray(professional?.languages) ? (professional.languages as string[]).join(", ") : "",
           education: Array.isArray(professional?.education_entries) ? String((professional.education_entries as unknown[]).length) : "",
         }));
-      })
-      .catch(() => setError(isArabic ? "تعذر تحميل بيانات الإعداد." : "Unable to load onboarding data."))
-      .finally(() => setLoading(false));
+      } catch {
+        setError(isArabic ? "تعذر تحميل بيانات الإعداد." : "Unable to load onboarding data.");
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    void bootstrap();
   }, [isArabic]);
 
   async function uploadDocuments() {
@@ -190,13 +233,16 @@ export default function CandidateOnboardingPage() {
         headers: { "x-csrf-token": csrfToken },
         body: cvData,
       });
-      const cvPayload = await cvResponse.json();
-      if (!cvResponse.ok || !cvPayload?.success) {
-        throw new Error(cvPayload?.error?.message ?? "Failed to upload CV");
+      const cvPayload = await readJsonResponse<{ success?: boolean; verification?: { message?: string }; error?: { message?: string } }>(
+        cvResponse,
+        isArabic ? "لم نتمكن من معالجة ملف السيرة الذاتية الآن." : "We couldn't process your CV upload right now."
+      );
+      if (!cvResponse.ok || !cvPayload.payload?.success) {
+        throw new Error(cvPayload.errorMessage ?? (isArabic ? "تعذر تحميل السيرة الذاتية." : "We couldn't process your CV upload."));
       }
 
-      if (typeof cvPayload?.verification?.message === "string" && cvPayload.verification.message.trim()) {
-        notices.push(cvPayload.verification.message.trim());
+      if (typeof cvPayload.payload?.verification?.message === "string" && cvPayload.payload.verification.message.trim()) {
+        notices.push(cvPayload.payload.verification.message.trim());
       }
     }
 
@@ -209,13 +255,16 @@ export default function CandidateOnboardingPage() {
         headers: { "x-csrf-token": csrfToken },
         body: docsData,
       });
-      const docsPayload = await docsResponse.json();
-      if (!docsResponse.ok || !docsPayload?.success) {
-        throw new Error(docsPayload?.error?.message ?? "Failed to upload supporting documents");
+      const docsPayload = await readJsonResponse<{ success?: boolean; verification?: { message?: string }; error?: { message?: string } }>(
+        docsResponse,
+        isArabic ? "لم نتمكن من معالجة المستندات الآن." : "We couldn't process your documents right now."
+      );
+      if (!docsResponse.ok || !docsPayload.payload?.success) {
+        throw new Error(docsPayload.errorMessage ?? (isArabic ? "تعذر تحميل المستندات." : "We couldn't process your documents."));
       }
 
-      if (typeof docsPayload?.verification?.message === "string" && docsPayload.verification.message.trim()) {
-        notices.push(docsPayload.verification.message.trim());
+      if (typeof docsPayload.payload?.verification?.message === "string" && docsPayload.payload.verification.message.trim()) {
+        notices.push(docsPayload.payload.verification.message.trim());
       }
     }
 
@@ -276,9 +325,12 @@ export default function CandidateOnboardingPage() {
         }),
       });
 
-      const profilePayload = await profileResponse.json();
-      if (!profileResponse.ok || !profilePayload?.success) {
-        setError(profilePayload?.error?.message ?? (isArabic ? "تعذر حفظ الملف الأساسي." : "Unable to save core profile."));
+      const profilePayload = await readJsonResponse<{ success?: boolean; error?: { message?: string } }>(
+        profileResponse,
+        isArabic ? "تعذر حفظ الملف الأساسي." : "Unable to save core profile."
+      );
+      if (!profileResponse.ok || !profilePayload.payload?.success) {
+        setError(profilePayload.errorMessage ?? (isArabic ? "تعذر حفظ الملف الأساسي." : "Unable to save core profile."));
         return;
       }
 
@@ -305,9 +357,12 @@ export default function CandidateOnboardingPage() {
         }),
       });
 
-      const professionalPayload = await professionalResponse.json();
-      if (!professionalResponse.ok || !professionalPayload?.success) {
-        setError(professionalPayload?.error?.message ?? (isArabic ? "تعذر حفظ الملف المهني." : "Unable to save professional profile."));
+      const professionalPayload = await readJsonResponse<{ success?: boolean; error?: { message?: string } }>(
+        professionalResponse,
+        isArabic ? "تعذر حفظ الملف المهني." : "Unable to save professional profile."
+      );
+      if (!professionalResponse.ok || !professionalPayload.payload?.success) {
+        setError(professionalPayload.errorMessage ?? (isArabic ? "تعذر حفظ الملف المهني." : "Unable to save professional profile."));
         return;
       }
 
@@ -335,28 +390,32 @@ export default function CandidateOnboardingPage() {
         }),
       });
 
-      const alertsPayload = await alertsResponse.json();
-      if (!alertsResponse.ok || !alertsPayload?.success) {
-        setError(alertsPayload?.error?.message ?? (isArabic ? "تعذر حفظ إعدادات التنبيه." : "Unable to save job alert settings."));
+      const alertsPayload = await readJsonResponse<{ success?: boolean; error?: { message?: string } }>(
+        alertsResponse,
+        isArabic ? "تعذر حفظ إعدادات التنبيه." : "Unable to save job alert settings."
+      );
+      if (!alertsResponse.ok || !alertsPayload.payload?.success) {
+        setError(alertsPayload.errorMessage ?? (isArabic ? "تعذر حفظ إعدادات التنبيه." : "Unable to save job alert settings."));
         return;
       }
 
       await loadCompletion();
       await loadVerificationTimeline();
       const completionResponse = await fetch("/api/candidates/profile-completion", { credentials: "include" });
-      const completionPayload = await completionResponse.json();
-      const nextCompletion = completionPayload?.data as ProfileCompletion | undefined;
+      const completionPayload = await readJsonResponse<{ success?: boolean; data?: ProfileCompletion }>(
+        completionResponse,
+        isArabic ? "تعذر تحميل نسبة الاكتمال." : "Unable to load completion data."
+      );
+      const nextCompletion = completionPayload.payload?.data as ProfileCompletion | undefined;
       if (completionResponse.ok && nextCompletion?.completed) {
         router.push("/candidate/dashboard");
         router.refresh();
       }
-    } catch (submitError) {
+    } catch {
       setError(
-        submitError instanceof Error
-          ? submitError.message
-          : isArabic
-            ? "حدث خطأ غير متوقع أثناء الحفظ."
-            : "Unexpected error while saving your onboarding."
+        isArabic
+          ? "لم نتمكن من إكمال رفع المستندات الآن. يرجى المحاولة مرة أخرى."
+          : "We couldn't complete your upload right now. Please try again."
       );
     } finally {
       setSaving(false);

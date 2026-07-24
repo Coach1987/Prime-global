@@ -7,21 +7,13 @@ import { createSupabaseAdminClient } from "@/lib/server/supabase";
 import {
   buildCandidateIdentitySnapshot,
   calculateDocumentContentHash,
-  CANDIDATE_VERIFICATION_PENDING_MESSAGE,
-  CANDIDATE_VERIFICATION_REJECTED_MESSAGE,
-  notifyPrimeGlobalStaffForManualReview,
-  persistIdentityVerificationDecision,
-  verifyCandidateDocumentIdentity,
 } from "@/lib/server/candidates/document-identity-verification";
 import {
-  activateCandidateDocumentVersion,
   createVerificationCase,
   insertCandidateDocumentVersion,
-  mapVerificationDecisionToCaseStatus,
   safeSetPrimaryResume,
-  supersedeActiveCandidateDocuments,
 } from "@/lib/server/candidates/document-verification-workflow";
-import { syncCandidatePortalAiWorkflow } from "@/lib/server/candidates/portal-ai-workflow";
+import { runCandidateOnboardingVerificationWorkflow } from "@/lib/server/candidates/onboarding-verification-workflow";
 
 const CANDIDATE_RESUMES_BUCKET = process.env.SUPABASE_CANDIDATE_RESUMES_BUCKET ?? "candidate-resumes";
 
@@ -136,349 +128,257 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  const rateLimitResult = enforceRateLimit(request, "candidate-resumes-post", 50);
-  if (rateLimitResult) return rateLimitResult;
+  try {
+    const rateLimitResult = enforceRateLimit(request, "candidate-resumes-post", 50);
+    if (rateLimitResult) return rateLimitResult;
 
-  const csrfResult = enforceCsrf(request);
-  if (csrfResult) return csrfResult;
+    const csrfResult = enforceCsrf(request);
+    if (csrfResult) return csrfResult;
 
-  const auth = await requireAuth(request);
-  if (auth instanceof NextResponse) return auth;
-  const roleCheck = requireRole(auth, ["candidate", "admin", "super_admin"]);
-  if (roleCheck) return roleCheck;
+    const auth = await requireAuth(request);
+    if (auth instanceof NextResponse) return auth;
+    const roleCheck = requireRole(auth, ["candidate", "admin", "super_admin"]);
+    if (roleCheck) return roleCheck;
 
-  const profileBundle = await getCandidateProfileBundle(auth.userId);
-  if (!profileBundle?.candidate?.id) {
-    return NextResponse.json(
-      { success: false, error: { code: "CANDIDATE_NOT_FOUND", message: "Candidate profile missing" } },
-      { status: 404 }
-    );
-  }
-  const candidateId = String(profileBundle.candidate.id);
+    const profileBundle = await getCandidateProfileBundle(auth.userId);
+    if (!profileBundle?.candidate?.id) {
+      return NextResponse.json(
+        { success: false, error: { code: "CANDIDATE_NOT_FOUND", message: "Candidate profile missing" } },
+        { status: 404 }
+      );
+    }
+    const candidateId = String(profileBundle.candidate.id);
 
-  const formData = await request.formData();
-  const file = formData.get("file");
-  if (!(file instanceof File)) {
-    return NextResponse.json(
-      { success: false, error: { code: "FILE_REQUIRED", message: "Resume file is required" } },
-      { status: 400 }
-    );
-  }
+    const formData = await request.formData();
+    const file = formData.get("file");
+    if (!(file instanceof File)) {
+      return NextResponse.json(
+        { success: false, error: { code: "FILE_REQUIRED", message: "Resume file is required" } },
+        { status: 400 }
+      );
+    }
 
-  if (!ALLOWED_MIME_TYPES.has(file.type)) {
-    return NextResponse.json(
-      { success: false, error: { code: "INVALID_FILE_TYPE", message: "Unsupported resume format" } },
-      { status: 400 }
-    );
-  }
+    if (!ALLOWED_MIME_TYPES.has(file.type)) {
+      return NextResponse.json(
+        { success: false, error: { code: "INVALID_FILE_TYPE", message: "Unsupported resume format" } },
+        { status: 400 }
+      );
+    }
 
-  if (file.size > MAX_FILE_SIZE_BYTES) {
-    return NextResponse.json(
-      { success: false, error: { code: "FILE_TOO_LARGE", message: "Resume exceeds 5 MB" } },
-      { status: 400 }
-    );
-  }
+    if (file.size > MAX_FILE_SIZE_BYTES) {
+      return NextResponse.json(
+        { success: false, error: { code: "FILE_TOO_LARGE", message: "Resume exceeds 5 MB" } },
+        { status: 400 }
+      );
+    }
 
-  const extension = inferExtension(file.name, file.type);
-  const safeName = sanitizeFileName(file.name.replace(/\.[^.]+$/, "")) || "resume";
-  const storagePath = `${auth.userId}/${candidateId}/${Date.now()}-${safeName}.${extension}`;
+    const extension = inferExtension(file.name, file.type);
+    const safeName = sanitizeFileName(file.name.replace(/\.[^.]+$/, "")) || "resume";
+    const storagePath = `${auth.userId}/${candidateId}/${Date.now()}-${safeName}.${extension}`;
 
-  const supabase = createSupabaseAdminClient();
-  const fileBuffer = Buffer.from(await file.arrayBuffer());
-  const { error: uploadError } = await supabase.storage
-    .from(CANDIDATE_RESUMES_BUCKET)
-    .upload(storagePath, fileBuffer, {
-      contentType: file.type,
-      upsert: false,
-    });
+    const supabase = createSupabaseAdminClient();
+    const fileBuffer = Buffer.from(await file.arrayBuffer());
+    const { error: uploadError } = await supabase.storage
+      .from(CANDIDATE_RESUMES_BUCKET)
+      .upload(storagePath, fileBuffer, {
+        contentType: file.type,
+        upsert: false,
+      });
 
-  if (uploadError) {
-    return NextResponse.json(
-      { success: false, error: { code: "UPLOAD_FAILED", message: uploadError.message } },
-      { status: 500 }
-    );
-  }
+    if (uploadError) {
+      return NextResponse.json(
+        { success: false, error: { code: "UPLOAD_FAILED", message: uploadError.message } },
+        { status: 500 }
+      );
+    }
 
-  const { data: privateProfile } = await supabase
-    .from("candidate_private_profiles")
-    .select("candidate_id, original_documents_paths")
-    .eq("candidate_id", candidateId)
-    .maybeSingle();
+    const { data: existingPrivateProfile } = await supabase
+      .from("candidate_private_profiles")
+      .select("candidate_id, original_documents_paths")
+      .eq("candidate_id", candidateId)
+      .maybeSingle();
 
-  if (!privateProfile?.candidate_id) {
-    await supabase.from("candidate_private_profiles").insert({
-      candidate_id: candidateId,
-      full_name: String(profileBundle.candidate.full_name ?? "Candidate"),
+    const existingDocuments = Array.isArray(existingPrivateProfile?.original_documents_paths)
+      ? (existingPrivateProfile.original_documents_paths as string[])
+      : [];
+
+    const snapshot = buildCandidateIdentitySnapshot({
+      fullName: String(profileBundle.candidate.full_name ?? ""),
+      nationality: typeof profileBundle.professional?.nationality === "string" ? profileBundle.professional.nationality : null,
       email: String(profileBundle.candidate.email ?? auth.email),
-      phone: String(profileBundle.candidate.phone_number ?? "+000000000"),
-      address: [profileBundle.candidate.country, profileBundle.candidate.city].filter(Boolean).join(", ") || null,
-      original_cv_path: "pending",
-      original_documents_paths: [],
-      restricted_to_prime_global: true,
+      phone: typeof profileBundle.candidate.phone_number === "string" ? profileBundle.candidate.phone_number : null,
+      location: [profileBundle.candidate.country, profileBundle.candidate.city].filter(Boolean).join(", "),
+      education: profileBundle.professional?.education_entries,
+      degreeTitles: profileBundle.professional?.education_entries,
+      workHistory: profileBundle.professional?.experiences,
+      skills: profileBundle.professional?.skills,
+      languages: profileBundle.professional?.languages,
     });
-  }
 
-  const snapshot = buildCandidateIdentitySnapshot({
-    fullName: String(profileBundle.candidate.full_name ?? ""),
-    nationality:
-      typeof profileBundle.professional?.nationality === "string"
-        ? profileBundle.professional.nationality
-        : null,
-    email: String(profileBundle.candidate.email ?? auth.email),
-    phone:
-      typeof profileBundle.candidate.phone_number === "string" ? profileBundle.candidate.phone_number : null,
-    location: [profileBundle.candidate.country, profileBundle.candidate.city].filter(Boolean).join(", "),
-    education: profileBundle.professional?.education_entries,
-    degreeTitles: profileBundle.professional?.education_entries,
-    workHistory: profileBundle.professional?.experiences,
-    skills: profileBundle.professional?.skills,
-    languages: profileBundle.professional?.languages,
-  });
+    const contentHash = calculateDocumentContentHash(fileBuffer);
+    const { data: resumeRow, error: resumeError } = await supabase
+      .from("candidate_resumes")
+      .insert({
+        candidate_id: candidateId,
+        storage_path: storagePath,
+        filename: file.name,
+        mime_type: file.type,
+        size_bytes: file.size,
+        is_primary: false,
+      })
+      .select("*")
+      .single();
 
-  const verificationResult = await verifyCandidateDocumentIdentity({
-    candidateId,
-    snapshot,
-    documents: [
-      {
-        storagePath,
-        fileName: file.name,
-        mimeType: file.type,
-        sizeBytes: file.size,
-        buffer: fileBuffer,
-      },
-    ],
-  });
+    if (resumeError) {
+      const isPrimaryConstraintError =
+        resumeError.code === "23505" || resumeError.message.toLowerCase().includes("candidate_primary_resume_uq");
 
-  const contentHash = calculateDocumentContentHash(fileBuffer);
+      return NextResponse.json(
+        {
+          success: false,
+          error: {
+            code: "RESUME_SAVE_FAILED",
+            message: isPrimaryConstraintError
+              ? "Unable to save your CV right now. Please try again."
+              : "Unable to save the uploaded CV at this time.",
+          },
+        },
+        { status: 500 }
+      );
+    }
 
-  const verificationId = await persistIdentityVerificationDecision({
-    candidateId,
-    source: "resume_upload",
-    snapshot,
-    documents: [
-      {
-        storagePath,
-        fileName: file.name,
-        mimeType: file.type,
-        sizeBytes: file.size,
-        buffer: fileBuffer,
-      },
-    ],
-    result: verificationResult,
-  });
+    const { data: privateProfile } = await supabase
+      .from("candidate_private_profiles")
+      .upsert(
+        {
+          candidate_id: candidateId,
+          full_name: String(profileBundle.candidate.full_name ?? "Candidate"),
+          email: String(profileBundle.candidate.email ?? auth.email),
+          phone: String(profileBundle.candidate.phone_number ?? "+000000000"),
+          address: [profileBundle.candidate.country, profileBundle.candidate.city].filter(Boolean).join(", ") || null,
+          original_cv_path: storagePath,
+          original_documents_paths: existingDocuments,
+          restricted_to_prime_global: true,
+          identity_verification_status: "pending_verification",
+          identity_staff_review_status: "pending",
+          identity_verification_reasoning: "Your CV was uploaded successfully and is waiting for AI verification.",
+          identity_verification_updated_at: new Date().toISOString(),
+        },
+        { onConflict: "candidate_id" }
+      )
+      .select("candidate_id")
+      .single();
 
-  const acceptedAndLowRisk =
-    (verificationResult.decision === "automatic_approval" || verificationResult.decision === "accepted") &&
-    verificationResult.fraudRiskScore < 50 &&
-    !verificationResult.highFraudOverrideApplied;
+    if (!privateProfile?.candidate_id) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: {
+            code: "PRIVATE_PROFILE_SAVE_FAILED",
+            message: "Unable to store the uploaded CV metadata.",
+          },
+        },
+        { status: 500 }
+      );
+    }
 
-  const version = await insertCandidateDocumentVersion({
-    candidateId,
-    documentType: "cv",
-    originalFilename: file.name,
-    storagePath,
-    sourceBucket: CANDIDATE_RESUMES_BUCKET,
-    mimeType: file.type,
-    sizeBytes: file.size,
-    contentHash,
-    uploadedByAuthUserId: auth.userId,
-    verificationId,
-    verificationResult,
-    // Insert inactive first to avoid transient unique-index conflicts on current active primary CV.
-    isActive: false,
-    isPrimary: false,
-  });
-
-  if (acceptedAndLowRisk) {
-    await supersedeActiveCandidateDocuments({
+    const version = await insertCandidateDocumentVersion({
       candidateId,
       documentType: "cv",
-      exceptVersionId: version.versionId,
+      originalFilename: file.name,
+      storagePath,
+      sourceBucket: CANDIDATE_RESUMES_BUCKET,
+      mimeType: file.type,
+      sizeBytes: file.size,
+      contentHash,
+      uploadedByAuthUserId: auth.userId,
+      verificationId: null,
+      verificationResult: null,
+      isActive: false,
+      isPrimary: false,
     });
 
-    await activateCandidateDocumentVersion({
-      versionId: version.versionId,
-      isPrimary: true,
-    });
-  }
-
-  const caseStatus = mapVerificationDecisionToCaseStatus({
-    decision: verificationResult.decision,
-    fraudRiskScore: verificationResult.fraudRiskScore,
-    highFraudOverrideApplied: verificationResult.highFraudOverrideApplied,
-  });
-
-  const verificationCaseId = await createVerificationCase({
-    candidateId,
-    documentVersionId: version.versionId,
-    verificationId,
-    status: caseStatus,
-    priority:
-      verificationResult.fraudRiskScore >= 75
-        ? "critical"
-        : verificationResult.fraudRiskScore >= 50
-          ? "high"
-          : verificationResult.fraudRiskScore >= 25
-            ? "normal"
-            : "low",
-    candidateMessage:
-      verificationResult.decision === "pending_verification"
-        ? CANDIDATE_VERIFICATION_PENDING_MESSAGE
-        : verificationResult.decision === "rejected"
-          ? CANDIDATE_VERIFICATION_REJECTED_MESSAGE
-          : "Document received and verified.",
-    internalNotes: verificationResult.highFraudOverrideApplied
-      ? "High fraud risk override blocked automatic approval."
-      : null,
-    escalationReason: verificationResult.highFraudOverrideApplied
-      ? "high_fraud_override"
-      : null,
-  });
-
-  await createAuditLog({
-    actorAuthUserId: auth.userId,
-    actorRole: auth.role,
-    action: "candidate.document_identity_verification.evaluated",
-    targetType: "candidate_document_identity_verification",
-    targetId: verificationId,
-    metadata: {
-      source: "resume_upload",
+    const verificationCaseId = await createVerificationCase({
       candidateId,
-      confidenceScore: verificationResult.confidenceScore,
-      fraudRiskScore: verificationResult.fraudRiskScore,
-      decision: verificationResult.decision,
-      provider: verificationResult.provider,
-      model: verificationResult.model,
-      verificationCaseId,
-      versionId: version.versionId,
-    },
-  });
-
-  if (verificationResult.decision === "pending_verification") {
-    const recipients = await notifyPrimeGlobalStaffForManualReview({
-      candidateId,
-      candidateName: String(profileBundle.candidate.full_name ?? "Candidate"),
-      confidenceScore: verificationResult.confidenceScore,
-      fraudRiskScore: verificationResult.fraudRiskScore,
-      verificationId,
+      documentVersionId: version.versionId,
+      verificationId: null,
+      status: "pending_ai_analysis",
+      priority: "normal",
+      candidateMessage: "Your CV was uploaded successfully and is being reviewed.",
+      internalNotes: null,
     });
 
     await createAuditLog({
       actorAuthUserId: auth.userId,
       actorRole: auth.role,
-      action: "candidate.document_identity_verification.manual_review_queued",
-      targetType: "candidate_document_identity_verification",
-      targetId: verificationId,
-      metadata: { recipients },
+      action: "candidate.cv.uploaded",
+      targetType: "candidate_resume",
+      targetId: String(resumeRow.id),
+      metadata: {
+        candidateId,
+        storagePath,
+        versionId: version.versionId,
+        verificationCaseId,
+      },
     });
-  }
 
-  if (verificationResult.decision === "rejected") {
+    void runCandidateOnboardingVerificationWorkflow({
+      candidateId,
+      authUserId: auth.userId,
+      candidateName: String(profileBundle.candidate.full_name ?? "Candidate"),
+      candidateEmail: String(profileBundle.candidate.email ?? auth.email),
+      snapshot,
+      documents: [
+        {
+          versionId: version.versionId,
+          caseId: verificationCaseId,
+          documentType: "cv",
+          storagePath,
+          fileName: file.name,
+          mimeType: file.type,
+          sizeBytes: file.size,
+          buffer: fileBuffer,
+        },
+      ],
+      resumeId: String(resumeRow.id),
+    }).catch((error) => {
+      console.error("[candidate:resumes] background verification failed", {
+        candidateId,
+        error: error instanceof Error ? error.message : String(error),
+      });
+    });
+
     return NextResponse.json(
       {
-        success: false,
-        error: {
-          code: "DOCUMENT_VERIFICATION_REJECTED",
-          message: CANDIDATE_VERIFICATION_REJECTED_MESSAGE,
-        },
-        data: {
-          verificationId,
+        success: true,
+        data: resumeRow,
+        verification: {
+          verificationId: null,
           verificationCaseId,
           versionId: version.versionId,
-          confidenceScore: verificationResult.confidenceScore,
-          fraudRiskScore: verificationResult.fraudRiskScore,
-          decision: verificationResult.decision,
+          confidenceScore: null,
+          fraudRiskScore: null,
+          provider: null,
+          model: null,
+          externalVerificationStatus: "pending",
+          decision: "pending_ai_analysis",
+          message: "Your CV was uploaded successfully and is being reviewed.",
         },
       },
-      { status: 422 }
+      { status: 201 }
     );
-  }
-
-  const { data, error } = await supabase
-    .from("candidate_resumes")
-    .insert({
-      candidate_id: candidateId,
-      storage_path: storagePath,
-      filename: file.name,
-      mime_type: file.type,
-      size_bytes: file.size,
-      is_primary: false,
-    })
-    .select("*")
-    .single();
-
-  if (error) {
-    const isPrimaryConstraintError =
-      error.code === "23505" ||
-      error.message.toLowerCase().includes("candidate_primary_resume_uq");
-
+  } catch (error) {
     return NextResponse.json(
       {
         success: false,
         error: {
-          code: "RESUME_SAVE_FAILED",
-          message: isPrimaryConstraintError
-            ? "Unable to set a new primary CV at this time. Please retry."
-            : "Unable to save the uploaded CV at this time.",
+          code: "RESUME_UPLOAD_FAILED",
+          message: error instanceof Error ? error.message : "Unable to upload CV at this time.",
         },
       },
       { status: 500 }
     );
   }
-
-  if (acceptedAndLowRisk) {
-    await safeSetPrimaryResume({
-      candidateId,
-      resumeId: String(data.id),
-    });
-  }
-
-  if (privateProfile?.candidate_id && acceptedAndLowRisk) {
-    await supabase
-      .from("candidate_private_profiles")
-      .update({ original_cv_path: storagePath })
-      .eq("candidate_id", candidateId);
-  } else if (!privateProfile?.candidate_id) {
-    await supabase.from("candidate_private_profiles").insert({
-      candidate_id: candidateId,
-      full_name: String(profileBundle.candidate.full_name ?? "Candidate"),
-      email: String(profileBundle.candidate.email ?? auth.email),
-      phone: String(profileBundle.candidate.phone_number ?? "+000000000"),
-      address: [profileBundle.candidate.country, profileBundle.candidate.city].filter(Boolean).join(", ") || null,
-      original_cv_path: storagePath,
-      original_documents_paths: [],
-      restricted_to_prime_global: true,
-    });
-  }
-
-  await syncCandidatePortalAiWorkflow({
-    candidateId,
-    authUserId: auth.userId,
-    trigger: "document_upload",
-  }).catch(() => undefined);
-
-  return NextResponse.json(
-    {
-      success: true,
-      data,
-      verification: {
-        verificationId,
-        verificationCaseId,
-        versionId: version.versionId,
-        confidenceScore: verificationResult.confidenceScore,
-        fraudRiskScore: verificationResult.fraudRiskScore,
-        provider: verificationResult.provider,
-        model: verificationResult.model,
-        externalVerificationStatus: verificationResult.externalVerificationStatus,
-        decision: verificationResult.decision,
-        message:
-          verificationResult.decision === "pending_verification"
-            ? CANDIDATE_VERIFICATION_PENDING_MESSAGE
-            : null,
-      },
-    },
-    { status: 201 }
-  );
 }
 
 export async function PATCH(request: Request) {

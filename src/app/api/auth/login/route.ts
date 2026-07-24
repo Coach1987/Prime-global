@@ -96,11 +96,6 @@ export async function POST(request: Request) {
         accountStatus,
         profileCompletion,
       },
-      session: {
-        accessToken: data.session.access_token,
-        refreshToken: data.session.refresh_token,
-        expiresAt: data.session.expires_at,
-      },
     },
   });
 

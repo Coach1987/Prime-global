@@ -68,6 +68,51 @@ export function Footer() {
     href: `/services/${service.slug}`,
   }));
 
+  const isArabic = locale === "ar";
+
+  const legalLinks = [
+    {
+      href: "/legal/terms-of-service",
+      label: isArabic ? "شروط الاستخدام" : "Terms of Service",
+    },
+    {
+      href: "/legal/privacy-policy",
+      label: isArabic ? "سياسة الخصوصية" : "Privacy Policy",
+    },
+    {
+      href: "/legal/cookie-policy",
+      label: isArabic ? "سياسة ملفات تعريف الارتباط" : "Cookie Policy",
+    },
+    {
+      href: "/legal/employer-agreement",
+      label: isArabic ? "اتفاقية صاحب العمل" : "Employer Agreement",
+    },
+    {
+      href: "/legal/candidate-agreement",
+      label: isArabic ? "اتفاقية المرشح" : "Candidate Agreement",
+    },
+    {
+      href: "/legal/ai-transparency-policy",
+      label: isArabic ? "سياسة شفافية الذكاء الاصطناعي" : "AI Transparency Policy",
+    },
+    {
+      href: "/legal/payment-refund-policy",
+      label: isArabic ? "سياسة الدفع والاسترداد" : "Payment And Refund Policy",
+    },
+    {
+      href: "/legal/data-processing-agreement",
+      label: isArabic ? "اتفاقية معالجة البيانات" : "Data Processing Agreement",
+    },
+    {
+      href: "/legal/security-policy",
+      label: isArabic ? "سياسة الأمان" : "Security Policy",
+    },
+    {
+      href: "/legal/trust-charter",
+      label: isArabic ? "ميثاق الثقة" : "Trust Charter",
+    },
+  ];
+
   const year = new Date().getFullYear();
 
   const contactItems = [
@@ -250,20 +295,17 @@ export function Footer() {
         <div className="mt-16 flex flex-col items-center gap-5 border-t border-white/10 pt-8 text-center text-[13px] text-slate-500 sm:flex-row sm:justify-between sm:text-start">
           <p>{t("copyright", { year })}</p>
 
-          <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-3">
-            <Link
-              href="/privacy-policy"
-              className="transition-colors duration-300 hover:text-blue-200"
-            >
-              {t("privacyPolicy")}
-            </Link>
-
-            <Link
-              href="/terms"
-              className="transition-colors duration-300 hover:text-blue-200"
-            >
-              {t("terms")}
-            </Link>
+          <div className="grid w-full max-w-[860px] grid-cols-1 gap-x-6 gap-y-3 text-center sm:grid-cols-2 sm:text-start md:grid-cols-3">
+            {legalLinks.map((item) => (
+              <Link
+                key={item.href}
+                href={item.href}
+                prefetch={false}
+                className="transition-colors duration-300 hover:text-blue-200"
+              >
+                {item.label}
+              </Link>
+            ))}
           </div>
         </div>
       </div>
