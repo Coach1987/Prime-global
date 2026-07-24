@@ -11,13 +11,29 @@ interface CountrySelectorProps {
   onChange: (nextCode: string) => void;
   placeholder?: string;
   disabled?: boolean;
+  id?: string;
+  inputClassName?: string;
+  inputRef?: React.Ref<HTMLInputElement>;
+  ariaInvalid?: boolean;
+  ariaDescribedBy?: string;
 }
 
 function getLabel(option: CountryOption, locale: SupportedLocale) {
   return locale === "ar" ? option.nameAr : option.nameEn;
 }
 
-export function CountrySelector({ locale, value, onChange, placeholder, disabled }: CountrySelectorProps) {
+export function CountrySelector({
+  locale,
+  value,
+  onChange,
+  placeholder,
+  disabled,
+  id,
+  inputClassName,
+  inputRef,
+  ariaInvalid,
+  ariaDescribedBy,
+}: CountrySelectorProps) {
   const allOptions = useMemo(() => getCountryOptions(), []);
   const selected = useMemo(() => allOptions.find((item) => item.code === value.toUpperCase()) ?? null, [allOptions, value]);
   const [open, setOpen] = useState(false);
@@ -90,6 +106,8 @@ export function CountrySelector({ locale, value, onChange, placeholder, disabled
   return (
     <div ref={rootRef} className="relative">
       <PrimeInput
+        id={id}
+        ref={inputRef}
         value={query}
         onFocus={() => {
           setOpen(true);
@@ -103,9 +121,12 @@ export function CountrySelector({ locale, value, onChange, placeholder, disabled
         onKeyDown={handleKeyDown}
         placeholder={placeholder}
         disabled={disabled}
+        className={cn(inputClassName)}
         role="combobox"
         aria-expanded={open}
         aria-autocomplete="list"
+        aria-invalid={ariaInvalid}
+        aria-describedby={ariaDescribedBy}
       />
 
       {open ? (

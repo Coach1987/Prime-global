@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, Ref, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useRouter } from "@/i18n/routing";
 import { useLocale, useTranslations } from "next-intl";
 import { PrimeCard } from "@/components/ui/prime/PrimeCard";
@@ -50,6 +50,49 @@ type CandidateVerificationTimeline = {
   cases: DocumentCaseRow[];
 };
 
+type OnboardingField =
+  | "countryCode"
+  | "phoneE164"
+  | "city"
+  | "desiredPosition"
+  | "experienceLevel"
+  | "shortBio"
+  | "skills"
+  | "languages"
+  | "education"
+  | "cv"
+  | "supportingFiles";
+
+type FieldErrors = Partial<Record<OnboardingField, string>>;
+
+type ApiErrorShape = {
+  ok?: boolean;
+  success?: boolean;
+  code?: string;
+  message?: string;
+  fieldErrors?: Record<string, string>;
+  error?: { code?: string; message?: string };
+  details?: { fieldErrors?: Record<string, string[]> };
+};
+
+const CV_ALLOWED_TYPES = new Set([
+  "application/pdf",
+  "application/msword",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+]);
+
+const SUPPORTING_ALLOWED_TYPES = new Set([
+  "application/pdf",
+  "application/msword",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  "image/png",
+  "image/jpeg",
+  "image/webp",
+]);
+
+const CV_MAX_SIZE_BYTES = 5 * 1024 * 1024;
+const SUPPORTING_MAX_SIZE_BYTES = 10 * 1024 * 1024;
+
 const REQUIREMENT_LABELS: Record<string, { en: string; ar: string }> = {
   cv: { en: "Upload your CV", ar: "حمّل السيرة الذاتية" },
   diploma: { en: "Upload at least one diploma or certificate", ar: "حمّل دبلوما أو شهادة واحدة على الأقل" },
@@ -81,6 +124,50 @@ async function readJsonResponse<T>(response: Response, fallbackMessage: string) 
   }
 }
 
+function isApiSuccess(payload: ApiErrorShape | null | undefined) {
+  return payload?.ok === true || payload?.success === true;
+}
+
+function mapFieldKeyToOnboardingField(inputKey: string): OnboardingField | null {
+  const key = inputKey.trim().toLowerCase();
+
+  if (["country", "countrycode", "nationality"].includes(key)) return "countryCode";
+  if (["phone", "phonenumber", "phonee164"].includes(key)) return "phoneE164";
+  if (["city"].includes(key)) return "city";
+  if (["desiredposition", "professionaltitle", "headline"].includes(key)) return "desiredPosition";
+  if (["experience", "workexperience", "experiences"].includes(key)) return "experienceLevel";
+  if (["shortbio", "bio", "summary", "biography"].includes(key)) return "shortBio";
+  if (["skills"].includes(key)) return "skills";
+  if (["languages"].includes(key)) return "languages";
+  if (["education", "educationentries"].includes(key)) return "education";
+  if (["cv", "resume", "file"].includes(key)) return "cv";
+  if (["supportingfiles", "files", "certificate", "certificates", "diploma"].includes(key)) return "supportingFiles";
+
+  return null;
+}
+
+function extractBackendFieldErrors(payload: ApiErrorShape | null | undefined): FieldErrors {
+  const next: FieldErrors = {};
+  const direct = payload?.fieldErrors ?? {};
+  const detailed = payload?.details?.fieldErrors ?? {};
+
+  for (const [key, value] of Object.entries(direct)) {
+    const mapped = mapFieldKeyToOnboardingField(key);
+    if (mapped && typeof value === "string" && value.trim()) {
+      next[mapped] = value.trim();
+    }
+  }
+
+  for (const [key, values] of Object.entries(detailed)) {
+    const mapped = mapFieldKeyToOnboardingField(key);
+    if (mapped && Array.isArray(values) && values[0]?.trim() && !next[mapped]) {
+      next[mapped] = values[0].trim();
+    }
+  }
+
+  return next;
+}
+
 export default function CandidateOnboardingPage() {
   const locale = useLocale();
   const tDoc = useTranslations("candidateDocumentVerification");
@@ -90,12 +177,16 @@ export default function CandidateOnboardingPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [errorSummary, setErrorSummary] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
+  const fieldRefs = useRef<Partial<Record<OnboardingField, HTMLElement | null>>>({});
   const [verificationNotice, setVerificationNotice] = useState<string | null>(null);
   const [profile, setProfile] = useState<CandidateProfile | null>(null);
   const [completion, setCompletion] = useState<ProfileCompletion | null>(null);
   const [verificationTimeline, setVerificationTimeline] = useState<CandidateVerificationTimeline | null>(null);
   const [cvFile, setCvFile] = useState<File | null>(null);
   const [supportingFiles, setSupportingFiles] = useState<File[]>([]);
+  const [submitProgress, setSubmitProgress] = useState<{ current: number; total: number; label: string } | null>(null);
 
   const [form, setForm] = useState({
     city: "",
@@ -116,14 +207,154 @@ export default function CandidateOnboardingPage() {
     [completion, isArabic]
   );
 
+  const hasExistingCv = useMemo(
+    () => (verificationTimeline?.versions ?? []).some((version) => version.document_type === "cv"),
+    [verificationTimeline]
+  );
+
+  const hasExistingSupportingDocuments = useMemo(
+    () =>
+      (verificationTimeline?.versions ?? []).some((version) =>
+        ["diploma", "certificate", "supporting_document", "additional_evidence"].includes(version.document_type)
+      ),
+    [verificationTimeline]
+  );
+
+  function setFieldRef(field: OnboardingField) {
+    return (element: HTMLElement | null) => {
+      fieldRefs.current[field] = element;
+    };
+  }
+
+  function clearFieldError(field: OnboardingField) {
+    setFieldErrors((prev) => {
+      if (!prev[field]) return prev;
+      const next = { ...prev };
+      delete next[field];
+      return next;
+    });
+  }
+
+  function focusFirstInvalidField(errors: FieldErrors) {
+    const priority: OnboardingField[] = [
+      "countryCode",
+      "phoneE164",
+      "city",
+      "desiredPosition",
+      "experienceLevel",
+      "shortBio",
+      "skills",
+      "languages",
+      "education",
+      "cv",
+      "supportingFiles",
+    ];
+
+    const firstInvalid = priority.find((field) => Boolean(errors[field]));
+    if (!firstInvalid) return;
+
+    const target = fieldRefs.current[firstInvalid];
+    if (!target) return;
+
+    target.scrollIntoView({ behavior: "smooth", block: "center" });
+    requestAnimationFrame(() => {
+      target.focus();
+    });
+  }
+
+  function validateForm(): FieldErrors {
+    const errors: FieldErrors = {};
+    const skills = form.skills
+      .split(",")
+      .map((entry) => entry.trim())
+      .filter(Boolean);
+    const languages = form.languages
+      .split(",")
+      .map((entry) => entry.trim())
+      .filter(Boolean);
+
+    if (!form.countryCode.trim()) {
+      errors.countryCode = isArabic ? "يرجى اختيار الدولة." : "Please select your country.";
+    }
+    if (!form.phoneE164.trim()) {
+      errors.phoneE164 = isArabic ? "يرجى إدخال رقم هاتف دولي صحيح." : "Please enter a valid international phone number.";
+    }
+    if (!form.city.trim()) {
+      errors.city = isArabic ? "يرجى إدخال المدينة." : "City is required.";
+    }
+    if (!form.desiredPosition.trim()) {
+      errors.desiredPosition = isArabic ? "يرجى إدخال المنصب المطلوب." : "Desired position is required.";
+    }
+    if (!form.experienceLevel.trim()) {
+      errors.experienceLevel = isArabic ? "يرجى إدخال الخبرة العملية." : "Work experience is required.";
+    }
+    if (!form.shortBio.trim()) {
+      errors.shortBio = isArabic ? "يرجى إدخال الملخص المهني." : "Professional summary is required.";
+    }
+    if (skills.length === 0) {
+      errors.skills = isArabic ? "يرجى إضافة مهارة واحدة على الأقل." : "Please add at least one skill.";
+    }
+    if (languages.length === 0) {
+      errors.languages = isArabic ? "يرجى إضافة لغة واحدة على الأقل." : "Please add at least one language.";
+    }
+    if (!form.education.trim()) {
+      errors.education = isArabic ? "يرجى إدخال بيانات التعليم." : "Education is required.";
+    }
+
+    if (!cvFile && !hasExistingCv) {
+      errors.cv = isArabic ? "يرجى رفع السيرة الذاتية." : "Please upload your CV.";
+    }
+
+    if (cvFile) {
+      if (!CV_ALLOWED_TYPES.has(cvFile.type)) {
+        errors.cv =
+          isArabic
+            ? "يجب أن يكون ملف السيرة الذاتية بصيغة PDF أو DOC أو DOCX."
+            : "The CV must be a PDF, DOC, or DOCX file.";
+      } else if (cvFile.size > CV_MAX_SIZE_BYTES) {
+        errors.cv = isArabic ? "حجم ملف السيرة الذاتية كبير جدًا." : "The CV file is too large.";
+      } else if (cvFile.size === 0) {
+        errors.cv = isArabic ? "ملف السيرة الذاتية يبدو تالفًا." : "The CV file appears to be corrupted.";
+      }
+    }
+
+    if (supportingFiles.length === 0 && !hasExistingSupportingDocuments) {
+      errors.supportingFiles = isArabic
+        ? "يرجى رفع شهادة أو دبلوم واحد على الأقل."
+        : "Please upload at least one diploma or certificate.";
+    }
+
+    if (supportingFiles.some((file) => !SUPPORTING_ALLOWED_TYPES.has(file.type))) {
+      errors.supportingFiles = isArabic
+        ? "صيغة إحدى الشهادات غير مدعومة."
+        : "This certificate format is not supported.";
+    } else if (supportingFiles.some((file) => file.size > SUPPORTING_MAX_SIZE_BYTES)) {
+      errors.supportingFiles = isArabic
+        ? "حجم إحدى الشهادات كبير جدًا."
+        : "One of the uploaded certificates is too large.";
+    } else if (supportingFiles.some((file) => file.size === 0)) {
+      errors.supportingFiles = isArabic
+        ? "تعذر قراءة إحدى الشهادات. يرجى المحاولة مرة أخرى."
+        : "We couldn't upload this certificate. Please try again.";
+    }
+
+    return errors;
+  }
+
+  function getInputErrorClass(field: OnboardingField) {
+    return fieldErrors[field]
+      ? "border-red-400/80 focus:border-red-300/80 focus:shadow-[0_0_0_1px_rgba(252,165,165,0.6),0_0_18px_rgba(248,113,113,0.35)]"
+      : undefined;
+  }
+
   async function loadCompletion() {
     const response = await fetch("/api/candidates/profile-completion", { credentials: "include" });
     const { payload } = await readJsonResponse<{ success?: boolean; data?: ProfileCompletion }>(
       response,
       isArabic ? "تعذر تحميل نسبة اكتمال الملف." : "Unable to load profile completion."
     );
-    if (response.ok && payload?.success) {
-      setCompletion(payload.data as ProfileCompletion);
+    if (response.ok && isApiSuccess(payload as ApiErrorShape)) {
+      setCompletion((payload?.data as ProfileCompletion | undefined) ?? null);
     }
   }
 
@@ -133,7 +364,7 @@ export default function CandidateOnboardingPage() {
       response,
       isArabic ? "تعذر تحميل حالة الوثائق." : "Unable to load document verification status."
     );
-    if (response.ok && payload?.success) {
+    if (response.ok && isApiSuccess(payload as ApiErrorShape)) {
       setVerificationTimeline({
         versions: Array.isArray(payload?.data?.versions) ? payload.data.versions : [],
         cases: Array.isArray(payload?.data?.cases) ? payload.data.cases : [],
@@ -154,7 +385,7 @@ export default function CandidateOnboardingPage() {
           isArabic ? "تعذر التحقق من الجلسة." : "Unable to verify your session."
         );
 
-        if (!authResponse.ok || !authPayload.payload?.success || authPayload.payload?.data?.role !== "candidate") {
+        if (!authResponse.ok || !isApiSuccess(authPayload.payload as ApiErrorShape) || authPayload.payload?.data?.role !== "candidate") {
           setError(isArabic ? "هذه الصفحة مخصصة للمرشحين المسجلين فقط." : "This page is only for authenticated candidates.");
           return;
         }
@@ -185,12 +416,12 @@ export default function CandidateOnboardingPage() {
           ),
         ]);
 
-        if (!profileResponse.ok || !profilePayload.payload?.success) {
+        if (!profileResponse.ok || !isApiSuccess(profilePayload.payload as ApiErrorShape)) {
           setError(profilePayload.errorMessage ?? (isArabic ? "تعذر تحميل الملف الشخصي." : "Unable to load profile."));
           return;
         }
 
-        const nextProfile = (profilePayload.payload.data ?? null) as CandidateProfile | null;
+        const nextProfile = ((profilePayload.payload as { data?: CandidateProfile | null } | null)?.data ?? null) as CandidateProfile | null;
         const professional = (professionalPayload.payload?.data ?? {}) as Record<string, unknown>;
         setVerificationTimeline({
           versions: Array.isArray(verificationPayload.payload?.data?.versions) ? verificationPayload.payload.data.versions : [],
@@ -221,7 +452,7 @@ export default function CandidateOnboardingPage() {
     void bootstrap();
   }, [isArabic]);
 
-  async function uploadDocuments() {
+  async function uploadDocuments(onStepComplete: (label: string) => void) {
     const notices: string[] = [];
 
     if (cvFile) {
@@ -233,13 +464,32 @@ export default function CandidateOnboardingPage() {
         headers: { "x-csrf-token": csrfToken },
         body: cvData,
       });
-      const cvPayload = await readJsonResponse<{ success?: boolean; verification?: { message?: string }; error?: { message?: string } }>(
+      const cvPayload = await readJsonResponse<ApiErrorShape & { verification?: { message?: string } }>(
         cvResponse,
-        isArabic ? "لم نتمكن من معالجة ملف السيرة الذاتية الآن." : "We couldn't process your CV upload right now."
+        isArabic
+          ? "لم نتمكن من حفظ طلبك الآن. يرجى المحاولة مرة أخرى."
+          : "We couldn't save your application right now. Please try again."
       );
-      if (!cvResponse.ok || !cvPayload.payload?.success) {
-        throw new Error(cvPayload.errorMessage ?? (isArabic ? "تعذر تحميل السيرة الذاتية." : "We couldn't process your CV upload."));
+      if (!cvResponse.ok || !isApiSuccess(cvPayload.payload)) {
+        const nextFieldErrors = extractBackendFieldErrors(cvPayload.payload);
+        const backendMessage =
+          cvPayload.payload?.message ??
+          cvPayload.payload?.error?.message ??
+          cvPayload.errorMessage ??
+          (isArabic ? "تعذر تحميل السيرة الذاتية." : "We couldn't process your CV upload right now.");
+
+        throw {
+          message: backendMessage,
+          fieldErrors: {
+            ...nextFieldErrors,
+            cv:
+              nextFieldErrors.cv ??
+              (isArabic ? "تعذر تحميل السيرة الذاتية. يرجى المحاولة مرة أخرى." : "The CV could not be uploaded."),
+          } as FieldErrors,
+        };
       }
+
+      onStepComplete(isArabic ? "تم رفع السيرة الذاتية." : "CV uploaded.");
 
       if (typeof cvPayload.payload?.verification?.message === "string" && cvPayload.payload.verification.message.trim()) {
         notices.push(cvPayload.payload.verification.message.trim());
@@ -255,13 +505,34 @@ export default function CandidateOnboardingPage() {
         headers: { "x-csrf-token": csrfToken },
         body: docsData,
       });
-      const docsPayload = await readJsonResponse<{ success?: boolean; verification?: { message?: string }; error?: { message?: string } }>(
+      const docsPayload = await readJsonResponse<ApiErrorShape & { verification?: { message?: string } }>(
         docsResponse,
-        isArabic ? "لم نتمكن من معالجة المستندات الآن." : "We couldn't process your documents right now."
+        isArabic
+          ? "لم نتمكن من حفظ طلبك الآن. يرجى المحاولة مرة أخرى."
+          : "We couldn't save your application right now. Please try again."
       );
-      if (!docsResponse.ok || !docsPayload.payload?.success) {
-        throw new Error(docsPayload.errorMessage ?? (isArabic ? "تعذر تحميل المستندات." : "We couldn't process your documents."));
+      if (!docsResponse.ok || !isApiSuccess(docsPayload.payload)) {
+        const nextFieldErrors = extractBackendFieldErrors(docsPayload.payload);
+        const backendMessage =
+          docsPayload.payload?.message ??
+          docsPayload.payload?.error?.message ??
+          docsPayload.errorMessage ??
+          (isArabic ? "تعذر تحميل المستندات." : "We couldn't process your documents right now.");
+
+        throw {
+          message: backendMessage,
+          fieldErrors: {
+            ...nextFieldErrors,
+            supportingFiles:
+              nextFieldErrors.supportingFiles ??
+              (isArabic
+                ? "تعذر رفع إحدى الشهادات. يرجى المحاولة مرة أخرى."
+                : "We couldn't upload this certificate. Please try again."),
+          } as FieldErrors,
+        };
       }
+
+      onStepComplete(isArabic ? "تم رفع الشهادات." : "Certificates uploaded.");
 
       if (typeof docsPayload.payload?.verification?.message === "string" && docsPayload.payload.verification.message.trim()) {
         notices.push(docsPayload.payload.verification.message.trim());
@@ -273,11 +544,24 @@ export default function CandidateOnboardingPage() {
 
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!profile) return;
+    if (!profile || saving) return;
 
     setSaving(true);
     setError(null);
+    setErrorSummary(null);
+    setFieldErrors({});
     setVerificationNotice(null);
+
+    const localErrors = validateForm();
+    if (Object.keys(localErrors).length > 0) {
+      setFieldErrors(localErrors);
+      setErrorSummary(
+        isArabic ? "يرجى تصحيح الحقول المميزة أدناه." : "Please correct the highlighted fields below."
+      );
+      setSaving(false);
+      requestAnimationFrame(() => focusFirstInvalidField(localErrors));
+      return;
+    }
 
     const skills = form.skills
       .split(",")
@@ -289,20 +573,26 @@ export default function CandidateOnboardingPage() {
       .map((entry) => entry.trim())
       .filter(Boolean);
 
-    if (!form.countryCode) {
-      setError(isArabic ? "يرجى اختيار الدولة." : "Please select your country.");
-      setSaving(false);
-      return;
-    }
-
-    if (!form.phoneE164) {
-      setError(isArabic ? "يرجى إدخال رقم هاتف دولي صحيح." : "Please enter a valid international phone number.");
-      setSaving(false);
-      return;
-    }
-
     try {
-      const notices = await uploadDocuments();
+      const totalSteps = 3 + (cvFile ? 1 : 0) + (supportingFiles.length > 0 ? 1 : 0);
+      setSubmitProgress({
+        current: 0,
+        total: Math.max(totalSteps, 1),
+        label: isArabic ? "جارٍ بدء الحفظ..." : "Starting save...",
+      });
+
+      const advanceProgress = (label: string) => {
+        setSubmitProgress((prev) => {
+          if (!prev) return prev;
+          return {
+            current: Math.min(prev.current + 1, prev.total),
+            total: prev.total,
+            label,
+          };
+        });
+      };
+
+      const notices = await uploadDocuments(advanceProgress);
       if (notices.length > 0) {
         setVerificationNotice(Array.from(new Set(notices)).join(" "));
       }
@@ -325,14 +615,31 @@ export default function CandidateOnboardingPage() {
         }),
       });
 
-      const profilePayload = await readJsonResponse<{ success?: boolean; error?: { message?: string } }>(
+      const profilePayload = await readJsonResponse<ApiErrorShape>(
         profileResponse,
-        isArabic ? "تعذر حفظ الملف الأساسي." : "Unable to save core profile."
+        isArabic
+          ? "لم نتمكن من حفظ طلبك الآن. يرجى المحاولة مرة أخرى."
+          : "We couldn't save your application right now. Please try again."
       );
-      if (!profileResponse.ok || !profilePayload.payload?.success) {
-        setError(profilePayload.errorMessage ?? (isArabic ? "تعذر حفظ الملف الأساسي." : "Unable to save core profile."));
+      if (!profileResponse.ok || !isApiSuccess(profilePayload.payload)) {
+        const nextFieldErrors = extractBackendFieldErrors(profilePayload.payload);
+        if (Object.keys(nextFieldErrors).length > 0) {
+          setFieldErrors(nextFieldErrors);
+          setErrorSummary(
+            isArabic ? "يرجى تصحيح الحقول المميزة أدناه." : "Please correct the highlighted fields below."
+          );
+          requestAnimationFrame(() => focusFirstInvalidField(nextFieldErrors));
+        } else {
+          setError(
+            profilePayload.payload?.message ??
+              profilePayload.payload?.error?.message ??
+              profilePayload.errorMessage ??
+              (isArabic ? "تعذر حفظ الملف الأساسي." : "Unable to save core profile.")
+          );
+        }
         return;
       }
+      advanceProgress(isArabic ? "تم حفظ الملف الأساسي." : "Core profile saved.");
 
       const professionalResponse = await fetch("/api/candidates/professional-profile", {
         method: "PUT",
@@ -357,14 +664,31 @@ export default function CandidateOnboardingPage() {
         }),
       });
 
-      const professionalPayload = await readJsonResponse<{ success?: boolean; error?: { message?: string } }>(
+      const professionalPayload = await readJsonResponse<ApiErrorShape>(
         professionalResponse,
-        isArabic ? "تعذر حفظ الملف المهني." : "Unable to save professional profile."
+        isArabic
+          ? "لم نتمكن من حفظ طلبك الآن. يرجى المحاولة مرة أخرى."
+          : "We couldn't save your application right now. Please try again."
       );
-      if (!professionalResponse.ok || !professionalPayload.payload?.success) {
-        setError(professionalPayload.errorMessage ?? (isArabic ? "تعذر حفظ الملف المهني." : "Unable to save professional profile."));
+      if (!professionalResponse.ok || !isApiSuccess(professionalPayload.payload)) {
+        const nextFieldErrors = extractBackendFieldErrors(professionalPayload.payload);
+        if (Object.keys(nextFieldErrors).length > 0) {
+          setFieldErrors(nextFieldErrors);
+          setErrorSummary(
+            isArabic ? "يرجى تصحيح الحقول المميزة أدناه." : "Please correct the highlighted fields below."
+          );
+          requestAnimationFrame(() => focusFirstInvalidField(nextFieldErrors));
+        } else {
+          setError(
+            professionalPayload.payload?.message ??
+              professionalPayload.payload?.error?.message ??
+              professionalPayload.errorMessage ??
+              (isArabic ? "تعذر حفظ الملف المهني." : "Unable to save professional profile.")
+          );
+        }
         return;
       }
+      advanceProgress(isArabic ? "تم حفظ الملف المهني." : "Professional profile saved.");
 
       const alertsResponse = await fetch("/api/candidates/job-alert-preferences", {
         method: "PUT",
@@ -390,14 +714,31 @@ export default function CandidateOnboardingPage() {
         }),
       });
 
-      const alertsPayload = await readJsonResponse<{ success?: boolean; error?: { message?: string } }>(
+      const alertsPayload = await readJsonResponse<ApiErrorShape>(
         alertsResponse,
-        isArabic ? "تعذر حفظ إعدادات التنبيه." : "Unable to save job alert settings."
+        isArabic
+          ? "لم نتمكن من حفظ طلبك الآن. يرجى المحاولة مرة أخرى."
+          : "We couldn't save your application right now. Please try again."
       );
-      if (!alertsResponse.ok || !alertsPayload.payload?.success) {
-        setError(alertsPayload.errorMessage ?? (isArabic ? "تعذر حفظ إعدادات التنبيه." : "Unable to save job alert settings."));
+      if (!alertsResponse.ok || !isApiSuccess(alertsPayload.payload)) {
+        const nextFieldErrors = extractBackendFieldErrors(alertsPayload.payload);
+        if (Object.keys(nextFieldErrors).length > 0) {
+          setFieldErrors(nextFieldErrors);
+          setErrorSummary(
+            isArabic ? "يرجى تصحيح الحقول المميزة أدناه." : "Please correct the highlighted fields below."
+          );
+          requestAnimationFrame(() => focusFirstInvalidField(nextFieldErrors));
+        } else {
+          setError(
+            alertsPayload.payload?.message ??
+              alertsPayload.payload?.error?.message ??
+              alertsPayload.errorMessage ??
+              (isArabic ? "تعذر حفظ إعدادات التنبيه." : "Unable to save job alert settings.")
+          );
+        }
         return;
       }
+      advanceProgress(isArabic ? "تم حفظ تنبيهات الوظائف." : "Job alerts saved.");
 
       await loadCompletion();
       await loadVerificationTimeline();
@@ -407,18 +748,34 @@ export default function CandidateOnboardingPage() {
         isArabic ? "تعذر تحميل نسبة الاكتمال." : "Unable to load completion data."
       );
       const nextCompletion = completionPayload.payload?.data as ProfileCompletion | undefined;
-      if (completionResponse.ok && nextCompletion?.completed) {
+      if (completionResponse.ok && isApiSuccess(completionPayload.payload as ApiErrorShape) && nextCompletion?.completed) {
         router.push("/candidate/dashboard");
         router.refresh();
       }
-    } catch {
-      setError(
-        isArabic
-          ? "لم نتمكن من إكمال رفع المستندات الآن. يرجى المحاولة مرة أخرى."
-          : "We couldn't complete your upload right now. Please try again."
-      );
+    } catch (caught) {
+      const fallbackMessage = isArabic
+        ? "لم نتمكن من حفظ طلبك الآن. يرجى المحاولة مرة أخرى."
+        : "We couldn't save your application right now. Please try again.";
+
+      const message =
+        typeof caught === "object" && caught && "message" in caught && typeof caught.message === "string"
+          ? caught.message
+          : fallbackMessage;
+      const nextFieldErrors =
+        typeof caught === "object" && caught && "fieldErrors" in caught
+          ? ((caught.fieldErrors as FieldErrors | undefined) ?? {})
+          : {};
+
+      if (Object.keys(nextFieldErrors).length > 0) {
+        setFieldErrors(nextFieldErrors);
+        setErrorSummary(isArabic ? "يرجى تصحيح الحقول المميزة أدناه." : "Please correct the highlighted fields below.");
+        requestAnimationFrame(() => focusFirstInvalidField(nextFieldErrors));
+      } else {
+        setError(message || fallbackMessage);
+      }
     } finally {
       setSaving(false);
+      setSubmitProgress(null);
     }
   }
 
@@ -522,84 +879,293 @@ export default function CandidateOnboardingPage() {
           )}
         </div>
 
-        <form className="mt-8 space-y-5" onSubmit={onSubmit}>
+        <form className="mt-8 space-y-5" onSubmit={onSubmit} noValidate>
+          {errorSummary ? (
+            <div
+              role="alert"
+              className="rounded-2xl border border-red-300/50 bg-red-500/10 px-4 py-3 text-sm text-red-100"
+            >
+              {errorSummary}
+            </div>
+          ) : null}
+
+          {submitProgress ? (
+            <div className="rounded-2xl border border-blue-300/30 bg-blue-500/10 px-4 py-3 text-sm text-blue-100">
+              <p>{submitProgress.label}</p>
+              <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-blue-950/60">
+                <div
+                  className="h-full bg-blue-300 transition-all duration-300"
+                  style={{ width: `${Math.round((submitProgress.current / submitProgress.total) * 100)}%` }}
+                />
+              </div>
+            </div>
+          ) : null}
+
           <div className="grid gap-5 sm:grid-cols-2">
             <PrimeLabel>
               <span className="mb-2 block">{isArabic ? "الدولة" : "Country"}</span>
               <CountrySelector
+                id="onboarding-country"
                 locale={isArabic ? "ar" : "en"}
                 value={form.countryCode}
-                onChange={(countryCode) => setForm((prev) => ({ ...prev, countryCode }))}
+                onChange={(countryCode) => {
+                  setForm((prev) => ({ ...prev, countryCode }));
+                  clearFieldError("countryCode");
+                }}
                 placeholder={isArabic ? "ابحث عن الدولة" : "Search country"}
+                inputRef={setFieldRef("countryCode") as Ref<HTMLInputElement>}
+                inputClassName={getInputErrorClass("countryCode")}
+                ariaInvalid={Boolean(fieldErrors.countryCode)}
+                ariaDescribedBy={fieldErrors.countryCode ? "onboarding-country-error" : undefined}
               />
+              {fieldErrors.countryCode ? (
+                <p id="onboarding-country-error" className="mt-2 text-xs text-red-300">
+                  {fieldErrors.countryCode}
+                </p>
+              ) : null}
             </PrimeLabel>
 
             <PrimeLabel>
               <span className="mb-2 block">{isArabic ? "رقم الهاتف الدولي" : "International phone number"}</span>
               <InternationalPhoneInput
+                selectId="onboarding-phone-country"
+                inputId="onboarding-phone"
                 locale={isArabic ? "ar" : "en"}
                 countryCode={form.countryCode || "SA"}
                 value={form.phoneRaw}
-                onCountryCodeChange={(nextCode) => setForm((prev) => ({ ...prev, countryCode: nextCode }))}
-                onChange={(phoneRaw, phoneE164) => setForm((prev) => ({ ...prev, phoneRaw, phoneE164 }))}
+                onCountryCodeChange={(nextCode) => {
+                  setForm((prev) => ({ ...prev, countryCode: nextCode }));
+                  clearFieldError("countryCode");
+                }}
+                onChange={(phoneRaw, phoneE164) => {
+                  setForm((prev) => ({ ...prev, phoneRaw, phoneE164 }));
+                  clearFieldError("phoneE164");
+                }}
                 placeholder={isArabic ? "مثال: +966 5XXXXXXXX" : "Example: +966 5XXXXXXXX"}
+                inputRef={setFieldRef("phoneE164") as Ref<HTMLInputElement>}
+                inputClassName={getInputErrorClass("phoneE164")}
+                selectClassName={getInputErrorClass("phoneE164")}
+                ariaInvalid={Boolean(fieldErrors.phoneE164)}
+                ariaDescribedBy={fieldErrors.phoneE164 ? "onboarding-phone-error" : undefined}
               />
+              {fieldErrors.phoneE164 ? (
+                <p id="onboarding-phone-error" className="mt-2 text-xs text-red-300">
+                  {fieldErrors.phoneE164}
+                </p>
+              ) : null}
             </PrimeLabel>
           </div>
 
           <div className="grid gap-5 sm:grid-cols-2">
             <PrimeLabel>
               <span className="mb-2 block">{isArabic ? "المدينة" : "City"}</span>
-              <PrimeInput value={form.city} onChange={(event) => setForm((prev) => ({ ...prev, city: event.target.value }))} />
+              <PrimeInput
+                id="onboarding-city"
+                ref={setFieldRef("city") as Ref<HTMLInputElement>}
+                className={getInputErrorClass("city")}
+                aria-invalid={Boolean(fieldErrors.city)}
+                aria-describedby={fieldErrors.city ? "onboarding-city-error" : undefined}
+                value={form.city}
+                onChange={(event) => {
+                  setForm((prev) => ({ ...prev, city: event.target.value }));
+                  clearFieldError("city");
+                }}
+              />
+              {fieldErrors.city ? (
+                <p id="onboarding-city-error" className="mt-2 text-xs text-red-300">
+                  {fieldErrors.city}
+                </p>
+              ) : null}
             </PrimeLabel>
 
             <PrimeLabel>
               <span className="mb-2 block">{isArabic ? "المنصب المطلوب" : "Desired position"}</span>
-              <PrimeInput required value={form.desiredPosition} onChange={(event) => setForm((prev) => ({ ...prev, desiredPosition: event.target.value }))} />
+              <PrimeInput
+                id="onboarding-desired-position"
+                ref={setFieldRef("desiredPosition") as Ref<HTMLInputElement>}
+                required
+                className={getInputErrorClass("desiredPosition")}
+                aria-invalid={Boolean(fieldErrors.desiredPosition)}
+                aria-describedby={fieldErrors.desiredPosition ? "onboarding-desired-position-error" : undefined}
+                value={form.desiredPosition}
+                onChange={(event) => {
+                  setForm((prev) => ({ ...prev, desiredPosition: event.target.value }));
+                  clearFieldError("desiredPosition");
+                }}
+              />
+              {fieldErrors.desiredPosition ? (
+                <p id="onboarding-desired-position-error" className="mt-2 text-xs text-red-300">
+                  {fieldErrors.desiredPosition}
+                </p>
+              ) : null}
             </PrimeLabel>
           </div>
 
           <PrimeLabel>
             <span className="mb-2 block">{isArabic ? "الخبرة العملية" : "Work experience"}</span>
-            <PrimeInput value={form.experienceLevel} onChange={(event) => setForm((prev) => ({ ...prev, experienceLevel: event.target.value }))} />
+            <PrimeInput
+              id="onboarding-experience"
+              ref={setFieldRef("experienceLevel") as Ref<HTMLInputElement>}
+              className={getInputErrorClass("experienceLevel")}
+              aria-invalid={Boolean(fieldErrors.experienceLevel)}
+              aria-describedby={fieldErrors.experienceLevel ? "onboarding-experience-error" : undefined}
+              value={form.experienceLevel}
+              onChange={(event) => {
+                setForm((prev) => ({ ...prev, experienceLevel: event.target.value }));
+                clearFieldError("experienceLevel");
+              }}
+            />
+            {fieldErrors.experienceLevel ? (
+              <p id="onboarding-experience-error" className="mt-2 text-xs text-red-300">
+                {fieldErrors.experienceLevel}
+              </p>
+            ) : null}
           </PrimeLabel>
 
           <PrimeLabel>
             <span className="mb-2 block">{isArabic ? "الملخص المهني" : "Professional summary"}</span>
-            <PrimeTextarea rows={5} value={form.shortBio} onChange={(event) => setForm((prev) => ({ ...prev, shortBio: event.target.value }))} />
+            <PrimeTextarea
+              id="onboarding-summary"
+              ref={setFieldRef("shortBio") as Ref<HTMLTextAreaElement>}
+              rows={5}
+              className={getInputErrorClass("shortBio")}
+              aria-invalid={Boolean(fieldErrors.shortBio)}
+              aria-describedby={fieldErrors.shortBio ? "onboarding-summary-error" : undefined}
+              value={form.shortBio}
+              onChange={(event) => {
+                setForm((prev) => ({ ...prev, shortBio: event.target.value }));
+                clearFieldError("shortBio");
+              }}
+            />
+            {fieldErrors.shortBio ? (
+              <p id="onboarding-summary-error" className="mt-2 text-xs text-red-300">
+                {fieldErrors.shortBio}
+              </p>
+            ) : null}
           </PrimeLabel>
 
           <div className="grid gap-5 sm:grid-cols-2">
             <PrimeLabel>
               <span className="mb-2 block">{isArabic ? "المهارات" : "Skills"}</span>
-              <PrimeInput value={form.skills} onChange={(event) => setForm((prev) => ({ ...prev, skills: event.target.value }))} placeholder={isArabic ? "مفصولة بفواصل" : "Comma separated"} />
+              <PrimeInput
+                id="onboarding-skills"
+                ref={setFieldRef("skills") as Ref<HTMLInputElement>}
+                className={getInputErrorClass("skills")}
+                aria-invalid={Boolean(fieldErrors.skills)}
+                aria-describedby={fieldErrors.skills ? "onboarding-skills-error" : undefined}
+                value={form.skills}
+                onChange={(event) => {
+                  setForm((prev) => ({ ...prev, skills: event.target.value }));
+                  clearFieldError("skills");
+                }}
+                placeholder={isArabic ? "مفصولة بفواصل" : "Comma separated"}
+              />
+              {fieldErrors.skills ? (
+                <p id="onboarding-skills-error" className="mt-2 text-xs text-red-300">
+                  {fieldErrors.skills}
+                </p>
+              ) : null}
             </PrimeLabel>
 
             <PrimeLabel>
               <span className="mb-2 block">{isArabic ? "اللغات" : "Languages"}</span>
-              <PrimeInput value={form.languages} onChange={(event) => setForm((prev) => ({ ...prev, languages: event.target.value }))} placeholder={isArabic ? "مثال: العربية, الإنجليزية" : "Example: Arabic, English"} />
+              <PrimeInput
+                id="onboarding-languages"
+                ref={setFieldRef("languages") as Ref<HTMLInputElement>}
+                className={getInputErrorClass("languages")}
+                aria-invalid={Boolean(fieldErrors.languages)}
+                aria-describedby={fieldErrors.languages ? "onboarding-languages-error" : undefined}
+                value={form.languages}
+                onChange={(event) => {
+                  setForm((prev) => ({ ...prev, languages: event.target.value }));
+                  clearFieldError("languages");
+                }}
+                placeholder={isArabic ? "مثال: العربية, الإنجليزية" : "Example: Arabic, English"}
+              />
+              {fieldErrors.languages ? (
+                <p id="onboarding-languages-error" className="mt-2 text-xs text-red-300">
+                  {fieldErrors.languages}
+                </p>
+              ) : null}
             </PrimeLabel>
           </div>
 
           <PrimeLabel>
             <span className="mb-2 block">{isArabic ? "بيانات التعليم" : "Education"}</span>
-            <PrimeInput value={form.education} onChange={(event) => setForm((prev) => ({ ...prev, education: event.target.value }))} placeholder={isArabic ? "مثال: بكالوريوس 2020" : "Example: Bachelor 2020"} />
+            <PrimeInput
+              id="onboarding-education"
+              ref={setFieldRef("education") as Ref<HTMLInputElement>}
+              className={getInputErrorClass("education")}
+              aria-invalid={Boolean(fieldErrors.education)}
+              aria-describedby={fieldErrors.education ? "onboarding-education-error" : undefined}
+              value={form.education}
+              onChange={(event) => {
+                setForm((prev) => ({ ...prev, education: event.target.value }));
+                clearFieldError("education");
+              }}
+              placeholder={isArabic ? "مثال: بكالوريوس 2020" : "Example: Bachelor 2020"}
+            />
+            {fieldErrors.education ? (
+              <p id="onboarding-education-error" className="mt-2 text-xs text-red-300">
+                {fieldErrors.education}
+              </p>
+            ) : null}
           </PrimeLabel>
 
           <div className="grid gap-5 sm:grid-cols-2">
             <PrimeLabel>
               <span className="mb-2 block">{isArabic ? "تحميل السيرة الذاتية" : "Upload CV"}</span>
-              <PrimeInput type="file" accept=".pdf,.doc,.docx" onChange={(event) => setCvFile(event.target.files?.[0] ?? null)} />
+              <PrimeInput
+                id="onboarding-cv"
+                ref={setFieldRef("cv") as Ref<HTMLInputElement>}
+                type="file"
+                className={getInputErrorClass("cv")}
+                aria-invalid={Boolean(fieldErrors.cv)}
+                aria-describedby={fieldErrors.cv ? "onboarding-cv-error" : undefined}
+                accept=".pdf,.doc,.docx"
+                onChange={(event) => {
+                  setCvFile(event.target.files?.[0] ?? null);
+                  clearFieldError("cv");
+                }}
+              />
+              {cvFile ? <p className="mt-2 text-xs text-text-secondary">{cvFile.name}</p> : null}
+              {fieldErrors.cv ? (
+                <p id="onboarding-cv-error" className="mt-2 text-xs text-red-300">
+                  {fieldErrors.cv}
+                </p>
+              ) : null}
             </PrimeLabel>
 
             <PrimeLabel>
               <span className="mb-2 block">{isArabic ? "تحميل الشهادات/الدبلومات" : "Upload diplomas/certificates"}</span>
               <PrimeInput
+                id="onboarding-certificates"
+                ref={setFieldRef("supportingFiles") as Ref<HTMLInputElement>}
                 type="file"
                 multiple
+                className={getInputErrorClass("supportingFiles")}
+                aria-invalid={Boolean(fieldErrors.supportingFiles)}
+                aria-describedby={fieldErrors.supportingFiles ? "onboarding-certificates-error" : undefined}
                 accept=".pdf,.doc,.docx,.png,.jpg,.jpeg,.webp"
-                onChange={(event) => setSupportingFiles(Array.from(event.target.files ?? []))}
+                onChange={(event) => {
+                  setSupportingFiles(Array.from(event.target.files ?? []));
+                  clearFieldError("supportingFiles");
+                }}
               />
+              {supportingFiles.length > 0 ? (
+                <p className="mt-2 text-xs text-text-secondary">
+                  {supportingFiles.length === 1
+                    ? supportingFiles[0].name
+                    : isArabic
+                      ? `${supportingFiles.length} ملفات محددة`
+                      : `${supportingFiles.length} files selected`}
+                </p>
+              ) : null}
+              {fieldErrors.supportingFiles ? (
+                <p id="onboarding-certificates-error" className="mt-2 text-xs text-red-300">
+                  {fieldErrors.supportingFiles}
+                </p>
+              ) : null}
             </PrimeLabel>
           </div>
 

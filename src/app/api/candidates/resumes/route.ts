@@ -29,6 +29,25 @@ const ALLOWED_MIME_TYPES = new Set([
 
 const MAX_FILE_SIZE_BYTES = 5 * 1024 * 1024;
 
+function onboardingError(
+  status: number,
+  code: string,
+  message: string,
+  fieldErrors?: Record<string, string>
+) {
+  return NextResponse.json(
+    {
+      ok: false,
+      success: false,
+      code,
+      message,
+      fieldErrors,
+      error: { code, message },
+    },
+    { status }
+  );
+}
+
 function sanitizeFileName(fileName: string) {
   return fileName
     .normalize("NFKD")
@@ -84,10 +103,7 @@ export async function GET(request: Request) {
 
   const profileBundle = await getCandidateProfileBundle(auth.userId);
   if (!profileBundle?.candidate?.id) {
-    return NextResponse.json(
-      { success: false, error: { code: "CANDIDATE_NOT_FOUND", message: "Candidate profile missing" } },
-      { status: 404 }
-    );
+    return onboardingError(404, "CANDIDATE_NOT_FOUND", "Candidate profile missing");
   }
   const candidateId = String(profileBundle.candidate.id);
 
@@ -99,10 +115,7 @@ export async function GET(request: Request) {
     .order("created_at", { ascending: false });
 
   if (error) {
-    return NextResponse.json(
-      { success: false, error: { code: "RESUMES_FETCH_FAILED", message: error.message } },
-      { status: 500 }
-    );
+    return onboardingError(500, "RESUMES_FETCH_FAILED", "Unable to load CV records right now.");
   }
 
   const { data: versions } = await supabase
@@ -142,34 +155,34 @@ export async function POST(request: Request) {
 
     const profileBundle = await getCandidateProfileBundle(auth.userId);
     if (!profileBundle?.candidate?.id) {
-      return NextResponse.json(
-        { success: false, error: { code: "CANDIDATE_NOT_FOUND", message: "Candidate profile missing" } },
-        { status: 404 }
-      );
+      return onboardingError(404, "CANDIDATE_NOT_FOUND", "Candidate profile missing");
     }
     const candidateId = String(profileBundle.candidate.id);
 
     const formData = await request.formData();
     const file = formData.get("file");
     if (!(file instanceof File)) {
-      return NextResponse.json(
-        { success: false, error: { code: "FILE_REQUIRED", message: "Resume file is required" } },
-        { status: 400 }
-      );
+      return onboardingError(400, "VALIDATION_ERROR", "Please correct the highlighted fields.", {
+        cv: "Please upload your CV.",
+      });
     }
 
     if (!ALLOWED_MIME_TYPES.has(file.type)) {
-      return NextResponse.json(
-        { success: false, error: { code: "INVALID_FILE_TYPE", message: "Unsupported resume format" } },
-        { status: 400 }
-      );
+      return onboardingError(400, "VALIDATION_ERROR", "Please correct the highlighted fields.", {
+        cv: "The CV must be a PDF, DOC, or DOCX file.",
+      });
     }
 
     if (file.size > MAX_FILE_SIZE_BYTES) {
-      return NextResponse.json(
-        { success: false, error: { code: "FILE_TOO_LARGE", message: "Resume exceeds 5 MB" } },
-        { status: 400 }
-      );
+      return onboardingError(400, "VALIDATION_ERROR", "Please correct the highlighted fields.", {
+        cv: "The CV file is too large.",
+      });
+    }
+
+    if (file.size === 0) {
+      return onboardingError(400, "VALIDATION_ERROR", "Please correct the highlighted fields.", {
+        cv: "The CV file appears to be corrupted.",
+      });
     }
 
     const extension = inferExtension(file.name, file.type);
@@ -186,10 +199,9 @@ export async function POST(request: Request) {
       });
 
     if (uploadError) {
-      return NextResponse.json(
-        { success: false, error: { code: "UPLOAD_FAILED", message: uploadError.message } },
-        { status: 500 }
-      );
+      return onboardingError(500, "UPLOAD_FAILED", "The CV could not be uploaded.", {
+        cv: "The CV could not be uploaded.",
+      });
     }
 
     const { data: existingPrivateProfile } = await supabase
@@ -235,12 +247,20 @@ export async function POST(request: Request) {
 
       return NextResponse.json(
         {
+          ok: false,
           success: false,
+          code: "RESUME_SAVE_FAILED",
+          message: isPrimaryConstraintError
+            ? "Unable to save your CV right now. Please try again."
+            : "Unable to save the uploaded CV at this time.",
           error: {
             code: "RESUME_SAVE_FAILED",
             message: isPrimaryConstraintError
               ? "Unable to save your CV right now. Please try again."
               : "Unable to save the uploaded CV at this time.",
+          },
+          fieldErrors: {
+            cv: "The CV could not be uploaded.",
           },
         },
         { status: 500 }
@@ -270,16 +290,9 @@ export async function POST(request: Request) {
       .single();
 
     if (!privateProfile?.candidate_id) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: {
-            code: "PRIVATE_PROFILE_SAVE_FAILED",
-            message: "Unable to store the uploaded CV metadata.",
-          },
-        },
-        { status: 500 }
-      );
+      return onboardingError(500, "PRIVATE_PROFILE_SAVE_FAILED", "Unable to store the uploaded CV metadata.", {
+        cv: "The CV could not be uploaded.",
+      });
     }
 
     const version = await insertCandidateDocumentVersion({
@@ -350,6 +363,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json(
       {
+        ok: true,
         success: true,
         data: resumeRow,
         verification: {
@@ -368,16 +382,12 @@ export async function POST(request: Request) {
       { status: 201 }
     );
   } catch (error) {
-    return NextResponse.json(
-      {
-        success: false,
-        error: {
-          code: "RESUME_UPLOAD_FAILED",
-          message: error instanceof Error ? error.message : "Unable to upload CV at this time.",
-        },
-      },
-      { status: 500 }
-    );
+    console.error("[candidate:resumes] upload failed", {
+      error: error instanceof Error ? error.message : String(error),
+    });
+    return onboardingError(500, "RESUME_UPLOAD_FAILED", "Unable to upload CV at this time.", {
+      cv: "The CV could not be uploaded.",
+    });
   }
 }
 
@@ -395,10 +405,7 @@ export async function PATCH(request: Request) {
 
   const profileBundle = await getCandidateProfileBundle(auth.userId);
   if (!profileBundle?.candidate?.id) {
-    return NextResponse.json(
-      { success: false, error: { code: "CANDIDATE_NOT_FOUND", message: "Candidate profile missing" } },
-      { status: 404 }
-    );
+    return onboardingError(404, "CANDIDATE_NOT_FOUND", "Candidate profile missing");
   }
   const candidateId = String(profileBundle.candidate.id);
 
@@ -406,10 +413,7 @@ export async function PATCH(request: Request) {
   const parsed = setPrimarySchema.safeParse(payload);
 
   if (!parsed.success) {
-    return NextResponse.json(
-      { success: false, error: { code: "VALIDATION_ERROR", message: "resumeId is required" } },
-      { status: 400 }
-    );
+    return onboardingError(400, "VALIDATION_ERROR", "resumeId is required");
   }
 
   const supabase = createSupabaseAdminClient();
@@ -421,7 +425,7 @@ export async function PATCH(request: Request) {
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unable to set primary resume";
     return NextResponse.json(
-      { success: false, error: { code: "PRIMARY_RESUME_UPDATE_FAILED", message } },
+      { ok: false, success: false, code: "PRIMARY_RESUME_UPDATE_FAILED", message, error: { code: "PRIMARY_RESUME_UPDATE_FAILED", message } },
       { status: 400 }
     );
   }
@@ -434,11 +438,8 @@ export async function PATCH(request: Request) {
     .single();
 
   if (error) {
-    return NextResponse.json(
-      { success: false, error: { code: "PRIMARY_RESUME_LOAD_FAILED", message: error.message } },
-      { status: 400 }
-    );
+    return onboardingError(400, "PRIMARY_RESUME_LOAD_FAILED", "Unable to load primary CV record.");
   }
 
-  return NextResponse.json({ success: true, data });
+  return NextResponse.json({ ok: true, success: true, data });
 }

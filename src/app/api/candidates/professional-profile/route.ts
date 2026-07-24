@@ -1,9 +1,39 @@
 import { NextResponse } from "next/server";
 import { candidateProfessionalProfileSchema } from "@/features/candidates/schemas/professional-profile";
 import { requireAuth, requireRole } from "@/lib/server/security/auth";
-import { enforceCsrf, enforceRateLimit, parseJsonBody } from "@/lib/server/http";
+import { enforceCsrf, enforceRateLimit } from "@/lib/server/http";
 import { syncCandidatePortalAiWorkflow } from "@/lib/server/candidates/portal-ai-workflow";
 import { createSupabaseAdminClient } from "@/lib/server/supabase";
+
+function onboardingError(
+  status: number,
+  code: string,
+  message: string,
+  fieldErrors?: Record<string, string>
+) {
+  return NextResponse.json(
+    {
+      ok: false,
+      success: false,
+      code,
+      message,
+      fieldErrors,
+      error: { code, message },
+    },
+    { status }
+  );
+}
+
+function normalizeProfessionalFieldErrors(input: Record<string, string[] | undefined>) {
+  const next: Record<string, string> = {};
+  if (input.headline?.[0]) next.desiredPosition = input.headline[0];
+  if (input.biography?.[0]) next.shortBio = input.biography[0];
+  if (input.experiences?.[0]) next.experienceLevel = input.experiences[0];
+  if (input.educationEntries?.[0]) next.education = input.educationEntries[0];
+  if (input.skills?.[0]) next.skills = input.skills[0];
+  if (input.languages?.[0]) next.languages = input.languages[0];
+  return next;
+}
 
 async function getCandidateId(authUserId: string) {
   const supabase = createSupabaseAdminClient();
@@ -129,14 +159,23 @@ export async function PUT(request: Request) {
 
     const candidateId = await getCandidateId(auth.userId);
     if (!candidateId) {
-      return NextResponse.json(
-        { success: false, error: { code: "CANDIDATE_NOT_FOUND", message: "Candidate profile missing" } },
-        { status: 404 }
-      );
+      return onboardingError(404, "CANDIDATE_NOT_FOUND", "Candidate profile missing");
     }
 
-    const parsed = await parseJsonBody(request, candidateProfessionalProfileSchema);
-    if (parsed.error) return parsed.error;
+    const payload = await request.json().catch(() => null);
+    if (!payload) {
+      return onboardingError(400, "INVALID_JSON", "Malformed JSON request body");
+    }
+
+    const parsed = candidateProfessionalProfileSchema.safeParse(payload);
+    if (!parsed.success) {
+      return onboardingError(
+        400,
+        "VALIDATION_ERROR",
+        "Please correct the highlighted fields.",
+        normalizeProfessionalFieldErrors(parsed.error.flatten().fieldErrors)
+      );
+    }
 
     const input = parsed.data;
     const supabase = createSupabaseAdminClient();
@@ -169,10 +208,7 @@ export async function PUT(request: Request) {
       .single();
 
     if (error) {
-      return NextResponse.json(
-        { success: false, error: { code: "PROFILE_SAVE_FAILED", message: error.message } },
-        { status: 400 }
-      );
+      return onboardingError(400, "PROFILE_SAVE_FAILED", "Unable to save professional profile.");
     }
 
     void syncCandidatePortalAiWorkflow({
@@ -186,14 +222,20 @@ export async function PUT(request: Request) {
       });
     });
 
-    return NextResponse.json({ success: true, data });
+    return NextResponse.json({ ok: true, success: true, data });
   } catch (error) {
+    console.error("[candidate:professional-profile] save failed", {
+      error: error instanceof Error ? error.message : String(error),
+    });
     return NextResponse.json(
       {
+        ok: false,
         success: false,
+        code: "PROFILE_SAVE_FAILED",
+        message: "Unable to save professional profile.",
         error: {
           code: "PROFILE_SAVE_FAILED",
-          message: error instanceof Error ? error.message : "Unable to save professional profile.",
+          message: "Unable to save professional profile.",
         },
       },
       { status: 500 }

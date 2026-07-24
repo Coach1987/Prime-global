@@ -26,6 +26,25 @@ const ALLOWED_MIME_TYPES = new Set([
 const MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024;
 const MAX_FILES_PER_UPLOAD = 10;
 
+function onboardingError(
+  status: number,
+  code: string,
+  message: string,
+  fieldErrors?: Record<string, string>
+) {
+  return NextResponse.json(
+    {
+      ok: false,
+      success: false,
+      code,
+      message,
+      fieldErrors,
+      error: { code, message },
+    },
+    { status }
+  );
+}
+
 function sanitizeFileName(fileName: string) {
   return fileName
     .normalize("NFKD")
@@ -68,10 +87,7 @@ export async function GET(request: Request) {
 
   const profile = await getCandidateProfile(auth.userId);
   if (!profile?.candidate?.id) {
-    return NextResponse.json(
-      { success: false, error: { code: "CANDIDATE_NOT_FOUND", message: "Candidate profile missing" } },
-      { status: 404 }
-    );
+    return onboardingError(404, "CANDIDATE_NOT_FOUND", "Candidate profile missing");
   }
 
   const supabase = createSupabaseAdminClient();
@@ -82,10 +98,7 @@ export async function GET(request: Request) {
     .maybeSingle();
 
   if (error) {
-    return NextResponse.json(
-      { success: false, error: { code: "PRIVATE_DOCUMENTS_FETCH_FAILED", message: error.message } },
-      { status: 500 }
-    );
+    return onboardingError(500, "PRIVATE_DOCUMENTS_FETCH_FAILED", "Unable to load certificate records right now.");
   }
 
 
@@ -104,6 +117,7 @@ export async function GET(request: Request) {
     .limit(50);
   const documents = Array.isArray(data?.original_documents_paths) ? data.original_documents_paths : [];
   return NextResponse.json({
+    ok: true,
     success: true,
     data: documents,
     documentVersions: versions ?? [],
@@ -126,10 +140,7 @@ export async function POST(request: Request) {
 
     const profile = await getCandidateProfile(auth.userId);
     if (!profile?.candidate?.id) {
-      return NextResponse.json(
-        { success: false, error: { code: "CANDIDATE_NOT_FOUND", message: "Candidate profile missing" } },
-        { status: 404 }
-      );
+      return onboardingError(404, "CANDIDATE_NOT_FOUND", "Candidate profile missing");
     }
 
     const formData = await request.formData();
@@ -138,23 +149,15 @@ export async function POST(request: Request) {
       typeof formData.get("documentType") === "string" ? String(formData.get("documentType")) : null;
 
     if (files.length === 0) {
-      return NextResponse.json(
-        { success: false, error: { code: "FILE_REQUIRED", message: "At least one document is required" } },
-        { status: 400 }
-      );
+      return onboardingError(400, "VALIDATION_ERROR", "Please correct the highlighted fields.", {
+        supportingFiles: "Please upload at least one diploma or certificate.",
+      });
     }
 
     if (files.length > MAX_FILES_PER_UPLOAD) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: {
-            code: "TOO_MANY_FILES",
-            message: `Maximum ${MAX_FILES_PER_UPLOAD} documents per upload request`,
-          },
-        },
-        { status: 400 }
-      );
+      return onboardingError(400, "VALIDATION_ERROR", "Please correct the highlighted fields.", {
+        supportingFiles: `Maximum ${MAX_FILES_PER_UPLOAD} documents per upload request.`,
+      });
     }
 
     const supabase = createSupabaseAdminClient();
@@ -169,16 +172,19 @@ export async function POST(request: Request) {
 
     for (const file of files) {
       if (!ALLOWED_MIME_TYPES.has(file.type)) {
-        return NextResponse.json(
-          { success: false, error: { code: "INVALID_FILE_TYPE", message: `Unsupported file type: ${file.type}` } },
-          { status: 400 }
-        );
+        return onboardingError(400, "VALIDATION_ERROR", "Please correct the highlighted fields.", {
+          supportingFiles: "This certificate format is not supported.",
+        });
       }
       if (file.size > MAX_FILE_SIZE_BYTES) {
-        return NextResponse.json(
-          { success: false, error: { code: "FILE_TOO_LARGE", message: `${file.name} exceeds 10 MB` } },
-          { status: 400 }
-        );
+        return onboardingError(400, "VALIDATION_ERROR", "Please correct the highlighted fields.", {
+          supportingFiles: "One of the uploaded certificates is too large.",
+        });
+      }
+      if (file.size === 0) {
+        return onboardingError(400, "VALIDATION_ERROR", "Please correct the highlighted fields.", {
+          supportingFiles: "We couldn't upload this certificate. Please try again.",
+        });
       }
 
       const safeName = sanitizeFileName(file.name) || "document";
@@ -191,10 +197,9 @@ export async function POST(request: Request) {
       });
 
       if (uploadError) {
-        return NextResponse.json(
-          { success: false, error: { code: "UPLOAD_FAILED", message: uploadError.message } },
-          { status: 500 }
-        );
+        return onboardingError(500, "UPLOAD_FAILED", "We couldn't upload this certificate. Please try again.", {
+          supportingFiles: "We couldn't upload this certificate. Please try again.",
+        });
       }
 
       uploadedDocuments.push({
@@ -218,10 +223,7 @@ export async function POST(request: Request) {
       .maybeSingle();
 
     if (privateLoadError) {
-      return NextResponse.json(
-        { success: false, error: { code: "PRIVATE_PROFILE_LOAD_FAILED", message: privateLoadError.message } },
-        { status: 500 }
-      );
+      return onboardingError(500, "PRIVATE_PROFILE_LOAD_FAILED", "Unable to load private profile metadata.");
     }
 
     const existingPaths = Array.isArray(existingPrivate?.original_documents_paths)
@@ -248,10 +250,9 @@ export async function POST(request: Request) {
     );
 
     if (profileUpsertError) {
-      return NextResponse.json(
-        { success: false, error: { code: "PRIVATE_PROFILE_SAVE_FAILED", message: profileUpsertError.message } },
-        { status: 500 }
-      );
+      return onboardingError(500, "PRIVATE_PROFILE_SAVE_FAILED", "Unable to save private profile metadata.", {
+        supportingFiles: "We couldn't upload this certificate. Please try again.",
+      });
     }
 
     const snapshot = buildCandidateIdentitySnapshot({
@@ -335,6 +336,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json(
       {
+        ok: true,
         success: true,
         data: nextPaths,
         verification: {
@@ -353,15 +355,11 @@ export async function POST(request: Request) {
       { status: 201 }
     );
   } catch (error) {
-    return NextResponse.json(
-      {
-        success: false,
-        error: {
-          code: "PRIVATE_DOCUMENT_UPLOAD_FAILED",
-          message: error instanceof Error ? error.message : "Unable to upload documents at this time.",
-        },
-      },
-      { status: 500 }
-    );
+    console.error("[candidate:private-documents] upload failed", {
+      error: error instanceof Error ? error.message : String(error),
+    });
+    return onboardingError(500, "PRIVATE_DOCUMENT_UPLOAD_FAILED", "Unable to upload documents at this time.", {
+      supportingFiles: "We couldn't upload this certificate. Please try again.",
+    });
   }
 }
