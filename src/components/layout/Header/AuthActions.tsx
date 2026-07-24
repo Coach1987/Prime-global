@@ -81,7 +81,7 @@ export function AuthActions({ mobile = false, onNavigate }: AuthActionsProps) {
     { href: "/candidate/applications", label: t("applications") },
     { href: "/candidate/my-interviews", label: t("interviews") },
     { href: "/notifications", label: t("notifications") },
-    { href: "/portal", label: t("settings") },
+    { href: "/candidate/settings", label: t("settings") },
   ];
 
   const employerLinks = [
