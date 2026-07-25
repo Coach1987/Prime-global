@@ -1,8 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useTranslations } from "next-intl";
-import { Link } from "@/i18n/routing";
 import { useScrolled } from "@/lib/hooks/useScrolled";
 import { cn } from "@/lib/utils/cn";
 import { Logo } from "./Logo";
@@ -13,7 +11,6 @@ import { MobileMenu } from "./MobileMenu";
 import { AuthActions } from "./AuthActions";
 
 export function Header() {
-  const t = useTranslations("nav");
   const scrolled = useScrolled(60);
   const [menuOpen, setMenuOpen] = useState(false);
 
@@ -58,13 +55,6 @@ export function Header() {
             <div className="hidden md:block">
               <LanguageSwitcher />
             </div>
-
-            <Link
-              href="/auth?mode=signup&role=candidate"
-              className="hidden md:inline-flex items-center rounded-xl border border-blue-300/30 bg-gradient-to-r from-blue-600 via-blue-500 to-cyan-400 px-7 py-3 text-sm font-semibold text-white transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_12px_35px_rgba(30,120,255,0.35)]"
-            >
-              {t("cta")}
-            </Link>
 
             <MenuToggle
               open={menuOpen}

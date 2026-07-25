@@ -56,11 +56,6 @@ export async function POST(request: Request) {
         email: data.user.email,
         role,
       },
-      session: {
-        accessToken: data.session.access_token,
-        refreshToken: data.session.refresh_token,
-        expiresAt: data.session.expires_at,
-      },
     },
   });
 
