@@ -72,8 +72,8 @@ export async function insertCandidateDocumentVersion(input: {
   sizeBytes: number;
   contentHash: string;
   uploadedByAuthUserId: string;
-  verificationId: string;
-  verificationResult: VerificationResult;
+  verificationId?: string | null;
+  verificationResult?: VerificationResult | null;
   isActive: boolean;
   isPrimary: boolean;
 }) {
@@ -106,18 +106,20 @@ export async function insertCandidateDocumentVersion(input: {
         size_bytes: input.sizeBytes,
         content_hash: input.contentHash,
         uploaded_by_auth_user_id: input.uploadedByAuthUserId,
-        verification_id: input.verificationId,
-        verification_status: mapVerificationDecisionToDocumentStatus({
-          decision: input.verificationResult.decision,
-          fraudRiskScore: input.verificationResult.fraudRiskScore,
-          highFraudOverrideApplied: input.verificationResult.highFraudOverrideApplied,
-        }),
-        reviewer_decision: input.verificationResult.decision,
-        identity_confidence_score: input.verificationResult.identityConfidenceScore,
-        fraud_risk_score: input.verificationResult.fraudRiskScore,
-        verification_provider: input.verificationResult.provider,
-        verification_model: input.verificationResult.model,
-        external_verification_status: input.verificationResult.externalVerificationStatus,
+        verification_id: input.verificationId ?? null,
+        verification_status: input.verificationResult
+          ? mapVerificationDecisionToDocumentStatus({
+              decision: input.verificationResult.decision,
+              fraudRiskScore: input.verificationResult.fraudRiskScore,
+              highFraudOverrideApplied: input.verificationResult.highFraudOverrideApplied,
+            })
+          : "pending_ai_analysis",
+        reviewer_decision: input.verificationResult?.decision ?? null,
+        identity_confidence_score: input.verificationResult?.identityConfidenceScore ?? null,
+        fraud_risk_score: input.verificationResult?.fraudRiskScore ?? null,
+        verification_provider: input.verificationResult?.provider ?? null,
+        verification_model: input.verificationResult?.model ?? null,
+        external_verification_status: input.verificationResult?.externalVerificationStatus ?? "not_available",
         is_active: input.isActive,
         is_primary: input.isPrimary,
       })
@@ -185,7 +187,7 @@ export async function supersedeActiveCandidateDocuments(input: {
 export async function createVerificationCase(input: {
   candidateId: string;
   documentVersionId: string;
-  verificationId: string;
+  verificationId?: string | null;
   status: CandidateVerificationCaseStatus;
   priority: "low" | "normal" | "high" | "critical";
   candidateMessage: string | null;
@@ -199,7 +201,7 @@ export async function createVerificationCase(input: {
     .insert({
       candidate_id: input.candidateId,
       document_version_id: input.documentVersionId,
-      verification_id: input.verificationId,
+      verification_id: input.verificationId ?? null,
       status: input.status,
       priority: input.priority,
       requested_evidence: input.requestedEvidence ?? null,

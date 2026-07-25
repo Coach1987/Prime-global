@@ -25,6 +25,9 @@ export const employerRegistrationSchema = z.object({
   industry: z.string().trim().min(2).max(120),
   companySize: z.enum(companySizeValues),
   companyDescription: z.string().trim().min(20).max(4000),
+  acceptTermsOfService: z.literal(true),
+  acceptPrivacyPolicy: z.literal(true),
+  acceptEmployerAgreement: z.literal(true),
 });
 
 export const employerLoginSchema = z.object({

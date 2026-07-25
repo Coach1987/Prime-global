@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { createAuditLog } from "@/lib/server/security/audit";
 import { requireAuth, requireRole } from "@/lib/server/security/auth";
-import { enforceRateLimit, getRequestContext } from "@/lib/server/http";
+import { enforceCsrf, enforceRateLimit, getRequestContext } from "@/lib/server/http";
 import { getEmployerByAuthUserId } from "@/lib/server/employers";
 import { createSupabaseAdminClient } from "@/lib/server/supabase";
 
@@ -11,6 +11,9 @@ export async function POST(
 ) {
   const rateLimitResult = enforceRateLimit(request, "employer-job-duplicate", 25);
   if (rateLimitResult) return rateLimitResult;
+
+  const csrfResult = enforceCsrf(request);
+  if (csrfResult) return csrfResult;
 
   const auth = await requireAuth(request);
   if (auth instanceof NextResponse) return auth;

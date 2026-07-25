@@ -35,10 +35,9 @@ export async function GET(request: Request) {
   let dbQuery = supabase
     .from("job_applications_v2")
     .select(
-      "id, status, applied_at, updated_at, cover_letter, job_id, candidate_id, resume_id, jobs!inner(id, employer_id, title), candidate_public_profiles!inner(candidate_id, candidate_reference, professional_title, professional_summary, years_of_experience, skills, employment_history, education, certifications, languages, general_location, availability, desired_role, ai_summary, profile_status, generated_at)"
+      "id, status, applied_at, updated_at, cover_letter, job_id, candidate_id, resume_id, jobs!inner(id, employer_id, title)"
     )
     .eq("jobs.employer_id", employer.id)
-    .eq("candidate_public_profiles.profile_status", "approved")
     .order("applied_at", { ascending: false });
 
   if (status) {
@@ -58,11 +57,32 @@ export async function GET(request: Request) {
     );
   }
 
+  const candidateIds = Array.from(new Set((data ?? []).map((item) => String(item.candidate_id ?? "")).filter(Boolean)));
+
+  const { data: candidateProfiles, error: candidateProfilesError } = await supabase
+    .from("candidate_public_profiles")
+    .select(
+      "candidate_id, candidate_reference, professional_title, professional_summary, years_of_experience, skills, employment_history, education, certifications, languages, general_location, availability, desired_role, ai_summary, profile_status, generated_at"
+    )
+    .in("candidate_id", candidateIds)
+    .eq("profile_status", "approved");
+
+  if (candidateProfilesError) {
+    return NextResponse.json(
+      { success: false, error: { code: "APPLICANTS_LOAD_FAILED", message: candidateProfilesError.message } },
+      { status: 500 }
+    );
+  }
+
+  const approvedByCandidateId = new Map(
+    (candidateProfiles ?? []).map((profile) => [String(profile.candidate_id), profile])
+  );
+
+  const withApprovedProfiles = (data ?? []).filter((item) => approvedByCandidateId.has(String(item.candidate_id ?? "")));
+
   const filtered = query
-    ? data.filter((item) => {
-        const candidate = Array.isArray(item.candidate_public_profiles)
-          ? item.candidate_public_profiles[0]
-          : item.candidate_public_profiles;
+    ? withApprovedProfiles.filter((item) => {
+        const candidate = approvedByCandidateId.get(String(item.candidate_id ?? ""));
         const job = Array.isArray(item.jobs) ? item.jobs[0] : item.jobs;
 
         const fields = [candidate?.candidate_reference, candidate?.professional_title, job?.title, item.status]
@@ -71,14 +91,12 @@ export async function GET(request: Request) {
 
         return fields.some((field) => field.includes(query));
       })
-    : data;
+    : withApprovedProfiles;
 
   return NextResponse.json({
     success: true,
     data: (filtered ?? []).map((item) => {
-      const candidate = Array.isArray(item.candidate_public_profiles)
-        ? item.candidate_public_profiles[0]
-        : item.candidate_public_profiles;
+      const candidate = approvedByCandidateId.get(String(item.candidate_id ?? ""));
       return {
         ...item,
         candidate_public_profiles: candidate ? sanitizeEmployerCandidateProfile(candidate as Record<string, unknown>) : null,

@@ -21,6 +21,25 @@ const preferenceSchema = z.object({
   unsubscribed: z.boolean().default(false),
 });
 
+function onboardingError(
+  status: number,
+  code: string,
+  message: string,
+  fieldErrors?: Record<string, string>
+) {
+  return NextResponse.json(
+    {
+      ok: false,
+      success: false,
+      code,
+      message,
+      fieldErrors,
+      error: { code, message },
+    },
+    { status }
+  );
+}
+
 async function loadCandidateId(authUserId: string) {
   const supabase = createSupabaseAdminClient();
   const { data, error } = await supabase
@@ -86,7 +105,11 @@ export async function PUT(request: Request) {
   if (roleCheck) return roleCheck;
 
   const parsed = await parseJsonBody(request, preferenceSchema);
-  if (parsed.error) return parsed.error;
+  if (parsed.error) {
+    return onboardingError(400, "VALIDATION_ERROR", "Please correct the highlighted fields.", {
+      desiredPosition: "Please review your job alert preferences.",
+    });
+  }
 
   try {
     const candidateId = await loadCandidateId(auth.userId);
@@ -116,10 +139,7 @@ export async function PUT(request: Request) {
       .single();
 
     if (error) {
-      return NextResponse.json(
-        { success: false, error: { code: "JOB_ALERT_PREFERENCES_SAVE_FAILED", message: error.message } },
-        { status: 400 }
-      );
+      return onboardingError(400, "JOB_ALERT_PREFERENCES_SAVE_FAILED", "Unable to save job alert settings.");
     }
 
     await createAuditLog({
@@ -135,14 +155,8 @@ export async function PUT(request: Request) {
       },
     });
 
-    return NextResponse.json({ success: true, data });
-  } catch (error) {
-    return NextResponse.json(
-      {
-        success: false,
-        error: { code: "CANDIDATE_PROFILE_MISSING", message: error instanceof Error ? error.message : "Candidate profile missing" },
-      },
-      { status: 404 }
-    );
+    return NextResponse.json({ ok: true, success: true, data });
+  } catch {
+    return onboardingError(404, "CANDIDATE_PROFILE_MISSING", "Candidate profile missing");
   }
 }

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireAuth, requireRole } from "@/lib/server/security/auth";
 import { enforceCsrf, enforceRateLimit } from "@/lib/server/http";
-import { getEmployerByAuthUserId } from "@/lib/server/employers";
+import { getEmployerByAuthUserId, requireVerifiedEmployerStatus } from "@/lib/server/employers";
 import { createAuditLog } from "@/lib/server/security/audit";
 import { createSupabaseAdminClient } from "@/lib/server/supabase";
 
@@ -25,6 +25,9 @@ export async function POST(request: Request, { params }: { params: Promise<{ can
       { status: 404 }
     );
   }
+
+  const verificationGate = requireVerifiedEmployerStatus(employer.verification_status as string | null | undefined);
+  if (verificationGate) return verificationGate;
 
   const { candidateId } = await params;
   const { searchParams } = new URL(request.url);
@@ -50,6 +53,37 @@ export async function POST(request: Request, { params }: { params: Promise<{ can
     return NextResponse.json(
       { success: false, error: { code: "CANDIDATE_PROFILE_NOT_APPROVED", message: "Candidate profile is not approved for supervised contact" } },
       { status: 400 }
+    );
+  }
+
+  const { data: shortlistedApplication, error: shortlistedError } = await supabase
+    .from("job_applications_v2")
+    .select("id, jobs!inner(id, employer_id)")
+    .eq("candidate_id", candidateId)
+    .eq("status", "shortlisted")
+    .eq("jobs.employer_id", employer.id)
+    .maybeSingle();
+
+  if (shortlistedError) {
+    return NextResponse.json(
+      { success: false, error: { code: "SHORTLIST_VALIDATION_FAILED", message: shortlistedError.message } },
+      { status: 500 }
+    );
+  }
+
+  if (!shortlistedApplication) {
+    return NextResponse.json(
+      {
+        success: false,
+        error: {
+          code: "INTERVIEW_REQUIRES_SHORTLIST",
+          message:
+            locale === "ar"
+              ? "يجب اختيار المرشح أولاً ضمن الترشيح قبل طلب مقابلة."
+              : "Candidate must be shortlisted before requesting an interview.",
+        },
+      },
+      { status: 409 }
     );
   }
 

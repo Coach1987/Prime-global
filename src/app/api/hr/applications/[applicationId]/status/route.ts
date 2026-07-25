@@ -3,7 +3,7 @@ import { updateApplicationStatusSchema } from "@/features/candidates/schemas/can
 import { createAuditLog } from "@/lib/server/security/audit";
 import { requireAuth, requireRole } from "@/lib/server/security/auth";
 import { enforceCsrf, enforceRateLimit, getRequestContext, parseJsonBody } from "@/lib/server/http";
-import { getEmployerByAuthUserId } from "@/lib/server/employers";
+import { getEmployerByAuthUserId, requireVerifiedEmployerStatus } from "@/lib/server/employers";
 import { createSupabaseAdminClient } from "@/lib/server/supabase";
 
 export async function PATCH(
@@ -28,6 +28,11 @@ export async function PATCH(
       { success: false, error: { code: "EMPLOYER_NOT_FOUND", message: "Employer profile missing" } },
       { status: 404 }
     );
+  }
+
+  if (employer) {
+    const verificationGate = requireVerifiedEmployerStatus(employer.verification_status as string | null | undefined);
+    if (verificationGate) return verificationGate;
   }
 
   const parsed = await parseJsonBody(request, updateApplicationStatusSchema);
@@ -55,6 +60,22 @@ export async function PATCH(
     }
   }
 
+  const { data: existingApplication, error: existingApplicationError } = await supabase
+    .from("job_applications_v2")
+    .select("id, status, candidate_id")
+    .eq("id", applicationId)
+    .single();
+
+  if (existingApplicationError || !existingApplication) {
+    return NextResponse.json(
+      {
+        success: false,
+        error: { code: "APPLICATION_NOT_FOUND", message: existingApplicationError?.message ?? "Application not found" },
+      },
+      { status: 404 }
+    );
+  }
+
   const { data, error } = await supabase
     .from("job_applications_v2")
     .update({ status: parsed.data.status })
@@ -69,13 +90,29 @@ export async function PATCH(
     );
   }
 
-  if (parsed.data.note) {
-    await supabase.from("job_application_status_events").insert({
-      application_id: applicationId,
-      previous_status: null,
-      next_status: parsed.data.status,
-      changed_by_auth_user_id: auth.userId,
-      note: parsed.data.note,
+  await supabase.from("job_application_status_events").insert({
+    application_id: applicationId,
+    previous_status: existingApplication.status,
+    next_status: parsed.data.status,
+    changed_by_auth_user_id: auth.userId,
+    note: parsed.data.note ?? `status_updated_to_${parsed.data.status}`,
+  });
+
+  const { data: candidate } = await supabase
+    .from("candidate_profiles")
+    .select("auth_user_id")
+    .eq("id", existingApplication.candidate_id)
+    .maybeSingle();
+
+  if (candidate?.auth_user_id) {
+    await supabase.from("notification_events").insert({
+      auth_user_id: candidate.auth_user_id,
+      category: "status_change",
+      title: "Application updated",
+      body: `Your application status changed to ${parsed.data.status}.`,
+      entity_type: "job_application",
+      entity_id: applicationId,
+      delivery_channels: ["dashboard", "realtime"],
     });
   }
 

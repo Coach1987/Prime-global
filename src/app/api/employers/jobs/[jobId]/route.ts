@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { updateJobSchema } from "@/features/jobs/schemas/job";
 import { createAuditLog } from "@/lib/server/security/audit";
 import { requireAuth, requireRole } from "@/lib/server/security/auth";
-import { enforceRateLimit, getRequestContext, parseJsonBody } from "@/lib/server/http";
+import { enforceCsrf, enforceRateLimit, getRequestContext, parseJsonBody } from "@/lib/server/http";
 import { getEmployerByAuthUserId } from "@/lib/server/employers";
 import { createSupabaseAdminClient } from "@/lib/server/supabase";
 
@@ -12,6 +12,9 @@ export async function PATCH(
 ) {
   const rateLimitResult = enforceRateLimit(request, "employer-job-patch", 80);
   if (rateLimitResult) return rateLimitResult;
+
+  const csrfResult = enforceCsrf(request);
+  if (csrfResult) return csrfResult;
 
   const auth = await requireAuth(request);
   if (auth instanceof NextResponse) return auth;
@@ -104,6 +107,9 @@ export async function DELETE(
 ) {
   const rateLimitResult = enforceRateLimit(request, "employer-job-delete", 40);
   if (rateLimitResult) return rateLimitResult;
+
+  const csrfResult = enforceCsrf(request);
+  if (csrfResult) return csrfResult;
 
   const auth = await requireAuth(request);
   if (auth instanceof NextResponse) return auth;

@@ -13,6 +13,13 @@ interface InternationalPhoneInputProps {
   onCountryCodeChange?: (nextCountryCode: string) => void;
   placeholder?: string;
   disabled?: boolean;
+  selectId?: string;
+  inputId?: string;
+  inputRef?: React.Ref<HTMLInputElement>;
+  selectClassName?: string;
+  inputClassName?: string;
+  ariaInvalid?: boolean;
+  ariaDescribedBy?: string;
 }
 
 export function InternationalPhoneInput({
@@ -23,6 +30,13 @@ export function InternationalPhoneInput({
   onCountryCodeChange,
   placeholder,
   disabled,
+  selectId,
+  inputId,
+  inputRef,
+  selectClassName,
+  inputClassName,
+  ariaInvalid,
+  ariaDescribedBy,
 }: InternationalPhoneInputProps) {
   const countryOptions = useMemo(() => getCountryOptions(), []);
   const selected = useMemo(() => countryOptions.find((item) => item.code === countryCode.toUpperCase()) ?? null, [countryOptions, countryCode]);
@@ -37,11 +51,11 @@ export function InternationalPhoneInput({
   return (
     <div className="space-y-2">
       <div className="grid grid-cols-[minmax(150px,220px)_1fr] gap-3">
-        <label className="sr-only" htmlFor="phone-country-select">
+        <label className="sr-only" htmlFor={selectId ?? "phone-country-select"}>
           {locale === "ar" ? "دولة رقم الهاتف" : "Phone country"}
         </label>
         <select
-          id="phone-country-select"
+          id={selectId ?? "phone-country-select"}
           value={phoneCountryCode}
           disabled={disabled}
           onChange={(event) => {
@@ -51,7 +65,11 @@ export function InternationalPhoneInput({
             const normalized = normalizeToE164(value, nextCode);
             onChange(value, normalized);
           }}
-          className="w-full rounded-2xl border border-blue-200/20 bg-[#061123] px-3 py-3 text-slate-100 focus:border-blue-300/60 focus:outline-none"
+          className={`w-full rounded-2xl border bg-[#061123] px-3 py-3 text-slate-100 focus:outline-none ${
+            selectClassName ?? "border-blue-200/20 focus:border-blue-300/60"
+          }`}
+          aria-invalid={ariaInvalid}
+          aria-describedby={ariaDescribedBy}
         >
           {countryOptions.map((option) => (
             <option key={option.code} value={option.code}>
@@ -61,9 +79,14 @@ export function InternationalPhoneInput({
         </select>
 
         <PrimeInput
+          id={inputId}
+          ref={inputRef}
           value={value}
           disabled={disabled}
           placeholder={placeholder}
+          className={inputClassName}
+          aria-invalid={ariaInvalid}
+          aria-describedby={ariaDescribedBy}
           onChange={(event) => {
             const raw = event.target.value;
             const normalized = normalizeToE164(raw, phoneCountryCode);

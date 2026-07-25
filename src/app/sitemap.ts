@@ -2,10 +2,6 @@ import type { MetadataRoute } from "next";
 import { routing, getPathname } from "@/i18n/routing";
 import { SITE_URL as BASE_URL } from "@/lib/constants/site";
 
-// Only pages that should actually be indexed. Deliberately excludes
-// /privacy-policy and /terms, which are currently placeholder content
-// marked `robots: { index: false }` in their own metadata — listing a
-// noindex page in the sitemap sends a contradictory signal to crawlers.
 const INDEXABLE_PATHS = [
   "/",
   "/services",
@@ -15,6 +11,16 @@ const INDEXABLE_PATHS = [
   "/contact",
   "/careers",
   "/careers/apply",
+  "/legal/terms-of-service",
+  "/legal/privacy-policy",
+  "/legal/cookie-policy",
+  "/legal/employer-agreement",
+  "/legal/candidate-agreement",
+  "/legal/ai-transparency-policy",
+  "/legal/payment-refund-policy",
+  "/legal/data-processing-agreement",
+  "/legal/security-policy",
+  "/legal/trust-charter",
 ] as const;
 
 async function buildAlternates(pathname: (typeof INDEXABLE_PATHS)[number]) {

@@ -4,19 +4,32 @@ import { evaluateCandidateProfileCompletion } from "@/lib/server/candidates/prof
 import { requireAuth, requireRole } from "@/lib/server/security/auth";
 
 export async function GET(request: Request) {
-  const rateLimitResult = enforceRateLimit(request, "candidate-profile-completion-get", 120);
-  if (rateLimitResult) return rateLimitResult;
+  try {
+    const rateLimitResult = enforceRateLimit(request, "candidate-profile-completion-get", 120);
+    if (rateLimitResult) return rateLimitResult;
 
-  const auth = await requireAuth(request);
-  if (auth instanceof NextResponse) return auth;
+    const auth = await requireAuth(request);
+    if (auth instanceof NextResponse) return auth;
 
-  const roleCheck = requireRole(auth, ["candidate", "admin", "super_admin"]);
-  if (roleCheck) return roleCheck;
+    const roleCheck = requireRole(auth, ["candidate", "admin", "super_admin"]);
+    if (roleCheck) return roleCheck;
 
-  const completion = await evaluateCandidateProfileCompletion(auth.userId);
+    const completion = await evaluateCandidateProfileCompletion(auth.userId);
 
-  return NextResponse.json({
-    success: true,
-    data: completion,
-  });
+    return NextResponse.json({
+      success: true,
+      data: completion,
+    });
+  } catch (error) {
+    return NextResponse.json(
+      {
+        success: false,
+        error: {
+          code: "PROFILE_COMPLETION_LOAD_FAILED",
+          message: error instanceof Error ? error.message : "Unable to load profile completion.",
+        },
+      },
+      { status: 500 }
+    );
+  }
 }

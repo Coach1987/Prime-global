@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { requireAuth, requireRole } from "@/lib/server/security/auth";
-import { enforceRateLimit, parseJsonBody } from "@/lib/server/http";
+import { enforceCsrf, enforceRateLimit, parseJsonBody } from "@/lib/server/http";
 import { createAuditLog } from "@/lib/server/security/audit";
 import {
   appendVerificationCaseAction,
@@ -43,6 +43,9 @@ function mapActionToStatus(action: CandidateVerificationCaseAction): CandidateVe
 export async function PATCH(request: Request, { params }: { params: Promise<{ caseId: string }> }) {
   const rateLimitResult = enforceRateLimit(request, "admin-candidate-document-cases-patch", 60);
   if (rateLimitResult) return rateLimitResult;
+
+  const csrfResult = enforceCsrf(request);
+  if (csrfResult) return csrfResult;
 
   const auth = await requireAuth(request);
   if (auth instanceof NextResponse) return auth;

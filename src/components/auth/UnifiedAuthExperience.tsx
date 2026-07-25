@@ -1,7 +1,7 @@
 "use client";
 
 import { FormEvent, useEffect, useMemo, useState } from "react";
-import { useRouter } from "@/i18n/routing";
+import { Link, useRouter } from "@/i18n/routing";
 import { useLocale } from "next-intl";
 import { useSearchParams } from "next/navigation";
 import { PrimeCheckbox, PrimeInput, PrimeLabel, PrimeSelect, PrimeTextarea } from "@/components/ui/prime/PrimeInput";
@@ -11,6 +11,8 @@ import { CountrySelector } from "@/components/ui/CountrySelector";
 import { InternationalPhoneInput } from "@/components/ui/InternationalPhoneInput";
 import { SegmentedTabs } from "@/components/ui/SegmentedTabs";
 import { getPostLoginHref, normalizeAuthRole } from "@/lib/auth/routing";
+import { resolveCandidatePostAuthHref, sanitizeLocalizedJobReturnTo } from "@/lib/auth/return-to";
+import { emitAuthSessionChanged } from "@/lib/auth/client-session-sync";
 
 type AuthMode = "signin" | "register";
 type AuthAudience = "candidate" | "employer";
@@ -24,6 +26,7 @@ type CandidateRegisterState = {
   phoneNumberRaw: string;
   phoneNumber: string;
   acceptTerms: boolean;
+  acceptPrivacyPolicy: boolean;
 };
 
 type EmployerRegisterState = {
@@ -50,13 +53,51 @@ function parseMode(value: string | null): AuthMode {
   return value === "register" || value === "signup" ? "register" : "signin";
 }
 
-function parseAudience(value: string | null): AuthAudience {
-  return value === "employer" ? "employer" : "candidate";
+function parseAudience(audienceValue: string | null, roleValue: string | null): AuthAudience {
+  if (audienceValue === "employer") return "employer";
+  if (roleValue === "employer") return "employer";
+  return "candidate";
 }
 
-function buildAuthHref(mode: AuthMode, audience: AuthAudience) {
-  const modeParam = mode === "register" ? "signup" : "signin";
-  return `/auth?mode=${modeParam}&role=${audience}`;
+function buildAuthHref(mode: AuthMode, audience: AuthAudience, returnTo: string | null) {
+  const params = new URLSearchParams();
+  params.set("mode", mode);
+  params.set("audience", audience);
+  if (returnTo) {
+    params.set("returnTo", returnTo);
+  }
+  return `/auth?${params.toString()}`;
+}
+
+async function readJsonResponse<T>(response: Response) {
+  const contentType = response.headers.get("content-type") ?? "";
+  const bodyText = await response.text().catch(() => "");
+
+  if (!contentType.includes("application/json")) {
+    return null as T | null;
+  }
+
+  try {
+    return bodyText ? (JSON.parse(bodyText) as T) : null;
+  } catch {
+    return null;
+  }
+}
+
+async function finalizeAuthStateForNavigation() {
+  const response = await fetch("/api/auth/me", {
+    credentials: "include",
+    cache: "no-store",
+  }).catch(() => null);
+
+  if (!response) return;
+  const payload = await readJsonResponse<{ success?: boolean; data?: { role?: string; displayName?: string | null } }>(response);
+  if (!payload?.success) return;
+
+  emitAuthSessionChanged({
+    role: typeof payload.data?.role === "string" ? payload.data.role : null,
+    displayName: payload.data?.displayName ?? null,
+  });
 }
 
 export function UnifiedAuthExperience() {
@@ -65,7 +106,11 @@ export function UnifiedAuthExperience() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const mode = parseMode(searchParams.get("mode"));
-  const audience = parseAudience(searchParams.get("role"));
+  const audience = parseAudience(searchParams.get("audience"), searchParams.get("role"));
+  const safeReturnTo = sanitizeLocalizedJobReturnTo(
+    searchParams.get("returnTo") ?? searchParams.get("redirectTo"),
+    locale
+  );
 
   const [csrfToken, setCsrfToken] = useState("");
   const [authReady, setAuthReady] = useState(false);
@@ -80,7 +125,17 @@ export function UnifiedAuthExperience() {
           fetch("/api/auth/me", { credentials: "include" }),
         ]);
 
-        const [csrfPayload, authPayload] = await Promise.all([csrfResponse.json(), authResponse.json()]);
+        const [csrfPayload, authPayload] = await Promise.all([
+          readJsonResponse<{ data?: { csrfToken?: string } }>(csrfResponse),
+          readJsonResponse<{
+            success?: boolean;
+            data?: {
+              role?: string;
+              profileCompletion?: { completed?: boolean };
+              verificationStatus?: string | null;
+            };
+          }>(authResponse),
+        ]);
 
         if (!cancelled) {
           setCsrfToken(csrfPayload?.data?.csrfToken ?? "");
@@ -88,6 +143,13 @@ export function UnifiedAuthExperience() {
 
         const role = normalizeAuthRole(String(authPayload?.data?.role ?? ""));
         if (authPayload?.success && role) {
+          await finalizeAuthStateForNavigation();
+
+          if (role === "candidate" && safeReturnTo) {
+            router.push(safeReturnTo as never);
+            return;
+          }
+
           const destination = getPostLoginHref(role, {
             profileCompletion: authPayload?.data?.profileCompletion,
             verificationStatus: authPayload?.data?.verificationStatus,
@@ -111,7 +173,7 @@ export function UnifiedAuthExperience() {
     return () => {
       cancelled = true;
     };
-  }, [router]);
+  }, [router, safeReturnTo]);
 
   const modeItems = useMemo(
     () => [
@@ -130,7 +192,7 @@ export function UnifiedAuthExperience() {
   );
 
   function updateAuthState(nextMode: AuthMode, nextAudience: AuthAudience) {
-    router.push(buildAuthHref(nextMode, nextAudience));
+    router.push(buildAuthHref(nextMode, nextAudience, safeReturnTo));
   }
 
   const headline =
@@ -223,6 +285,8 @@ export function UnifiedAuthExperience() {
               <CandidateSignInForm
                 csrfToken={csrfToken}
                 isArabic={isArabic}
+                locale={locale}
+                safeReturnTo={safeReturnTo}
                 onSwitchMode={() => updateAuthState("register", "candidate")}
                 onSwitchAudience={() => updateAuthState(mode, "employer")}
               />
@@ -241,6 +305,8 @@ export function UnifiedAuthExperience() {
               <CandidateRegisterForm
                 csrfToken={csrfToken}
                 isArabic={isArabic}
+                locale={locale}
+                safeReturnTo={safeReturnTo}
                 onSwitchMode={() => updateAuthState("signin", "candidate")}
                 onSwitchAudience={() => updateAuthState(mode, "employer")}
               />
@@ -255,6 +321,40 @@ export function UnifiedAuthExperience() {
               />
             ) : null}
           </div>
+
+          <div className="mt-7 border-t border-white/10 pt-5">
+            <p className="text-xs uppercase tracking-[0.18em] text-blue-200/80">
+              {isArabic ? "مستندات قانونية" : "Legal Documents"}
+            </p>
+            <div className="mt-3 flex flex-wrap gap-x-5 gap-y-2 text-sm text-text-secondary">
+              {[
+                {
+                  href: "/legal/terms-of-service",
+                  label: isArabic ? "شروط الاستخدام" : "Terms of Service",
+                },
+                {
+                  href: "/legal/privacy-policy",
+                  label: isArabic ? "سياسة الخصوصية" : "Privacy Policy",
+                },
+                {
+                  href: "/legal/cookie-policy",
+                  label: isArabic ? "سياسة ملفات تعريف الارتباط" : "Cookie Policy",
+                },
+                {
+                  href: "/legal/security-policy",
+                  label: isArabic ? "سياسة الأمان" : "Security Policy",
+                },
+              ].map((linkItem) => (
+                <Link
+                  key={linkItem.href}
+                  href={linkItem.href}
+                  className="font-medium text-blue-200 transition-colors hover:text-blue-100"
+                >
+                  {linkItem.label}
+                </Link>
+              ))}
+            </div>
+          </div>
         </div>
       </section>
     </main>
@@ -264,11 +364,15 @@ export function UnifiedAuthExperience() {
 function CandidateSignInForm({
   csrfToken,
   isArabic,
+  locale,
+  safeReturnTo,
   onSwitchMode,
   onSwitchAudience,
 }: {
   csrfToken: string;
   isArabic: boolean;
+  locale: string;
+  safeReturnTo: string | null;
   onSwitchMode: () => void;
   onSwitchAudience: () => void;
 }) {
@@ -293,25 +397,29 @@ function CandidateSignInForm({
         body: JSON.stringify({ email, password, role: "candidate" }),
       });
 
-      const payload = await response.json();
-      if (!response.ok || !payload.success) {
-        setError(payload?.error?.message ?? (isArabic ? "تعذر تسجيل الدخول." : "Unable to sign in"));
+      const payload = await readJsonResponse<{
+        success?: boolean;
+        data?: { user?: { profileCompletion?: { completed?: boolean } } };
+      }>(response);
+      if (!response.ok || !payload?.success) {
+        setError(isArabic ? "تعذر تسجيل الدخول الآن. حاول مرة أخرى." : "We couldn't sign you in right now. Please try again.");
         return;
       }
 
-      const redirectParam = new URLSearchParams(window.location.search).get("redirectTo") ?? "";
-      const safeRedirect = redirectParam.startsWith("/") && !redirectParam.startsWith("//") ? redirectParam : "";
+      await finalizeAuthStateForNavigation();
 
-      if (safeRedirect) {
-        router.push(safeRedirect as never);
+      const redirectTarget = resolveCandidatePostAuthHref({
+        locale,
+        returnTo: safeReturnTo,
+        fallback: getPostLoginHref("candidate", {
+          profileCompletion: payload?.data?.user?.profileCompletion,
+        }),
+      });
+
+      if (redirectTarget) {
+        router.push(redirectTarget as never);
         return;
       }
-
-      router.push(
-        getPostLoginHref("candidate", {
-          profileCompletion: payload?.data?.profileCompletion,
-        })
-      );
     } catch {
       setError(isArabic ? "حدث خطأ غير متوقع أثناء تسجيل الدخول." : "Unexpected error while logging in");
     } finally {
@@ -383,11 +491,13 @@ function EmployerSignInForm({
         body: JSON.stringify({ email, password, role: "employer" }),
       });
 
-      const payload = await response.json();
-      if (!response.ok || !payload.success) {
-        setError(payload?.error?.message ?? (isArabic ? "تعذر تسجيل الدخول." : "Unable to login"));
+      const payload = await readJsonResponse<{ success?: boolean; data?: { user?: { verificationStatus?: string | null } } }>(response);
+      if (!response.ok || !payload?.success) {
+        setError(isArabic ? "تعذر تسجيل الدخول الآن. حاول مرة أخرى." : "We couldn't sign you in right now. Please try again.");
         return;
       }
+
+      await finalizeAuthStateForNavigation();
 
       router.push(
         getPostLoginHref("employer", {
@@ -436,11 +546,15 @@ function EmployerSignInForm({
 function CandidateRegisterForm({
   csrfToken,
   isArabic,
+  locale,
+  safeReturnTo,
   onSwitchMode,
   onSwitchAudience,
 }: {
   csrfToken: string;
   isArabic: boolean;
+  locale: string;
+  safeReturnTo: string | null;
   onSwitchMode: () => void;
   onSwitchAudience: () => void;
 }) {
@@ -456,6 +570,7 @@ function CandidateRegisterForm({
     phoneNumberRaw: "",
     phoneNumber: "",
     acceptTerms: false,
+    acceptPrivacyPolicy: false,
   });
 
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
@@ -467,8 +582,12 @@ function CandidateRegisterForm({
       return;
     }
 
-    if (!form.acceptTerms) {
-      setError(isArabic ? "يجب الموافقة على الشروط وسياسة الخصوصية." : "You must accept the Terms and Privacy Policy.");
+    if (!form.acceptTerms || !form.acceptPrivacyPolicy) {
+      setError(
+        isArabic
+          ? "يجب الموافقة على شروط الاستخدام وسياسة الخصوصية."
+          : "You must accept the Terms of Service and Privacy Policy."
+      );
       return;
     }
 
@@ -497,17 +616,26 @@ function CandidateRegisterForm({
           password: form.password,
           country: form.countryCode,
           phoneNumber: form.phoneNumber,
-          acceptTerms: form.acceptTerms,
+          acceptTermsOfService: form.acceptTerms,
+          acceptPrivacyPolicy: form.acceptPrivacyPolicy,
         }),
       });
 
-      const payload = await response.json();
-      if (!response.ok || !payload.success) {
-        setError(payload?.error?.message ?? (isArabic ? "تعذر إنشاء الحساب." : "Unable to create account."));
+      const payload = await readJsonResponse<{ success?: boolean }>(response);
+      if (!response.ok || !payload?.success) {
+        setError(isArabic ? "تعذر إنشاء الحساب الآن. حاول مرة أخرى." : "We couldn't create your account right now. Please try again.");
         return;
       }
 
-      router.push("/candidate/onboarding");
+      await finalizeAuthStateForNavigation();
+
+      const destination = resolveCandidatePostAuthHref({
+        locale,
+        returnTo: safeReturnTo,
+        fallback: "/candidate/onboarding",
+      });
+
+      router.push(destination as never);
       router.refresh();
     } catch {
       setError(isArabic ? "حدث خطأ غير متوقع أثناء إنشاء الحساب." : "Unexpected error while creating the account.");
@@ -576,7 +704,26 @@ function CandidateRegisterForm({
           checked={form.acceptTerms}
           onChange={(event) => setForm((prev) => ({ ...prev, acceptTerms: event.target.checked }))}
         />
-        <span>{isArabic ? "أوافق على الشروط وسياسة الخصوصية وإجراءات التنسيق الخاصة بالتوظيف." : "I accept the Terms, Privacy Policy, and recruitment coordination process."}</span>
+        <span>
+          {isArabic ? "أوافق على " : "I agree to the "}
+          <Link href="/legal/terms-of-service" className="font-semibold text-blue-200 underline underline-offset-4 hover:text-blue-100">
+            {isArabic ? "شروط الاستخدام" : "Terms of Service"}
+          </Link>
+        </span>
+      </label>
+
+      <label className="flex min-h-12 items-start gap-3 rounded-2xl border border-blue-200/20 bg-[#071428]/75 px-4 py-3 text-sm text-text-secondary">
+        <PrimeCheckbox
+          type="checkbox"
+          checked={form.acceptPrivacyPolicy}
+          onChange={(event) => setForm((prev) => ({ ...prev, acceptPrivacyPolicy: event.target.checked }))}
+        />
+        <span>
+          {isArabic ? "أوافق على " : "I agree to the "}
+          <Link href="/legal/privacy-policy" className="font-semibold text-blue-200 underline underline-offset-4 hover:text-blue-100">
+            {isArabic ? "سياسة الخصوصية" : "Privacy Policy"}
+          </Link>
+        </span>
       </label>
 
       {error ? <p className="text-sm text-red-300">{error}</p> : null}
@@ -615,6 +762,8 @@ function EmployerRegisterForm({
   const [error, setError] = useState<string | null>(null);
   const [confirmPassword, setConfirmPassword] = useState("");
   const [acceptTerms, setAcceptTerms] = useState(false);
+  const [acceptEmployerAgreement, setAcceptEmployerAgreement] = useState(false);
+  const [acceptPrivacyPolicy, setAcceptPrivacyPolicy] = useState(false);
   const [form, setForm] = useState<EmployerRegisterState>({
     email: "",
     password: "",
@@ -641,8 +790,12 @@ function EmployerRegisterForm({
       return;
     }
 
-    if (!acceptTerms) {
-      setError(isArabic ? "يجب الموافقة على الشروط وسياسة الخصوصية." : "You must accept the Terms and Privacy Policy.");
+    if (!acceptTerms || !acceptEmployerAgreement || !acceptPrivacyPolicy) {
+      setError(
+        isArabic
+          ? "يجب الموافقة على شروط الاستخدام واتفاقية صاحب العمل وسياسة الخصوصية."
+          : "You must accept the Terms of Service, Employer Agreement, and Privacy Policy."
+      );
       return;
     }
 
@@ -656,14 +809,25 @@ function EmployerRegisterForm({
           "Content-Type": "application/json",
           "x-csrf-token": csrfToken,
         },
-        body: JSON.stringify(form),
+        body: JSON.stringify({
+          ...form,
+          acceptTermsOfService: acceptTerms,
+          acceptPrivacyPolicy,
+          acceptEmployerAgreement,
+        }),
       });
 
-      const payload = await response.json();
-      if (!response.ok || !payload.success) {
-        setError(payload?.error?.message ?? (isArabic ? "تعذر تسجيل الشركة." : "Unable to register company"));
+      const payload = await readJsonResponse<{ success?: boolean }>(response);
+      if (!response.ok || !payload?.success) {
+        setError(
+          isArabic
+            ? "تعذر إكمال تسجيل الشركة الآن. حاول مرة أخرى."
+            : "We couldn't complete company registration right now. Please try again."
+        );
         return;
       }
+
+      await finalizeAuthStateForNavigation();
 
       router.push("/employer/pending-approval");
     } catch {
@@ -729,7 +893,49 @@ function EmployerRegisterForm({
 
       <label className="md:col-span-2 flex min-h-12 items-start gap-3 rounded-2xl border border-blue-200/20 bg-[#071428]/75 px-4 py-3 text-sm text-text-secondary">
         <PrimeCheckbox type="checkbox" checked={acceptTerms} onChange={(event) => setAcceptTerms(event.target.checked)} />
-        <span>{isArabic ? "أوافق على الشروط وسياسة الخصوصية ومتطلبات التحقق من الشركة." : "I accept the Terms, Privacy Policy, and company verification requirements."}</span>
+        <span>
+          {isArabic ? "أوافق على " : "I agree to the "}
+          <Link
+            href="/legal/terms-of-service"
+            className="font-semibold text-blue-200 underline underline-offset-4 hover:text-blue-100"
+          >
+            {isArabic ? "شروط الاستخدام" : "Terms of Service"}
+          </Link>
+        </span>
+      </label>
+
+      <label className="md:col-span-2 flex min-h-12 items-start gap-3 rounded-2xl border border-blue-200/20 bg-[#071428]/75 px-4 py-3 text-sm text-text-secondary">
+        <PrimeCheckbox
+          type="checkbox"
+          checked={acceptEmployerAgreement}
+          onChange={(event) => setAcceptEmployerAgreement(event.target.checked)}
+        />
+        <span>
+          {isArabic ? "أوافق على " : "I agree to the "}
+          <Link
+            href="/legal/employer-agreement"
+            className="font-semibold text-blue-200 underline underline-offset-4 hover:text-blue-100"
+          >
+            {isArabic ? "اتفاقية صاحب العمل" : "Employer Agreement"}
+          </Link>
+        </span>
+      </label>
+
+      <label className="md:col-span-2 flex min-h-12 items-start gap-3 rounded-2xl border border-blue-200/20 bg-[#071428]/75 px-4 py-3 text-sm text-text-secondary">
+        <PrimeCheckbox
+          type="checkbox"
+          checked={acceptPrivacyPolicy}
+          onChange={(event) => setAcceptPrivacyPolicy(event.target.checked)}
+        />
+        <span>
+          {isArabic ? "أوافق على " : "I agree to the "}
+          <Link
+            href="/legal/privacy-policy"
+            className="font-semibold text-blue-200 underline underline-offset-4 hover:text-blue-100"
+          >
+            {isArabic ? "سياسة الخصوصية" : "Privacy Policy"}
+          </Link>
+        </span>
       </label>
 
       {error ? <p className="text-sm text-red-300 md:col-span-2">{error}</p> : null}

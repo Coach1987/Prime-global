@@ -1,6 +1,5 @@
 import { createHash } from "node:crypto";
 import mammoth from "mammoth";
-import { PDFParse } from "pdf-parse";
 import { readOptionalEnv } from "@/lib/server/config/env";
 import { createSupabaseAdminClient } from "@/lib/server/supabase";
 
@@ -310,39 +309,7 @@ async function extractDocumentArtifact(document: VerificationDocumentInput): Pro
 
   try {
     if (document.mimeType === "application/pdf" || document.fileName.toLowerCase().endsWith(".pdf")) {
-      const parser = new PDFParse({ data: document.buffer });
-      const [textResult, infoResult] = await Promise.all([
-        parser.getText().catch(() => ({ text: "" })),
-        parser.getInfo({ parsePageInfo: true }).catch(() => null),
-      ]);
-      await parser.destroy();
-
-      const metadata = infoResult
-        ? {
-            totalPages: infoResult.total ?? null,
-            info: infoResult.info ?? null,
-            metadata: infoResult.metadata ?? null,
-            pageLabels: Array.isArray(infoResult.pages)
-              ? infoResult.pages
-                  .map((entry) => (typeof entry?.pageLabel === "string" ? entry.pageLabel : null))
-                  .filter(Boolean)
-              : [],
-          }
-        : {};
-
-      const links = Array.isArray(infoResult?.pages)
-        ? infoResult.pages
-            .flatMap((entry) => (Array.isArray(entry?.links) ? entry.links : []))
-            .map((entry) => String((entry as Record<string, unknown>)?.url ?? "").trim())
-            .filter(Boolean)
-        : [];
-
-      return {
-        input: document,
-        text: (textResult.text ?? "").trim() || fallback.text,
-        pdfMetadata: metadata,
-        links: uniqueStrings(links),
-      };
+      return fallback;
     }
 
     if (
@@ -1203,12 +1170,7 @@ export async function persistIdentityVerificationDecision(input: {
     );
   }
 
-  const profileStatus =
-    input.result.decision === "automatic_approval" || input.result.decision === "accepted"
-      ? "approved"
-      : input.result.decision === "pending_verification"
-        ? "pending_verification"
-        : "rejected";
+  const profileStatus = "pending_verification";
 
   const profileUpdate = await supabase
     .from("candidate_private_profiles")

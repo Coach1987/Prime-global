@@ -1,15 +1,17 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, useRouter } from "@/i18n/routing";
 import { useTranslations } from "next-intl";
 import { AuthRole, getAccountHref, getDashboardHref, normalizeAuthRole } from "@/lib/auth/routing";
 import { primeButtonClasses } from "@/components/ui/prime/PrimeButton";
+import { emitAuthSessionChanged, subscribeAuthSessionChanged } from "@/lib/auth/client-session-sync";
 import { AuthSegmentedControl } from "./AuthSegmentedControl";
 
 type AuthState = {
   role: AuthRole;
   displayName: string | null;
+  hasPhoto?: boolean;
 };
 
 type AuthActionsProps = {
@@ -21,27 +23,62 @@ export function AuthActions({ mobile = false, onNavigate }: AuthActionsProps) {
   const t = useTranslations("nav");
   const router = useRouter();
   const [authState, setAuthState] = useState<AuthState | null>(null);
+  const [resolved, setResolved] = useState(false);
+  const refreshInFlight = useRef(false);
+
+  async function refreshAuthState() {
+    if (refreshInFlight.current) return;
+    refreshInFlight.current = true;
+
+    try {
+      const response = await fetch("/api/auth/me", {
+        credentials: "include",
+        cache: "no-store",
+      });
+      const payload = await response.json().catch(() => null);
+
+      if (!payload?.success) {
+        setAuthState(null);
+        return;
+      }
+
+      const role = normalizeAuthRole(String(payload?.data?.role ?? ""));
+      if (!role) {
+        setAuthState(null);
+        return;
+      }
+
+      let hasPhoto = false;
+      if (role === "candidate") {
+        const photoResponse = await fetch("/api/candidates/profile-photo", {
+          credentials: "include",
+          cache: "no-store",
+        }).catch(() => null);
+        const photoPayload = photoResponse ? await photoResponse.json().catch(() => null) : null;
+        hasPhoto = Boolean(photoPayload?.success && photoPayload?.data?.hasPhoto);
+      }
+
+      setAuthState({
+        role,
+        displayName: payload?.data?.displayName ?? null,
+        hasPhoto,
+      });
+    } catch {
+      setAuthState(null);
+    } finally {
+      setResolved(true);
+      refreshInFlight.current = false;
+    }
+  }
 
   useEffect(() => {
-    fetch("/api/auth/me", {
-      credentials: "include",
-    })
-      .then((response) => response.json())
-      .then((payload) => {
-        if (!payload?.success) {
-          setAuthState(null);
-          return;
-        }
+    void refreshAuthState();
 
-        const role = normalizeAuthRole(String(payload?.data?.role ?? ""));
-        if (!role) {
-          setAuthState(null);
-          return;
-        }
+    const unsubscribe = subscribeAuthSessionChanged(() => {
+      void refreshAuthState();
+    });
 
-        setAuthState({ role, displayName: payload?.data?.displayName ?? null });
-      })
-      .catch(() => setAuthState(null));
+    return unsubscribe;
   }, []);
 
   async function handleSignOut() {
@@ -59,6 +96,8 @@ export function AuthActions({ mobile = false, onNavigate }: AuthActionsProps) {
       headers: { "x-csrf-token": csrfToken },
       credentials: "include",
     }).catch(() => undefined);
+
+    emitAuthSessionChanged({ role: null, displayName: null });
     setAuthState(null);
     onNavigate?.();
     router.push("/");
@@ -69,11 +108,21 @@ export function AuthActions({ mobile = false, onNavigate }: AuthActionsProps) {
     ? primeButtonClasses("secondary") + " w-full"
     : primeButtonClasses("secondary") + " min-h-11 px-4 py-2.5";
 
+  if (!resolved) {
+    return <div className={mobile ? "mt-10" : "hidden md:flex"} aria-hidden="true" />;
+  }
+
   if (!authState) {
     return <AuthSegmentedControl mobile={mobile} onNavigate={onNavigate} />;
   }
 
   const accountTitle = authState.displayName || t("account");
+  const initials = accountTitle
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase() ?? "")
+    .join("") || "PG";
 
   const candidateLinks = [
     { href: getDashboardHref("candidate"), label: t("dashboard") },
@@ -81,7 +130,7 @@ export function AuthActions({ mobile = false, onNavigate }: AuthActionsProps) {
     { href: "/candidate/applications", label: t("applications") },
     { href: "/candidate/my-interviews", label: t("interviews") },
     { href: "/notifications", label: t("notifications") },
-    { href: "/portal", label: t("settings") },
+    { href: "/candidate/settings", label: t("settings") },
   ];
 
   const employerLinks = [
@@ -102,8 +151,23 @@ export function AuthActions({ mobile = false, onNavigate }: AuthActionsProps) {
   return (
     <div className={mobile ? "mt-10 flex w-full flex-col gap-3" : "hidden items-center gap-2 md:flex"}>
       <div className={mobile ? "rounded-2xl border border-blue-200/20 p-4" : "group relative"}>
-        <button type="button" className={mobile ? `${actionClassName} justify-start` : `${primeButtonClasses("secondary")} min-h-11 px-4 py-2.5`}>
-          {accountTitle}
+        <button
+          type="button"
+          className={mobile ? `${actionClassName} justify-start gap-2` : `${primeButtonClasses("secondary")} min-h-11 px-4 py-2.5 gap-2`}
+          aria-label={accountTitle}
+        >
+          {authState.role === "candidate" && authState.hasPhoto ? (
+            <img
+              src="/api/candidates/profile-photo/content"
+              alt={t("account")}
+              className="h-6 w-6 rounded-full object-cover"
+            />
+          ) : (
+            <span className="inline-flex h-6 w-6 items-center justify-center rounded-full border border-blue-200/30 bg-[#0b1d35] text-[10px] font-semibold text-slate-100">
+              {initials}
+            </span>
+          )}
+          <span>{accountTitle}</span>
         </button>
 
         <div

@@ -3,6 +3,7 @@ import { employerRegistrationSchema } from "@/features/employers/schemas/portal"
 import { createSupabaseAdminClient } from "@/lib/server/supabase";
 import { createAuditLog } from "@/lib/server/security/audit";
 import { enforceCsrf, enforceRateLimit, getRequestContext, parseJsonBody } from "@/lib/server/http";
+import { LEGAL_DOCUMENT_VERSION, persistLegalAcceptances } from "@/lib/server/security/legal-acceptance";
 
 export async function POST(request: Request) {
   const rateLimitResult = enforceRateLimit(request, "employer-register", 20);
@@ -60,6 +61,45 @@ export async function POST(request: Request) {
     await supabase.auth.admin.deleteUser(userData.user.id);
     return NextResponse.json(
       { success: false, error: { code: "EMPLOYER_CREATE_FAILED", message: employerError.message } },
+      { status: 400 }
+    );
+  }
+
+  try {
+    const acceptedAt = new Date().toISOString();
+    await persistLegalAcceptances([
+      {
+        userId: userData.user.id,
+        role: "employer",
+        documentName: "terms_of_service",
+        documentVersion: LEGAL_DOCUMENT_VERSION,
+        acceptedAt,
+        ipAddress,
+        userAgent,
+      },
+      {
+        userId: userData.user.id,
+        role: "employer",
+        documentName: "privacy_policy",
+        documentVersion: LEGAL_DOCUMENT_VERSION,
+        acceptedAt,
+        ipAddress,
+        userAgent,
+      },
+      {
+        userId: userData.user.id,
+        role: "employer",
+        documentName: "employer_agreement",
+        documentVersion: LEGAL_DOCUMENT_VERSION,
+        acceptedAt,
+        ipAddress,
+        userAgent,
+      },
+    ]);
+  } catch {
+    await supabase.auth.admin.deleteUser(userData.user.id);
+    return NextResponse.json(
+      { success: false, error: { code: "EMPLOYER_CREATE_FAILED", message: "Unable to persist legal acceptance records." } },
       { status: 400 }
     );
   }

@@ -1,7 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { createMockVideoTransport } from "@/features/recruitment/utils/mock-video-transport";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { createJitsiVideoTransport, type JitsiVideoTransport, type MediaDeviceOption } from "@/features/recruitment/utils/jitsi-video-transport";
 import { primeButtonClasses } from "@/components/ui/prime/PrimeButton";
 import { PrimeCard } from "@/components/ui/prime/PrimeCard";
 import { PrimeInput, PrimeTextarea } from "@/components/ui/prime/PrimeInput";
@@ -39,7 +39,7 @@ function getCopy(locale: string) {
     camera: isArabic ? "الكاميرا" : "Camera",
     mic: isArabic ? "المايكروفون" : "Microphone",
     share: isArabic ? "مشاركة الشاشة" : "Screen sharing",
-    placeholder: isArabic ? "واجهة الفيديو التجريبية داخل برايم جلوبال" : "In-platform video interface placeholder",
+    liveRoom: isArabic ? "غرفة مقابلة مباشرة ومؤمنة" : "Secure live interview room",
     send: isArabic ? "إرسال" : "Send",
     acceptInterview: isArabic ? "قبول الدعوة" : "Accept invitation",
     rejectInterview: isArabic ? "رفض الدعوة" : "Reject invitation",
@@ -51,6 +51,10 @@ function getCopy(locale: string) {
     coordinationBanner: isArabic ? "تُنسَّق هذه المقابلة حصريًا من خلال برايم جلوبال." : "This interview is coordinated exclusively by Prime Global.",
     chatPlaceholder: isArabic ? "اكتب رسالة المقابلة هنا" : "Type interview chat message",
     noChat: isArabic ? "لا توجد رسائل بعد." : "No chat messages yet.",
+    connectionQuality: isArabic ? "جودة الاتصال" : "Connection quality",
+    audioInput: isArabic ? "مصدر المايكروفون" : "Microphone input",
+    videoInput: isArabic ? "مصدر الكاميرا" : "Camera input",
+    enableLobby: isArabic ? "فعل غرفة الانتظار من إعدادات الاجتماع" : "Enable waiting room from meeting settings",
   };
 }
 
@@ -71,6 +75,7 @@ export function InterviewMeetingCenter({
   role: "employer" | "candidate" | "staff";
   interviewId: string;
 }) {
+  const [loading, setLoading] = useState(true);
   const [hasSession, setHasSession] = useState(false);
   const [isAuthorized, setIsAuthorized] = useState(false);
   const [csrfToken, setCsrfToken] = useState("");
@@ -83,8 +88,16 @@ export function InterviewMeetingCenter({
   const [screenSharingOn, setScreenSharingOn] = useState(false);
   const [tokenNotice, setTokenNotice] = useState<string | null>(null);
   const [deviceCheckResult, setDeviceCheckResult] = useState<{ cameraReady: boolean; microphoneReady: boolean; checkedAt: string } | null>(null);
+  const [identity, setIdentity] = useState<{ userId: string; displayName: string } | null>(null);
+  const [connectionQuality, setConnectionQuality] = useState<number | null>(null);
+  const [transportReady, setTransportReady] = useState(false);
+  const [audioInputs, setAudioInputs] = useState<MediaDeviceOption[]>([]);
+  const [videoInputs, setVideoInputs] = useState<MediaDeviceOption[]>([]);
+  const [selectedAudioInput, setSelectedAudioInput] = useState("");
+  const [selectedVideoInput, setSelectedVideoInput] = useState("");
   const copy = useMemo(() => getCopy(locale), [locale]);
-  const videoTransport = useMemo(() => createMockVideoTransport(), []);
+  const jitsiContainerRef = useRef<HTMLDivElement | null>(null);
+  const transportRef = useRef<JitsiVideoTransport | null>(null);
 
   const loadCenter = useCallback(async () => {
     const response = await fetch(`/api/recruitment/interviews/${interviewId}/meeting-center?locale=${locale}`, {
@@ -99,17 +112,21 @@ export function InterviewMeetingCenter({
   }, [interviewId, locale]);
 
   useEffect(() => {
-    fetch("/api/auth/me", {
-      credentials: "include",
-    })
-      .then((response) => response.json())
-      .then((payload) => {
-        if (!payload?.success) {
+    Promise.all([
+      fetch("/api/auth/me", {
+        credentials: "include",
+      }),
+      fetch("/api/security/csrf"),
+    ])
+      .then(async ([authResponse, csrfResponse]) => {
+        const [authPayload, csrfPayload] = await Promise.all([authResponse.json(), csrfResponse.json()]);
+
+        if (!authPayload?.success) {
           setError(locale === "ar" ? "فشل التحقق من الجلسة." : "Session verification failed.");
           return;
         }
 
-        const userRole = String(payload?.data?.role ?? "");
+        const userRole = String(authPayload?.data?.role ?? "");
         const roleAllowed =
           (role === "candidate" && userRole === "candidate") ||
           (role === "employer" && userRole === "employer") ||
@@ -120,17 +137,20 @@ export function InterviewMeetingCenter({
           return;
         }
 
+        const displayName = String(authPayload?.data?.displayName ?? "").trim();
+        const fallbackName = role === "staff" ? "Prime Global Staff" : role === "candidate" ? "Candidate" : "Employer";
+        setIdentity({
+          userId: String(authPayload?.data?.userId ?? ""),
+          displayName: displayName || fallbackName,
+        });
+
         setHasSession(true);
         setIsAuthorized(true);
+        setCsrfToken(csrfPayload?.data?.csrfToken ?? "");
+        await loadCenter();
       })
-      .catch(() => setError(locale === "ar" ? "تعذر التحقق من الجلسة." : "Unable to verify session."));
-
-    fetch("/api/security/csrf")
-      .then((response) => response.json())
-      .then((payload) => setCsrfToken(payload?.data?.csrfToken ?? ""))
-      .catch(() => setCsrfToken(""));
-
-    loadCenter().catch(() => setError(locale === "ar" ? "تعذر تحميل المركز." : "Unable to load center."));
+      .catch(() => setError(locale === "ar" ? "تعذر تحميل المركز." : "Unable to load center."))
+      .finally(() => setLoading(false));
   }, [interviewId, locale, role, loadCenter]);
 
   useEffect(() => {
@@ -147,6 +167,79 @@ export function InterviewMeetingCenter({
     setMicOn(Boolean(data.interview.microphone_enabled));
     setScreenSharingOn(Boolean(data.interview.screen_sharing_enabled));
   }, [data]);
+
+  const initializeLiveRoom = useCallback(async () => {
+    if (!jitsiContainerRef.current || !data?.interview || !identity) return;
+
+    try {
+      const roomName = String(data.interview.meeting_room_reference ?? `pg-room-${interviewId}`);
+      const transport = createJitsiVideoTransport();
+      transportRef.current?.destroy();
+      transportRef.current = transport;
+
+      transport.onConnectionQualityChange((value) => setConnectionQuality(value));
+
+      await transport.initialize({
+        container: jitsiContainerRef.current,
+        roomName,
+        locale: locale === "ar" ? "ar" : "en",
+        identity: {
+          displayName: identity.displayName,
+        },
+        startWithAudioMuted: !micOn,
+        startWithVideoMuted: !cameraOn,
+      });
+
+      const devices = await transport.listDevices();
+      const audio = devices.filter((device) => device.kind === "audioinput");
+      const video = devices.filter((device) => device.kind === "videoinput");
+
+      setAudioInputs(audio);
+      setVideoInputs(video);
+      setSelectedAudioInput((current) => current || audio[0]?.deviceId || "");
+      setSelectedVideoInput((current) => current || video[0]?.deviceId || "");
+      setConnectionQuality(transport.getConnectionQuality());
+      setTransportReady(true);
+      window.localStorage.setItem(`pg:interview:${interviewId}:transport`, "active");
+    } catch {
+      setTransportReady(false);
+      setError(locale === "ar" ? "تعذر تهيئة غرفة المقابلة المباشرة." : "Unable to initialize live interview room.");
+    }
+  }, [cameraOn, data, identity, interviewId, locale, micOn]);
+
+  const destroyLiveRoom = useCallback(() => {
+    transportRef.current?.destroy();
+    transportRef.current = null;
+    setTransportReady(false);
+    setConnectionQuality(null);
+    window.localStorage.removeItem(`pg:interview:${interviewId}:transport`);
+  }, [interviewId]);
+
+  useEffect(() => {
+    return () => {
+      transportRef.current?.destroy();
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!data?.participants || !data.interview) return;
+
+    const status = String(data.interview.status ?? "scheduled");
+    if (status !== "live" && transportReady) {
+      destroyLiveRoom();
+      return;
+    }
+
+    const persisted = window.localStorage.getItem(`pg:interview:${interviewId}:transport`) === "active";
+    const roleKey = role === "staff" ? "prime_global_staff" : role;
+    const joined = (data.participants ?? []).some((participant) => {
+      return String(participant.participant_role ?? "") === roleKey && String(participant.presence_status ?? "") === "joined";
+    });
+
+    if ((joined || persisted) && !transportReady) {
+      initializeLiveRoom().catch(() => undefined);
+    }
+  }, [data, destroyLiveRoom, initializeLiveRoom, interviewId, role, transportReady]);
 
   async function joinMeeting() {
     if (!hasSession) return;
@@ -180,6 +273,7 @@ export function InterviewMeetingCenter({
     }
     setTokenNotice(copy.tokenIssued);
     await loadCenter();
+    await initializeLiveRoom();
   }
 
   async function respondToInvitation(action: "accept" | "reject") {
@@ -240,7 +334,13 @@ export function InterviewMeetingCenter({
   }
 
   async function runDeviceCheck() {
-    const result = await videoTransport.runDeviceCheck({
+    const transport = transportRef.current;
+    if (!transport) {
+      setError(locale === "ar" ? "انضم إلى غرفة الاجتماع أولًا." : "Join the meeting room first.");
+      return;
+    }
+
+    const result = await transport.runDeviceCheck({
       cameraEnabled: cameraOn,
       microphoneEnabled: micOn,
     });
@@ -259,6 +359,7 @@ export function InterviewMeetingCenter({
       setError(payload?.error?.message ?? "Failed to leave meeting");
       return;
     }
+    destroyLiveRoom();
     await loadCenter();
   }
 
@@ -333,7 +434,7 @@ export function InterviewMeetingCenter({
     return formatDuration((endedRaw - started) / 1000);
   }, [data]);
 
-  if (!data) {
+  if (loading || !hasSession || !isAuthorized || !data) {
     return (
       <main className="mx-auto w-full max-w-[1180px] px-4 pb-20 pt-[124px] sm:px-6 md:px-8">
         <section className="rounded-3xl border border-blue-200/20 bg-[#081223]/82 p-7 text-sm text-text-secondary backdrop-blur-xl md:p-10">
@@ -398,21 +499,90 @@ export function InterviewMeetingCenter({
 
         <section className="mt-7 grid gap-5 xl:grid-cols-[1.8fr_1fr]">
           <PrimeCard className="p-5">
-            <p className="text-xs uppercase tracking-[0.18em] text-text-tertiary">{copy.placeholder}</p>
+            <p className="text-xs uppercase tracking-[0.18em] text-text-tertiary">{copy.liveRoom}</p>
             <div className="prime-auth-card mt-4 min-h-[280px] p-4">
               <div className="mb-4 flex flex-wrap gap-2">
-                <button onClick={() => setCameraOn((v) => !v)} className={primeButtonClasses("secondary", "sm")}>
+                <button
+                  onClick={() => {
+                    transportRef.current?.toggleVideo();
+                    setCameraOn((v) => !v);
+                  }}
+                  className={primeButtonClasses("secondary", "sm")}
+                >
                   {copy.camera}: {cameraOn ? "on" : "off"}
                 </button>
-                <button onClick={() => setMicOn((v) => !v)} className={primeButtonClasses("secondary", "sm")}>
+                <button
+                  onClick={() => {
+                    transportRef.current?.toggleAudio();
+                    setMicOn((v) => !v);
+                  }}
+                  className={primeButtonClasses("secondary", "sm")}
+                >
                   {copy.mic}: {micOn ? "on" : "off"}
                 </button>
-                <button onClick={() => setScreenSharingOn((v) => !v)} className={primeButtonClasses("secondary", "sm")}>
+                <button
+                  onClick={() => {
+                    transportRef.current?.toggleScreenShare();
+                    setScreenSharingOn((v) => !v);
+                  }}
+                  className={primeButtonClasses("secondary", "sm")}
+                >
                   {copy.share}: {screenSharingOn ? "on" : "off"}
                 </button>
                 <button onClick={runDeviceCheck} className={primeButtonClasses("secondary", "sm")}>
                   Camera/Microphone check
                 </button>
+              </div>
+
+              <div className="mb-4 grid gap-3 sm:grid-cols-2">
+                <label className="text-xs text-text-secondary">
+                  {copy.audioInput}
+                  <select
+                    value={selectedAudioInput}
+                    onChange={async (event) => {
+                      const value = event.target.value;
+                      setSelectedAudioInput(value);
+                      await transportRef.current?.setAudioInputDevice(value);
+                    }}
+                    className="mt-1 w-full rounded-xl border border-blue-200/20 bg-[#071428] px-3 py-2 text-sm text-text-primary"
+                  >
+                    {audioInputs.map((device) => (
+                      <option key={device.deviceId} value={device.deviceId}>{device.label}</option>
+                    ))}
+                  </select>
+                </label>
+
+                <label className="text-xs text-text-secondary">
+                  {copy.videoInput}
+                  <select
+                    value={selectedVideoInput}
+                    onChange={async (event) => {
+                      const value = event.target.value;
+                      setSelectedVideoInput(value);
+                      await transportRef.current?.setVideoInputDevice(value);
+                    }}
+                    className="mt-1 w-full rounded-xl border border-blue-200/20 bg-[#071428] px-3 py-2 text-sm text-text-primary"
+                  >
+                    {videoInputs.map((device) => (
+                      <option key={device.deviceId} value={device.deviceId}>{device.label}</option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+
+              <div className="mb-3 flex flex-wrap items-center gap-2 text-xs text-text-secondary">
+                <span className="rounded-full border border-blue-200/20 px-3 py-1">
+                  {copy.connectionQuality}: {connectionQuality === null ? "n/a" : `${connectionQuality}%`}
+                </span>
+                {role === "staff" ? (
+                  <span className="rounded-full border border-blue-200/20 px-3 py-1">
+                    {copy.enableLobby}
+                  </span>
+                ) : null}
+              </div>
+
+              <div className="overflow-hidden rounded-2xl border border-blue-200/20 bg-[#030a1c]">
+                <div ref={jitsiContainerRef} className="h-[420px] w-full md:h-[520px]" />
               </div>
 
               {deviceCheckResult ? (

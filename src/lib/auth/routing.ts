@@ -26,7 +26,7 @@ export function getDashboardHref(role: AuthRole) {
 }
 
 export function getAccountHref(role: AuthRole) {
-  if (role === "candidate") return "/candidate/onboarding";
+  if (role === "candidate") return "/candidate/profile";
   if (role === "employer") return "/employers/verification";
   return "/admin/dashboard";
 }

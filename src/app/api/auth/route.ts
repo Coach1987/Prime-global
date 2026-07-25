@@ -13,7 +13,8 @@ const candidateRegistrationSchema = z
     phoneNumber: z.string().trim().min(6).max(32).optional().or(z.literal("")),
     country: z.string().trim().min(2).max(120).optional().or(z.literal("")),
     city: z.string().trim().min(2).max(120).optional().or(z.literal("")),
-    acceptTerms: z.literal(true),
+    acceptTermsOfService: z.literal(true),
+    acceptPrivacyPolicy: z.literal(true),
   })
   .strict();
 
@@ -129,11 +130,6 @@ export async function POST(request: Request) {
       data: {
         userId,
         email: userData.user.email,
-        session: {
-          accessToken: sessionData.session.access_token,
-          refreshToken: sessionData.session.refresh_token,
-          expiresAt: sessionData.session.expires_at,
-        },
       },
     },
     { status: 201 }

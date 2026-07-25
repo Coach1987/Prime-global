@@ -1,0 +1,71 @@
+import type { IdentitySecurityPermissionCode } from "./types.ts";
+
+export const identitySecurityPermissionMatrix: Record<string, IdentitySecurityPermissionCode[]> = {
+  owner: [
+    "identity.identities.manage",
+    "identity.auth.manage",
+    "identity.mfa.manage",
+    "identity.passkeys.manage",
+    "identity.sessions.manage",
+    "identity.devices.manage",
+    "identity.authorization.manage",
+    "identity.permissions.delegate",
+    "identity.secrets.manage",
+    "identity.policies.manage",
+    "identity.monitoring.read",
+    "identity.audit.read",
+  ],
+  ceo: [
+    "identity.identities.manage",
+    "identity.auth.manage",
+    "identity.mfa.manage",
+    "identity.sessions.manage",
+    "identity.authorization.manage",
+    "identity.policies.manage",
+    "identity.monitoring.read",
+    "identity.audit.read",
+  ],
+  ciso: [
+    "identity.identities.manage",
+    "identity.auth.manage",
+    "identity.mfa.manage",
+    "identity.passkeys.manage",
+    "identity.sessions.manage",
+    "identity.devices.manage",
+    "identity.authorization.manage",
+    "identity.permissions.delegate",
+    "identity.secrets.manage",
+    "identity.policies.manage",
+    "identity.monitoring.read",
+    "identity.audit.read",
+  ],
+  security_admin: [
+    "identity.identities.manage",
+    "identity.auth.manage",
+    "identity.mfa.manage",
+    "identity.passkeys.manage",
+    "identity.sessions.manage",
+    "identity.devices.manage",
+    "identity.authorization.manage",
+    "identity.secrets.manage",
+    "identity.monitoring.read",
+    "identity.audit.read",
+  ],
+  super_admin: [
+    "identity.identities.manage",
+    "identity.auth.manage",
+    "identity.mfa.manage",
+    "identity.sessions.manage",
+    "identity.devices.manage",
+    "identity.authorization.manage",
+    "identity.secrets.manage",
+    "identity.monitoring.read",
+    "identity.audit.read",
+  ],
+  department_manager: ["identity.sessions.manage", "identity.devices.manage", "identity.monitoring.read"],
+  read_only_auditor: ["identity.monitoring.read", "identity.audit.read"],
+};
+
+export function listIdentitySecurityPermissionsForRole(roleCode: string) {
+  return identitySecurityPermissionMatrix[roleCode] ?? [];
+}

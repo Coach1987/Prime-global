@@ -68,7 +68,9 @@ export function ConversationDetail({
   role: "employer" | "candidate" | "staff";
   conversationId: string;
 }) {
+  const [loading, setLoading] = useState(true);
   const [hasSession, setHasSession] = useState(false);
+  const [isAuthorized, setIsAuthorized] = useState(false);
   const [csrfToken, setCsrfToken] = useState("");
   const [data, setData] = useState<DetailPayload | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -99,22 +101,38 @@ export function ConversationDetail({
         : `/${locale}/employers/supervised-conversations/${conversationId}/interviews`;
 
   useEffect(() => {
-    fetch("/api/auth/me", { credentials: "include" })
-      .then((response) => response.json())
-      .then((payload) => {
-        if (payload?.success) {
-          setHasSession(true);
+    Promise.all([
+      fetch("/api/auth/me", { credentials: "include" }),
+      fetch("/api/security/csrf"),
+    ])
+      .then(async ([authResponse, csrfResponse]) => {
+        const [authPayload, csrfPayload] = await Promise.all([authResponse.json(), csrfResponse.json()]);
+
+        if (!authPayload?.success) {
+          setError(locale === "ar" ? "فشل التحقق من الجلسة." : "Session verification failed.");
+          return;
         }
+
+        const userRole = String(authPayload?.data?.role ?? "");
+        const roleAllowed =
+          (role === "candidate" && userRole === "candidate") ||
+          (role === "employer" && userRole === "employer") ||
+          (role === "staff" && (userRole === "prime_global_recruiter" || userRole === "prime_global_admin" || userRole === "admin" || userRole === "super_admin"));
+
+        if (!roleAllowed) {
+          setError(locale === "ar" ? "صلاحيات غير كافية." : "Insufficient role privileges.");
+          return;
+        }
+
+        setHasSession(true);
+        setIsAuthorized(true);
+        setCsrfToken(csrfPayload?.data?.csrfToken ?? "");
+
+        await loadConversation();
       })
-      .catch(() => setHasSession(false));
-
-    fetch("/api/security/csrf")
-      .then((response) => response.json())
-      .then((payload) => setCsrfToken(payload?.data?.csrfToken ?? ""))
-      .catch(() => setCsrfToken(""));
-
-    loadConversation().catch(() => setError(locale === "ar" ? "تعذر تحميل المحادثة." : "Unable to load conversation."));
-  }, [conversationId, loadConversation, locale]);
+      .catch(() => setError(locale === "ar" ? "تعذر تحميل المحادثة." : "Unable to load conversation."))
+      .finally(() => setLoading(false));
+  }, [conversationId, loadConversation, locale, role]);
 
   async function sendMessage(body: string) {
     if (!hasSession || !body.trim()) return;
@@ -292,7 +310,7 @@ export function ConversationDetail({
     await loadConversation();
   }
 
-  if (!data) {
+  if (loading || !hasSession || !isAuthorized || !data) {
     return (
       <main className="mx-auto w-full max-w-[1180px] px-4 pb-20 pt-[124px] sm:px-6 md:px-8">
         <section className="rounded-3xl border border-blue-200/20 bg-[#081223]/82 p-7 text-sm text-text-secondary backdrop-blur-xl md:p-10">
