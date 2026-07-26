@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import dynamic from "next/dynamic";
 import { getTranslations, setRequestLocale } from "next-intl/server";
+import { buildBreadcrumbListJsonLd, buildLocalizedAlternates } from "@/lib/seo/public";
 
 const ApplicationForm = dynamic(
   () => import("@/features/careers/components").then((mod) => mod.ApplicationForm),
@@ -20,7 +21,7 @@ export async function generateMetadata({
   return {
     title: t("title"),
     description: t("description"),
-    alternates: { canonical: `/${locale}/careers` },
+    alternates: buildLocalizedAlternates(locale, "/careers"),
   };
 }
 
@@ -31,9 +32,18 @@ export default async function CareersPage({
 }) {
   const { locale } = await params;
   setRequestLocale(locale);
+  const t = await getTranslations({ locale, namespace: "careers.apply.meta" });
+  const breadcrumbJsonLd = buildBreadcrumbListJsonLd([
+    { name: locale === "ar" ? "الرئيسية" : "Home", path: `/${locale}` },
+    { name: t("title"), path: `/${locale}/careers` },
+  ]);
 
   return (
     <main className="mx-auto w-full max-w-[1260px] px-4 pb-16 pt-[112px] sm:px-6 sm:pb-20 md:px-8">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }}
+      />
       <ApplicationForm />
     </main>
   );

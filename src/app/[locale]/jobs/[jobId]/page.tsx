@@ -4,6 +4,8 @@ import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } fro
 import { useParams, useSearchParams } from "next/navigation";
 import { buildCandidateAuthHref } from "@/lib/auth/return-to";
 import { useRouter } from "@/i18n/routing";
+import { SITE_URL } from "@/lib/constants/site";
+import { buildBreadcrumbListJsonLd } from "@/lib/seo/public";
 
 type JobDetail = {
   id: string;
@@ -403,9 +405,59 @@ export default function JobDetailPage() {
   }
 
   const location = [job?.city, job?.country].filter(Boolean).join(", ") || copy.locationUnknown;
+  const breadcrumbJsonLd = buildBreadcrumbListJsonLd([
+    { name: isArabic ? "الرئيسية" : "Home", path: `/${locale}` },
+    { name: isArabic ? "الوظائف" : "Jobs", path: `/${locale}/jobs` },
+    { name: job?.title ?? (isArabic ? "تفاصيل الوظيفة" : "Job details"), path: `/${locale}/jobs/${jobId}` },
+  ]);
+
+  const jobPostingJsonLd =
+    job && job.title && (job.description || job.requirements)
+      ? {
+          "@context": "https://schema.org",
+          "@type": "JobPosting",
+          title: job.title,
+          description: [job.description, job.requirements].filter(Boolean).join("\n\n"),
+          datePosted: job.publish_date || undefined,
+          validThrough: job.application_deadline || undefined,
+          employmentType: job.employment_type || undefined,
+          hiringOrganization: {
+            "@type": "Organization",
+            name: job.company_display_name || "Prime Global",
+            sameAs: SITE_URL,
+          },
+          jobLocation:
+            job.country || job.city
+              ? {
+                  "@type": "Place",
+                  address: {
+                    "@type": "PostalAddress",
+                    addressLocality: job.city || undefined,
+                    addressCountry: job.country || undefined,
+                  },
+                }
+              : undefined,
+          url: `${SITE_URL}/${locale}/jobs/${jobId}`,
+          identifier: {
+            "@type": "PropertyValue",
+            name: "Prime Global",
+            value: job.id,
+          },
+        }
+      : null;
 
   return (
     <main className="mx-auto w-full max-w-[1040px] px-4 pb-20 pt-[124px] sm:px-6 md:px-8">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }}
+      />
+      {jobPostingJsonLd ? (
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(jobPostingJsonLd) }}
+        />
+      ) : null}
       <section className="rounded-3xl border border-gold/20 bg-bg-secondary/80 p-7 backdrop-blur-xl md:p-10">
         <h1 className="font-heading text-4xl text-text-primary">{copy.pageTitle}</h1>
         {error ? <p className="mt-4 text-sm text-red-300">{error}</p> : null}

@@ -5,6 +5,7 @@ import { Link } from "@/i18n/routing";
 import { PrimeCard } from "@/components/ui/prime/PrimeCard";
 import { PrimePageTitle } from "@/components/ui/prime/PrimePageTitle";
 import { getServiceBySlug, getServiceDetail } from "@/lib/constants/services";
+import { buildBreadcrumbListJsonLd, buildLocalizedAlternates } from "@/lib/seo/public";
 
 export async function generateMetadata({
   params,
@@ -17,7 +18,7 @@ export async function generateMetadata({
   if (!service) {
     return {
       title: "Service not found",
-      alternates: { canonical: `/${locale}/services/${slug}` },
+      alternates: buildLocalizedAlternates(locale, `/services/${slug}`),
     };
   }
 
@@ -26,7 +27,7 @@ export async function generateMetadata({
   return {
     title: t("title"),
     description: t("description"),
-    alternates: { canonical: `/${locale}/services/${slug}` },
+    alternates: buildLocalizedAlternates(locale, `/services/${slug}`),
   };
 }
 
@@ -50,9 +51,18 @@ export default async function ServiceDetailPage({
 
   const t = await getTranslations({ locale, namespace: `services.items.${service.key}` });
   const isArabic = locale === "ar";
+  const breadcrumbJsonLd = buildBreadcrumbListJsonLd([
+    { name: isArabic ? "الرئيسية" : "Home", path: `/${locale}` },
+    { name: isArabic ? "الخدمات" : "Services", path: `/${locale}/services` },
+    { name: t("title"), path: `/${locale}/services/${slug}` },
+  ]);
 
   return (
     <main className="pt-[88px]">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }}
+      />
       <section className="bg-bg-primary py-16 md:py-28">
         <div className="mx-auto max-w-[1040px] px-5 md:px-8">
           <Link

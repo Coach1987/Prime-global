@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { SectionHeading } from "@/components/ui/SectionHeading";
 import { Link } from "@/i18n/routing";
+import { buildBreadcrumbListJsonLd, buildLocalizedAlternates } from "@/lib/seo/public";
 
 export async function generateMetadata({
   params,
@@ -14,7 +15,7 @@ export async function generateMetadata({
   return {
     title: t("title"),
     description: t("description"),
-    alternates: { canonical: `/${locale}/about` },
+    alternates: buildLocalizedAlternates(locale, "/about"),
   };
 }
 
@@ -26,6 +27,10 @@ export default async function AboutPage({
   const { locale } = await params;
   setRequestLocale(locale);
   const t = await getTranslations({ locale, namespace: "about" });
+  const breadcrumbJsonLd = buildBreadcrumbListJsonLd([
+    { name: locale === "ar" ? "الرئيسية" : "Home", path: `/${locale}` },
+    { name: t("title"), path: `/${locale}/about` },
+  ]);
 
   const capabilities = [
     { key: "recruitment", href: "/careers" },
@@ -35,6 +40,10 @@ export default async function AboutPage({
 
   return (
     <main className="pt-[88px]">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }}
+      />
       <section className="bg-bg-primary py-16 md:py-32">
         <div className="mx-auto max-w-[920px] px-5 md:px-8">
           <SectionHeading eyebrow={t("eyebrow")} title={t("title")} description={t("description")} />

@@ -10,6 +10,8 @@ import { TestimonialsSection } from "@/components/sections/Testimonials";
 import { PartnersSection } from "@/components/sections/Partners/PartnersSection";
 import { EnterpriseCtaSection } from "@/components/sections/CTA/EnterpriseCtaSection";
 import { ContactSection } from "@/components/sections/Contact";
+import { isLocale } from "@/lib/constants/locales";
+import { buildLocalizedAlternates, buildWebsiteJsonLd } from "@/lib/seo/public";
 
 export async function generateMetadata({
   params,
@@ -25,9 +27,7 @@ export async function generateMetadata({
     // through the "%s | Prime Global" template, which would otherwise
     // produce a redundant "Home | Prime Global" for the homepage.
     description: t("subtext"),
-    alternates: {
-      canonical: `/${locale}`,
-    },
+    alternates: buildLocalizedAlternates(locale, ""),
   };
 }
 
@@ -39,8 +39,14 @@ export default async function HomePage({
   const { locale } = await params;
   setRequestLocale(locale);
 
+  const websiteJsonLd = buildWebsiteJsonLd(isLocale(locale) ? locale : "en", true);
+
   return (
     <main>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(websiteJsonLd) }}
+      />
       <Hero />
       <WhyUsSection />
       <ServicesSection />

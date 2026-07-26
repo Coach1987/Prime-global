@@ -10,6 +10,7 @@ import {
   type LegalDocumentKey,
 } from "@/lib/legal/documents";
 import { isLocale, type Locale } from "@/lib/constants/locales";
+import { buildBreadcrumbListJsonLd } from "@/lib/seo/public";
 
 type Params = {
   locale: Locale;
@@ -50,6 +51,7 @@ export async function generateMetadata({
       languages: {
         en: `/en/legal/${slug}`,
         ar: `/ar/legal/${slug}`,
+        "x-default": `/en/legal/${slug}`,
       },
     },
   };
@@ -77,9 +79,17 @@ export default async function LegalDocumentPage({
     getLegalSourcePath(locale, document.sourceFile),
     "utf8"
   );
+  const breadcrumbJsonLd = buildBreadcrumbListJsonLd([
+    { name: locale === "ar" ? "الرئيسية" : "Home", path: `/${locale}` },
+    { name: document.title[locale], path: `/${locale}/legal/${slug}` },
+  ]);
 
   return (
     <main className="pt-[88px]">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }}
+      />
       <section className="bg-bg-primary py-14 md:py-20">
         <div className="mx-auto w-full max-w-[940px] px-5 sm:px-6 md:px-8">
           <div className="rounded-[24px] border border-white/10 bg-[#071428]/70 p-5 shadow-[0_22px_60px_rgba(3,10,28,0.35)] md:p-8">

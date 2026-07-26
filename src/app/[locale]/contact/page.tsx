@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { ContactSection } from "@/components/sections/Contact";
+import { buildBreadcrumbListJsonLd, buildLocalizedAlternates } from "@/lib/seo/public";
 
 export async function generateMetadata({
   params,
@@ -15,9 +16,7 @@ export async function generateMetadata({
     // template already appends it automatically for every page.
     title: t("title"),
     description: t("description"),
-    alternates: {
-      canonical: `/${locale}/contact`,
-    },
+    alternates: buildLocalizedAlternates(locale, "/contact"),
   };
 }
 
@@ -28,9 +27,18 @@ export default async function ContactPage({
 }) {
   const { locale } = await params;
   setRequestLocale(locale);
+  const t = await getTranslations({ locale, namespace: "contact" });
+  const breadcrumbJsonLd = buildBreadcrumbListJsonLd([
+    { name: locale === "ar" ? "الرئيسية" : "Home", path: `/${locale}` },
+    { name: t("title"), path: `/${locale}/contact` },
+  ]);
 
   return (
     <main className="pt-[88px]">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }}
+      />
       <ContactSection />
     </main>
   );

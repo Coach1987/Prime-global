@@ -1,5 +1,25 @@
 import Link from "next/link";
+import type { Metadata } from "next";
 import { setRequestLocale } from "next-intl/server";
+import { buildBreadcrumbListJsonLd, buildLocalizedAlternates } from "@/lib/seo/public";
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}): Promise<Metadata> {
+  const { locale } = await params;
+  const isArabic = locale === "ar";
+
+  return {
+    title: isArabic ? "بوابة أصحاب العمل" : "Employer Portal",
+    description:
+      isArabic
+        ? "أنشئ ملف شركتك وانشر الوظائف عبر بوابة أصحاب العمل في Prime Global."
+        : "Create your company profile and publish jobs from the Prime Global employer portal.",
+    alternates: buildLocalizedAlternates(locale, "/employers"),
+  };
+}
 
 export default async function EmployersLandingPage({
   params,
@@ -8,9 +28,17 @@ export default async function EmployersLandingPage({
 }) {
   const { locale } = await params;
   setRequestLocale(locale);
+  const breadcrumbJsonLd = buildBreadcrumbListJsonLd([
+    { name: locale === "ar" ? "الرئيسية" : "Home", path: `/${locale}` },
+    { name: locale === "ar" ? "أصحاب العمل" : "Employers", path: `/${locale}/employers` },
+  ]);
 
   return (
     <main className="relative isolate mx-auto min-h-[calc(100vh-120px)] w-full max-w-[1260px] px-4 pb-20 pt-[124px] sm:px-6 md:px-8">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }}
+      />
       <div className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(60%_35%_at_50%_10%,rgba(86,163,255,0.2),rgba(10,14,20,0))]" />
       <section className="rounded-3xl border border-gold/20 bg-bg-secondary/70 p-8 shadow-[0_18px_80px_rgba(0,0,0,0.45)] backdrop-blur-xl md:p-12">
         <p className="text-xs font-semibold uppercase tracking-[0.24em] text-gold">Employer Portal</p>
