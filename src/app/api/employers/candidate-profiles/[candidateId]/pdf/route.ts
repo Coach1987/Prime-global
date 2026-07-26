@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireAuth, requireRole } from "@/lib/server/security/auth";
 import { enforceRateLimit } from "@/lib/server/http";
-import { getEmployerByAuthUserId } from "@/lib/server/employers";
+import { getEmployerByAuthUserId, requireVerifiedEmployerStatus } from "@/lib/server/employers";
 import { createSupabaseAdminClient } from "@/lib/server/supabase";
 import { createAuditLog } from "@/lib/server/security/audit";
 import { EMPLOYER_CANDIDATE_PROFILE_SELECT } from "@/lib/server/candidates/employer-profile";
@@ -25,6 +25,9 @@ export async function GET(request: Request, { params }: { params: Promise<{ cand
         { status: 404 }
       );
     }
+
+    const verificationGate = requireVerifiedEmployerStatus(employer.verification_status as string | null | undefined);
+    if (verificationGate) return verificationGate;
   }
 
   const { candidateId } = await params;
