@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import { GoogleAnalytics } from "@next/third-parties/google";
 import { NextIntlClientProvider } from "next-intl";
 import { getMessages, getTranslations, setRequestLocale } from "next-intl/server";
 import { notFound } from "next/navigation";
@@ -153,6 +154,7 @@ export default async function LocaleLayout({
             <Footer />
           </SmoothScrollProvider>
         </NextIntlClientProvider>
+        <GoogleAnalytics gaId="G-T0NWSPSHXX" />
       </body>
     </html>
   );
