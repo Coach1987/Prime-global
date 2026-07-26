@@ -153,18 +153,36 @@ export async function POST(request: Request) {
           userAgent,
         });
       } catch {
-        await supabase.auth.admin.deleteUser(userData.user.id);
-        return NextResponse.json(
-          { success: false, error: { code: "EMPLOYER_CREATE_FAILED", message: "Unable to persist legal acceptance records." } },
-          { status: 400 }
-        );
+        await createAuditLog({
+          actorAuthUserId: userData.user.id,
+          actorRole: "employer",
+          action: "employer.legal_acceptance.persistence_failed",
+          targetType: "employer",
+          targetId: userData.user.id,
+          metadata: {
+            acceptedDocuments: ["terms_of_service", "privacy_policy", "employer_agreement"],
+            failureStage: "fallback",
+            fallbackReason: errorMessage,
+          },
+          ipAddress,
+          userAgent,
+        });
       }
     } else {
-      await supabase.auth.admin.deleteUser(userData.user.id);
-      return NextResponse.json(
-        { success: false, error: { code: "EMPLOYER_CREATE_FAILED", message: "Unable to persist legal acceptance records." } },
-        { status: 400 }
-      );
+      await createAuditLog({
+        actorAuthUserId: userData.user.id,
+        actorRole: "employer",
+        action: "employer.legal_acceptance.persistence_failed",
+        targetType: "employer",
+        targetId: userData.user.id,
+        metadata: {
+          acceptedDocuments: ["terms_of_service", "privacy_policy", "employer_agreement"],
+          failureStage: "primary",
+          failureReason: errorMessage,
+        },
+        ipAddress,
+        userAgent,
+      });
     }
   }
 
