@@ -67,7 +67,7 @@ export async function POST(request: Request) {
 
   try {
     const acceptedAt = new Date().toISOString();
-    await persistLegalAcceptances([
+    const requiredLegalAcceptances = [
       {
         userId: userData.user.id,
         role: "employer",
@@ -86,6 +86,10 @@ export async function POST(request: Request) {
         ipAddress,
         userAgent,
       },
+    ] as const;
+
+    await persistLegalAcceptances([
+      ...requiredLegalAcceptances,
       {
         userId: userData.user.id,
         role: "employer",
@@ -96,12 +100,72 @@ export async function POST(request: Request) {
         userAgent,
       },
     ]);
-  } catch {
-    await supabase.auth.admin.deleteUser(userData.user.id);
-    return NextResponse.json(
-      { success: false, error: { code: "EMPLOYER_CREATE_FAILED", message: "Unable to persist legal acceptance records." } },
-      { status: 400 }
-    );
+
+    await createAuditLog({
+      actorAuthUserId: userData.user.id,
+      actorRole: "employer",
+      action: "employer.legal_acceptance.persisted",
+      targetType: "employer",
+      targetId: userData.user.id,
+      metadata: { documents: ["terms_of_service", "privacy_policy", "employer_agreement"] },
+      ipAddress,
+      userAgent,
+    });
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : "unknown_error";
+
+    if (/employer_agreement|document_name|check constraint|constraint/i.test(errorMessage)) {
+      try {
+        const acceptedAt = new Date().toISOString();
+        await persistLegalAcceptances([
+          {
+            userId: userData.user.id,
+            role: "employer",
+            documentName: "terms_of_service",
+            documentVersion: LEGAL_DOCUMENT_VERSION,
+            acceptedAt,
+            ipAddress,
+            userAgent,
+          },
+          {
+            userId: userData.user.id,
+            role: "employer",
+            documentName: "privacy_policy",
+            documentVersion: LEGAL_DOCUMENT_VERSION,
+            acceptedAt,
+            ipAddress,
+            userAgent,
+          },
+        ]);
+
+        await createAuditLog({
+          actorAuthUserId: userData.user.id,
+          actorRole: "employer",
+          action: "employer.legal_acceptance.persisted_with_fallback",
+          targetType: "employer",
+          targetId: userData.user.id,
+          metadata: {
+            persistedDocuments: ["terms_of_service", "privacy_policy"],
+            employerAgreementAccepted: true,
+            fallbackReason: errorMessage,
+          },
+          ipAddress,
+          userAgent,
+        });
+      } catch {
+        await supabase.auth.admin.deleteUser(userData.user.id);
+        return NextResponse.json(
+          { success: false, error: { code: "EMPLOYER_CREATE_FAILED", message: "Unable to persist legal acceptance records." } },
+          { status: 400 }
+        );
+      }
+    } else {
+      await supabase.auth.admin.deleteUser(userData.user.id);
+      return NextResponse.json(
+        { success: false, error: { code: "EMPLOYER_CREATE_FAILED", message: "Unable to persist legal acceptance records." } },
+        { status: 400 }
+      );
+    }
   }
 
   await createAuditLog({
