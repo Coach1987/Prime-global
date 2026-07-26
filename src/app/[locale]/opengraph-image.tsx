@@ -1,17 +1,9 @@
 import { ImageResponse } from "next/og";
-import { getTranslations } from "next-intl/server";
 
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
-export default async function OpengraphImage({
-  params,
-}: {
-  params: Promise<{ locale: string }>;
-}) {
-  const { locale } = await params;
-  const t = await getTranslations({ locale, namespace: "hero" });
-
+export default function OpengraphImage() {
   return new ImageResponse(
     (
       <div
@@ -59,7 +51,7 @@ export default async function OpengraphImage({
             display: "flex",
           }}
         >
-          {t("headlineLine1")} {t("headlineLine2")} {t("headlineLine3")}
+          Tunisian Global Expertise
         </div>
         <div
           style={{
@@ -71,7 +63,7 @@ export default async function OpengraphImage({
             display: "flex",
           }}
         >
-          {t("eyebrow")}
+          Integrated business support with efficiency and professionalism.
         </div>
       </div>
     ),

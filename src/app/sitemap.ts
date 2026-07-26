@@ -5,8 +5,8 @@ import { SITE_URL as BASE_URL } from "@/lib/constants/site";
 const INDEXABLE_PATHS = [
   "/",
   "/services",
-  "/services/logistics",
-  "/services/business-development",
+  "/services/logistics-support",
+  "/services/business-administration",
   "/about",
   "/contact",
   "/careers",

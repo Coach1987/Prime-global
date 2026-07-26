@@ -1,6 +1,21 @@
+import type { Metadata } from "next";
 import { Suspense } from "react";
 import { setRequestLocale } from "next-intl/server";
 import { PublicJobsSearchPage } from "@/components/jobs/PublicJobsSearchPage";
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}): Promise<Metadata> {
+  const { locale } = await params;
+
+  return {
+    alternates: {
+      canonical: `/${locale}/jobs`,
+    },
+  };
+}
 
 export default async function JobsPage({
   params,
