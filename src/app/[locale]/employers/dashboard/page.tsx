@@ -26,6 +26,7 @@ export default function EmployerDashboardPage() {
   const [jobs, setJobs] = useState<Job[]>([]);
   const [applicants, setApplicants] = useState<Array<Record<string, unknown>>>([]);
   const [error, setError] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
   const [jobTitle, setJobTitle] = useState("");
   const [jobCountry, setJobCountry] = useState("");
@@ -76,6 +77,7 @@ export default function EmployerDashboardPage() {
   async function createDraftJob(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError(null);
+    setFieldErrors({});
 
     const response = await fetch("/api/employers/jobs", {
       method: "POST",
@@ -104,13 +106,37 @@ export default function EmployerDashboardPage() {
       }),
     });
 
-    const payload = await response.json();
+    const payload = (await response.json()) as {
+      success?: boolean;
+      error?: { message?: string };
+      data?: Job;
+      details?: {
+        messageAr?: string;
+        fieldErrors?: Record<string, string>;
+        localizedFieldErrors?: Record<string, { en?: string; ar?: string }>;
+      };
+    };
     if (!response.ok || !payload.success) {
-      setError(payload?.error?.message ?? "Unable to create job");
+      const localizedFieldErrors = payload?.details?.localizedFieldErrors ?? {};
+      const apiFieldErrors = payload?.details?.fieldErrors ?? {};
+      const resolvedFieldErrors: Record<string, string> = {};
+
+      for (const fieldName of new Set([...Object.keys(localizedFieldErrors), ...Object.keys(apiFieldErrors)])) {
+        const localized = localizedFieldErrors[fieldName];
+        const message = locale === "ar" ? localized?.ar ?? apiFieldErrors[fieldName] : localized?.en ?? apiFieldErrors[fieldName];
+        if (message) {
+          resolvedFieldErrors[fieldName] = message;
+        }
+      }
+
+      setFieldErrors(resolvedFieldErrors);
+      setError(locale === "ar" ? payload?.details?.messageAr ?? "تعذر إنشاء الوظيفة" : payload?.error?.message ?? "Unable to create job");
       return;
     }
 
-    setJobs((prev) => [payload.data, ...prev]);
+    if (payload.data) {
+      setJobs((prev) => [payload.data as Job, ...prev]);
+    }
     setJobTitle("");
     setJobCountry("");
     setJobCity("");
@@ -220,31 +246,53 @@ export default function EmployerDashboardPage() {
         ) : null}
 
         <form className="mt-10 grid gap-4 rounded-2xl border border-gold/20 bg-bg-primary/60 p-5 md:grid-cols-4" onSubmit={createDraftJob}>
-          <input
-            value={jobTitle}
-            onChange={(event) => setJobTitle(event.target.value)}
-            placeholder="Job title"
-            required
-            className="rounded-xl border border-gold/20 bg-bg-primary px-4 py-3 text-sm text-text-primary"
-          />
-          <input
-            value={jobCountry}
-            onChange={(event) => setJobCountry(event.target.value)}
-            placeholder="Country"
-            required
-            className="rounded-xl border border-gold/20 bg-bg-primary px-4 py-3 text-sm text-text-primary"
-          />
-          <input
-            value={jobCity}
-            onChange={(event) => setJobCity(event.target.value)}
-            placeholder="City"
-            required
-            className="rounded-xl border border-gold/20 bg-bg-primary px-4 py-3 text-sm text-text-primary"
-          />
+          <label className="block">
+            <input
+              value={jobTitle}
+              onChange={(event) => setJobTitle(event.target.value)}
+              placeholder="Job title"
+              required
+              className="w-full rounded-xl border border-gold/20 bg-bg-primary px-4 py-3 text-sm text-text-primary"
+            />
+            {fieldErrors.title ? <p className="mt-1 text-xs text-red-300">{fieldErrors.title}</p> : null}
+          </label>
+          <label className="block">
+            <input
+              value={jobCountry}
+              onChange={(event) => setJobCountry(event.target.value)}
+              placeholder="Country"
+              required
+              className="w-full rounded-xl border border-gold/20 bg-bg-primary px-4 py-3 text-sm text-text-primary"
+            />
+            {fieldErrors.country ? <p className="mt-1 text-xs text-red-300">{fieldErrors.country}</p> : null}
+          </label>
+          <label className="block">
+            <input
+              value={jobCity}
+              onChange={(event) => setJobCity(event.target.value)}
+              placeholder="City"
+              required
+              className="w-full rounded-xl border border-gold/20 bg-bg-primary px-4 py-3 text-sm text-text-primary"
+            />
+            {fieldErrors.city ? <p className="mt-1 text-xs text-red-300">{fieldErrors.city}</p> : null}
+          </label>
           <button type="submit" className="rounded-xl bg-gold px-5 py-3 text-sm font-semibold text-bg-primary">
             Create Job
           </button>
         </form>
+
+        {Object.keys(fieldErrors).length > 0 ? (
+          <div className="mt-4 rounded-xl border border-red-400/20 bg-red-500/10 p-4 text-sm text-red-100">
+            <p className="font-semibold">{locale === "ar" ? "يرجى مراجعة الحقول التالية:" : "Please review the following fields:"}</p>
+            <ul className="mt-2 space-y-1">
+              {Object.entries(fieldErrors).map(([fieldName, fieldMessage]) => (
+                <li key={fieldName}>
+                  <span className="font-semibold">{fieldName}</span>: {fieldMessage}
+                </li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
 
         {error ? <p className="mt-5 text-sm text-red-300">{error}</p> : null}
 

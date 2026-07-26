@@ -3,6 +3,7 @@ import { updateJobSchema } from "@/features/jobs/schemas/job";
 import { createAuditLog } from "@/lib/server/security/audit";
 import { requireAuth, requireRole } from "@/lib/server/security/auth";
 import { enforceCsrf, enforceRateLimit, getRequestContext, parseJsonBody } from "@/lib/server/http";
+import { evaluateAgencyPolicy, evaluateJobContactPolicy } from "@/lib/server/employer-policy";
 import { getEmployerByAuthUserId } from "@/lib/server/employers";
 import { createSupabaseAdminClient } from "@/lib/server/supabase";
 
@@ -33,6 +34,72 @@ export async function PATCH(
     );
   }
 
+  const supabase = createSupabaseAdminClient();
+
+  const { data: employerProfile, error: employerProfileError } = await supabase
+    .from("employers")
+    .select("company_name, industry, company_description")
+    .eq("id", employer.id)
+    .maybeSingle();
+
+  if (employerProfileError || !employerProfile) {
+    return NextResponse.json(
+      {
+        success: false,
+        error: {
+          code: "EMPLOYER_POLICY_CONTEXT_MISSING",
+          message: employerProfileError?.message ?? "Employer policy context missing",
+        },
+      },
+      { status: 404 }
+    );
+  }
+
+  const agencyViolation = evaluateAgencyPolicy({
+    companyName: employerProfile.company_name,
+    industry: employerProfile.industry,
+    companyDescription: employerProfile.company_description,
+  });
+
+  if (agencyViolation) {
+    return NextResponse.json(
+      {
+        success: false,
+        error: { code: agencyViolation.code, message: agencyViolation.message },
+        details: {
+          messageAr: agencyViolation.messageAr,
+          fieldErrors: agencyViolation.fieldErrors,
+          localizedFieldErrors: agencyViolation.localizedFieldErrors,
+        },
+      },
+      { status: 403 }
+    );
+  }
+
+  const contactViolation = evaluateJobContactPolicy({
+    title: parsed.data.title,
+    department: parsed.data.department,
+    responsibilities: parsed.data.responsibilities,
+    requirements: parsed.data.requirements,
+    benefits: parsed.data.benefits,
+    requiredSkills: parsed.data.requiredSkills,
+  });
+
+  if (contactViolation) {
+    return NextResponse.json(
+      {
+        success: false,
+        error: { code: contactViolation.code, message: contactViolation.message },
+        details: {
+          messageAr: contactViolation.messageAr,
+          fieldErrors: contactViolation.fieldErrors,
+          localizedFieldErrors: contactViolation.localizedFieldErrors,
+        },
+      },
+      { status: 400 }
+    );
+  }
+
   if (parsed.data.status === "published" && employer.verification_status !== "verified") {
     return NextResponse.json(
       {
@@ -47,7 +114,6 @@ export async function PATCH(
   }
 
   const nowIso = new Date().toISOString();
-  const supabase = createSupabaseAdminClient();
 
   const dbPayload = {
     title: parsed.data.title,

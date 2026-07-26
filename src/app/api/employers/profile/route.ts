@@ -3,6 +3,7 @@ import { employerProfileUpdateSchema } from "@/features/employers/schemas/portal
 import { createAuditLog } from "@/lib/server/security/audit";
 import { requireAuth, requireRole } from "@/lib/server/security/auth";
 import { enforceCsrf, enforceRateLimit, getRequestContext, parseJsonBody } from "@/lib/server/http";
+import { evaluateAgencyPolicy } from "@/lib/server/employer-policy";
 import { createSupabaseAdminClient } from "@/lib/server/supabase";
 
 export async function GET(request: Request) {
@@ -51,6 +52,27 @@ export async function PATCH(request: Request) {
 
   const payload = parsed.data;
   const { ipAddress, userAgent } = getRequestContext(request);
+
+  const agencyViolation = evaluateAgencyPolicy({
+    companyName: payload.companyName,
+    industry: payload.industry,
+    companyDescription: payload.companyDescription,
+  });
+
+  if (agencyViolation) {
+    return NextResponse.json(
+      {
+        success: false,
+        error: { code: agencyViolation.code, message: agencyViolation.message },
+        details: {
+          messageAr: agencyViolation.messageAr,
+          fieldErrors: agencyViolation.fieldErrors,
+          localizedFieldErrors: agencyViolation.localizedFieldErrors,
+        },
+      },
+      { status: 400 }
+    );
+  }
 
   const supabase = createSupabaseAdminClient();
 

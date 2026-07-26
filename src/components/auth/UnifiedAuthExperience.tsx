@@ -84,6 +84,47 @@ async function readJsonResponse<T>(response: Response) {
   }
 }
 
+type ApiValidationDetails = {
+  messageAr?: string;
+  fieldErrors?: Record<string, string>;
+  localizedFieldErrors?: Record<string, { en?: string; ar?: string }>;
+};
+
+type ApiValidationResponse = {
+  success?: boolean;
+  error?: {
+    code?: string;
+    message?: string;
+  };
+  details?: ApiValidationDetails;
+};
+
+function getValidationMessage(payload: ApiValidationResponse | null, isArabic: boolean, fallback: string) {
+  if (isArabic) {
+    return payload?.details?.messageAr ?? fallback;
+  }
+
+  return payload?.error?.message ?? fallback;
+}
+
+function getValidationFieldErrors(payload: ApiValidationResponse | null, isArabic: boolean) {
+  const localizedFieldErrors = payload?.details?.localizedFieldErrors ?? {};
+  const fieldErrors = payload?.details?.fieldErrors ?? {};
+  const fieldNames = new Set([...Object.keys(localizedFieldErrors), ...Object.keys(fieldErrors)]);
+  const resolvedErrors: Record<string, string> = {};
+
+  for (const fieldName of fieldNames) {
+    const localized = localizedFieldErrors[fieldName];
+    const message = isArabic ? localized?.ar ?? fieldErrors[fieldName] : localized?.en ?? fieldErrors[fieldName];
+
+    if (message) {
+      resolvedErrors[fieldName] = message;
+    }
+  }
+
+  return resolvedErrors;
+}
+
 async function finalizeAuthStateForNavigation() {
   const response = await fetch("/api/auth/me", {
     credentials: "include",
@@ -760,6 +801,7 @@ function EmployerRegisterForm({
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [confirmPassword, setConfirmPassword] = useState("");
   const [acceptTerms, setAcceptTerms] = useState(false);
   const [acceptEmployerAgreement, setAcceptEmployerAgreement] = useState(false);
@@ -784,6 +826,7 @@ function EmployerRegisterForm({
 
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    setFieldErrors({});
 
     if (form.password !== confirmPassword) {
       setError(isArabic ? "كلمتا المرور غير متطابقتين." : "Passwords do not match.");
@@ -817,13 +860,10 @@ function EmployerRegisterForm({
         }),
       });
 
-      const payload = await readJsonResponse<{ success?: boolean }>(response);
+      const payload = await readJsonResponse<ApiValidationResponse>(response);
+      setFieldErrors(getValidationFieldErrors(payload, isArabic));
       if (!response.ok || !payload?.success) {
-        setError(
-          isArabic
-            ? "تعذر إكمال تسجيل الشركة الآن. حاول مرة أخرى."
-            : "We couldn't complete company registration right now. Please try again."
-        );
+        setError(getValidationMessage(payload, isArabic, isArabic ? "تعذر إكمال تسجيل الشركة الآن. حاول مرة أخرى." : "We couldn't complete company registration right now. Please try again."));
         return;
       }
 
@@ -862,6 +902,7 @@ function EmployerRegisterForm({
             value={form[key as keyof EmployerRegisterState]}
             onChange={(event) => setForm((prev) => ({ ...prev, [key]: event.target.value }))}
           />
+          {fieldErrors[key] ? <p className="mt-1 text-xs text-red-300">{fieldErrors[key]}</p> : null}
         </PrimeLabel>
       ))}
 
@@ -889,6 +930,7 @@ function EmployerRegisterForm({
           value={form.companyDescription}
           onChange={(event) => setForm((prev) => ({ ...prev, companyDescription: event.target.value }))}
         />
+        {fieldErrors.companyDescription ? <p className="mt-1 text-xs text-red-300">{fieldErrors.companyDescription}</p> : null}
       </PrimeLabel>
 
       <label className="md:col-span-2 flex min-h-12 items-start gap-3 rounded-2xl border border-blue-200/20 bg-[#071428]/75 px-4 py-3 text-sm text-text-secondary">

@@ -40,6 +40,43 @@ export default function EmployerJobsPage() {
   const [jobs, setJobs] = useState<JobItem[]>([]);
   const [insights, setInsights] = useState<JobInsight[]>([]);
   const [message, setMessage] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+
+  type ApiValidationResponse = {
+    success?: boolean;
+    error?: {
+      message?: string;
+    };
+    details?: {
+      messageAr?: string;
+      fieldErrors?: Record<string, string>;
+      localizedFieldErrors?: Record<string, { en?: string; ar?: string }>;
+    };
+  };
+
+  const isArabic = locale === "ar";
+
+  function resolveValidationMessage(payload: ApiValidationResponse | null, fallback: string) {
+    return isArabic ? payload?.details?.messageAr ?? fallback : payload?.error?.message ?? fallback;
+  }
+
+  function resolveValidationFieldErrors(payload: ApiValidationResponse | null) {
+    const localizedFieldErrors = payload?.details?.localizedFieldErrors ?? {};
+    const fieldErrors = payload?.details?.fieldErrors ?? {};
+    const fieldNames = new Set([...Object.keys(localizedFieldErrors), ...Object.keys(fieldErrors)]);
+    const resolvedErrors: Record<string, string> = {};
+
+    for (const fieldName of fieldNames) {
+      const localized = localizedFieldErrors[fieldName];
+      const message = isArabic ? localized?.ar ?? fieldErrors[fieldName] : localized?.en ?? fieldErrors[fieldName];
+
+      if (message) {
+        resolvedErrors[fieldName] = message;
+      }
+    }
+
+    return resolvedErrors;
+  }
 
   const [form, setForm] = useState({
     title: "",
@@ -73,6 +110,7 @@ export default function EmployerJobsPage() {
   async function createJob(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setMessage(null);
+    setFieldErrors({});
 
     const requiredSkills = form.requiredSkills
       .split(",")
@@ -104,9 +142,10 @@ export default function EmployerJobsPage() {
       }),
     });
 
-    const payload = await response.json();
+    const payload = (await response.json()) as ApiValidationResponse;
     if (!response.ok || !payload?.success) {
-      setMessage(payload?.error?.message ?? "Unable to create job");
+      setFieldErrors(resolveValidationFieldErrors(payload));
+      setMessage(resolveValidationMessage(payload, "Unable to create job"));
       return;
     }
 
@@ -147,13 +186,41 @@ export default function EmployerJobsPage() {
         {message ? <p className="mt-3 text-sm text-emerald-200">{message}</p> : null}
 
         <form onSubmit={createJob} className="mt-6 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          <input value={form.title} onChange={(event) => setForm((current) => ({ ...current, title: event.target.value }))} placeholder="Job details: title" required className="rounded-xl border border-gold/20 bg-bg-primary px-4 py-3 text-sm text-text-primary" />
-          <input value={form.country} onChange={(event) => setForm((current) => ({ ...current, country: event.target.value }))} placeholder="Country" required className="rounded-xl border border-gold/20 bg-bg-primary px-4 py-3 text-sm text-text-primary" />
-          <input value={form.city} onChange={(event) => setForm((current) => ({ ...current, city: event.target.value }))} placeholder="City" required className="rounded-xl border border-gold/20 bg-bg-primary px-4 py-3 text-sm text-text-primary" />
-          <input value={form.experience} onChange={(event) => setForm((current) => ({ ...current, experience: event.target.value }))} placeholder="Experience" required className="rounded-xl border border-gold/20 bg-bg-primary px-4 py-3 text-sm text-text-primary" />
-          <input value={form.requiredSkills} onChange={(event) => setForm((current) => ({ ...current, requiredSkills: event.target.value }))} placeholder="Required skills (comma separated)" required className="rounded-xl border border-gold/20 bg-bg-primary px-4 py-3 text-sm text-text-primary" />
+          <label className="block">
+            <input value={form.title} onChange={(event) => setForm((current) => ({ ...current, title: event.target.value }))} placeholder="Job details: title" required className="w-full rounded-xl border border-gold/20 bg-bg-primary px-4 py-3 text-sm text-text-primary" />
+            {fieldErrors.title ? <p className="mt-1 text-xs text-red-300">{fieldErrors.title}</p> : null}
+          </label>
+          <label className="block">
+            <input value={form.country} onChange={(event) => setForm((current) => ({ ...current, country: event.target.value }))} placeholder="Country" required className="w-full rounded-xl border border-gold/20 bg-bg-primary px-4 py-3 text-sm text-text-primary" />
+            {fieldErrors.country ? <p className="mt-1 text-xs text-red-300">{fieldErrors.country}</p> : null}
+          </label>
+          <label className="block">
+            <input value={form.city} onChange={(event) => setForm((current) => ({ ...current, city: event.target.value }))} placeholder="City" required className="w-full rounded-xl border border-gold/20 bg-bg-primary px-4 py-3 text-sm text-text-primary" />
+            {fieldErrors.city ? <p className="mt-1 text-xs text-red-300">{fieldErrors.city}</p> : null}
+          </label>
+          <label className="block">
+            <input value={form.experience} onChange={(event) => setForm((current) => ({ ...current, experience: event.target.value }))} placeholder="Experience" required className="w-full rounded-xl border border-gold/20 bg-bg-primary px-4 py-3 text-sm text-text-primary" />
+            {fieldErrors.experience ? <p className="mt-1 text-xs text-red-300">{fieldErrors.experience}</p> : null}
+          </label>
+          <label className="block">
+            <input value={form.requiredSkills} onChange={(event) => setForm((current) => ({ ...current, requiredSkills: event.target.value }))} placeholder="Required skills (comma separated)" required className="w-full rounded-xl border border-gold/20 bg-bg-primary px-4 py-3 text-sm text-text-primary" />
+            {fieldErrors.requiredSkills ? <p className="mt-1 text-xs text-red-300">{fieldErrors.requiredSkills}</p> : null}
+          </label>
           <button type="submit" className="rounded-xl bg-gold px-5 py-3 text-sm font-semibold text-bg-primary">Create Draft</button>
         </form>
+
+        {Object.keys(fieldErrors).length > 0 ? (
+          <div className="mt-4 rounded-xl border border-red-400/20 bg-red-500/10 p-4 text-sm text-red-100">
+            <p className="font-semibold">{isArabic ? "يرجى مراجعة الحقول التالية:" : "Please review the following fields:"}</p>
+            <ul className="mt-2 space-y-1">
+              {Object.entries(fieldErrors).map(([fieldName, fieldMessage]) => (
+                <li key={fieldName}>
+                  <span className="font-semibold">{fieldName}</span>: {fieldMessage}
+                </li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
 
         <div className="mt-8 space-y-4">
           {jobs.map((job) => {
