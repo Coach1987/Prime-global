@@ -72,7 +72,7 @@ function buildResendProvider(): EmailProvider {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          from: serverEnv.EMAIL_FROM ?? "Prime Global <no-reply@primeglobal.tn>",
+          from: serverEnv.EMAIL_FROM ?? "Prime Global <no-reply@primeglobal.pro>",
           to: [input.recipientEmail],
           subject: input.subject,
           html: input.html,
@@ -108,8 +108,11 @@ function buildDevelopmentProvider(): EmailProvider {
 }
 
 function resolveProvider(): EmailProvider {
-  const provider = (serverEnv.EMAIL_PROVIDER ?? "development").toLowerCase();
+  const provider = (serverEnv.EMAIL_PROVIDER ?? "").toLowerCase();
+
   if (provider === "resend") return buildResendProvider();
+  if (!provider && serverEnv.RESEND_API_KEY) return buildResendProvider();
+
   return buildDevelopmentProvider();
 }
 
@@ -238,7 +241,7 @@ export async function sendTransactionalEmail(input: TransactionalEmailInput) {
 export function requiredEmailEnvVars() {
   return {
     EMAIL_PROVIDER: "Set to 'resend' for production provider integration",
-    EMAIL_FROM: "Sender identity, e.g. Prime Global <no-reply@primeglobal.tn>",
+    EMAIL_FROM: "Sender identity, e.g. Prime Global <no-reply@primeglobal.pro>",
     RESEND_API_KEY: "Required when EMAIL_PROVIDER=resend",
     APP_BASE_URL: "Public application URL used for secure links",
   };

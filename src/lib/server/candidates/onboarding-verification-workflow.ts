@@ -34,7 +34,7 @@ async function sendCandidateVerificationEmail(input: {
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      from: serverEnv.EMAIL_FROM ?? "Prime Global <no-reply@primeglobal.tn>",
+      from: serverEnv.EMAIL_FROM ?? "Prime Global <no-reply@primeglobal.pro>",
       to: [input.recipientEmail],
       subject: input.subject,
       html: input.html,
