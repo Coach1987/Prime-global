@@ -26,7 +26,7 @@ function buildSupabaseClient() {
     auth: {
       persistSession: true,
       autoRefreshToken: true,
-      detectSessionInUrl: true,
+      detectSessionInUrl: false,
     },
   });
 }
@@ -68,9 +68,12 @@ function ResetPasswordContent() {
 
       const hash = typeof window !== "undefined" ? window.location.hash.replace(/^#/, "") : "";
       const hashParams = new URLSearchParams(hash);
-      const accessToken = hashParams.get("access_token");
-      const refreshToken = hashParams.get("refresh_token");
-      const code = searchParams.get("code");
+      const accessToken = hashParams.get("access_token") ?? searchParams.get("access_token");
+      const refreshToken = hashParams.get("refresh_token") ?? searchParams.get("refresh_token");
+      const code = searchParams.get("code") ?? hashParams.get("code");
+      const tokenHash = searchParams.get("token_hash") ?? hashParams.get("token_hash");
+      const otpType = searchParams.get("type") ?? hashParams.get("type");
+      let hasRecoverySession = false;
 
       if (accessToken && refreshToken) {
         const { error: sessionError } = await supabase.auth.setSession({
@@ -83,6 +86,8 @@ function ResetPasswordContent() {
           return;
         }
 
+        hasRecoverySession = true;
+
         if (typeof window !== "undefined" && window.location.hash) {
           window.history.replaceState({}, document.title, window.location.pathname + window.location.search);
         }
@@ -92,7 +97,28 @@ function ResetPasswordContent() {
           setError(isArabic ? "رابط إعادة التعيين غير صالح أو منتهي الصلاحية." : "Reset link is invalid or expired.");
           return;
         }
-      } else {
+
+        hasRecoverySession = true;
+      } else if (tokenHash && otpType === "recovery") {
+        const { error: otpError } = await supabase.auth.verifyOtp({
+          type: "recovery",
+          token_hash: tokenHash,
+        });
+
+        if (otpError) {
+          setError(isArabic ? "رابط إعادة التعيين غير صالح أو منتهي الصلاحية." : "Reset link is invalid or expired.");
+          return;
+        }
+
+        hasRecoverySession = true;
+      }
+
+      if (!hasRecoverySession) {
+        const { data: sessionResult } = await supabase.auth.getSession();
+        hasRecoverySession = Boolean(sessionResult.session);
+      }
+
+      if (!hasRecoverySession) {
         setError(isArabic ? "رابط إعادة التعيين غير مكتمل." : "Reset link is incomplete.");
         return;
       }
