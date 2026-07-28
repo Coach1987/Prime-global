@@ -480,6 +480,15 @@ function CandidateSignInForm({
         <PrimeInput type="password" required value={password} onChange={(event) => setPassword(event.target.value)} />
       </div>
 
+      <p className="text-sm">
+        <Link
+          href={`/forgot-password?role=candidate`}
+          className="font-semibold text-blue-200 hover:text-blue-100"
+        >
+          {isArabic ? "هل نسيت كلمة المرور؟" : "Forgot Password?"}
+        </Link>
+      </p>
+
       {error ? <p className="text-sm text-red-300">{error}</p> : null}
 
       <button type="submit" disabled={loading} className={primeButtonClasses("primary")}>
@@ -563,6 +572,15 @@ function EmployerSignInForm({
         <label className="mb-2 block text-sm text-text-secondary">{isArabic ? "كلمة المرور" : "Password"}</label>
         <PrimeInput type="password" required value={password} onChange={(event) => setPassword(event.target.value)} />
       </div>
+
+      <p className="text-sm">
+        <Link
+          href={`/forgot-password?role=employer`}
+          className="font-semibold text-blue-200 hover:text-blue-100"
+        >
+          {isArabic ? "هل نسيت كلمة المرور؟" : "Forgot Password?"}
+        </Link>
+      </p>
 
       {error ? <p className="text-sm text-red-300">{error}</p> : null}
 

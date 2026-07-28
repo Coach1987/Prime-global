@@ -1,22 +1,31 @@
 import { NextResponse } from "next/server";
-import { employerPasswordResetSchema } from "@/features/employers/schemas/portal";
+import { z } from "zod";
 import { SITE_URL } from "@/lib/constants/site";
 import { enforceCsrf, enforceRateLimit, parseJsonBody } from "@/lib/server/http";
 import { createSupabasePublicClient } from "@/lib/server/supabase";
 
+const passwordResetRequestSchema = z.object({
+  email: z.string().trim().email().max(320),
+  role: z.enum(["candidate", "employer"]).default("candidate"),
+  locale: z.enum(["en", "ar"]).default("en"),
+});
+
 export async function POST(request: Request) {
-  const rateLimitResult = enforceRateLimit(request, "employer-password-reset", 12);
+  const rateLimitResult = enforceRateLimit(request, "auth-password-reset", 12);
   if (rateLimitResult) return rateLimitResult;
 
   const csrfResult = enforceCsrf(request);
   if (csrfResult) return csrfResult;
 
-  const parsed = await parseJsonBody(request, employerPasswordResetSchema);
+  const parsed = await parseJsonBody(request, passwordResetRequestSchema);
   if (parsed.error) return parsed.error;
 
+  const payload = parsed.data;
   const supabase = createSupabasePublicClient();
-  const { error } = await supabase.auth.resetPasswordForEmail(parsed.data.email, {
-    redirectTo: `${SITE_URL}/en/reset-password?role=employer`,
+
+  const resetUrl = `${SITE_URL}/${payload.locale}/reset-password?role=${payload.role}`;
+  const { error } = await supabase.auth.resetPasswordForEmail(payload.email, {
+    redirectTo: resetUrl,
   });
 
   if (error) {
@@ -28,6 +37,8 @@ export async function POST(request: Request) {
 
   return NextResponse.json({
     success: true,
-    data: { message: "If the account exists, a reset email has been sent." },
+    data: {
+      message: "If the account exists, a reset email has been sent.",
+    },
   });
 }
