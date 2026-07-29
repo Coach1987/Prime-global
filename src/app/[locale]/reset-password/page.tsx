@@ -10,12 +10,30 @@ import { PrimeInput } from "@/components/ui/prime/PrimeInput";
 import { primeButtonClasses } from "@/components/ui/prime/PrimeButton";
 import { PrimePageTitle } from "@/components/ui/prime/PrimePageTitle";
 
+function normalizeSupabaseProjectUrl(value: string): string {
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return trimmed;
+  }
+
+  try {
+    const url = new URL(trimmed);
+    const normalizedPath = url.pathname.replace(/\/+$/, "");
+    if (normalizedPath === "/rest/v1") {
+      url.pathname = "";
+    }
+    return url.toString().replace(/\/+$/, "");
+  } catch {
+    return trimmed.replace(/\/+$/, "").replace(/\/rest\/v1$/i, "");
+  }
+}
+
 function parseRole(value: string | null): "candidate" | "employer" {
   return value === "employer" ? "employer" : "candidate";
 }
 
 function buildSupabaseClient() {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const supabaseUrl = normalizeSupabaseProjectUrl(process.env.NEXT_PUBLIC_SUPABASE_URL ?? "");
   const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
   if (!supabaseUrl || !supabaseAnonKey) {
