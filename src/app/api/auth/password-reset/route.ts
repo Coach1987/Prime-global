@@ -23,7 +23,7 @@ export async function POST(request: Request) {
   const payload = parsed.data;
   const supabase = createSupabasePublicClient();
 
-  const resetUrl = `${SITE_URL}/${payload.locale}/reset-password?role=${payload.role}`;
+  const resetUrl = `${SITE_URL}/auth/recovery?locale=${payload.locale}`;
   const { error } = await supabase.auth.resetPasswordForEmail(payload.email, {
     redirectTo: resetUrl,
   });

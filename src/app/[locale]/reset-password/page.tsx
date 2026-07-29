@@ -61,7 +61,6 @@ function ResetPasswordContent() {
   const [loading, setLoading] = useState(false);
   const [sessionReady, setSessionReady] = useState(false);
   const [sessionChecking, setSessionChecking] = useState(true);
-  const [recoveryReady, setRecoveryReady] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const supabase = useMemo(() => buildSupabaseClient(), []);
@@ -72,6 +71,7 @@ function ResetPasswordContent() {
     const hashParams = new URLSearchParams(hash);
 
     return {
+      fromCallback: parsed.get("recovery") === "1",
       code: parsed.get("code") ?? hashParams.get("code"),
       tokenHash: parsed.get("token_hash") ?? hashParams.get("token_hash"),
       otpType: parsed.get("type") ?? hashParams.get("type"),
@@ -81,6 +81,7 @@ function ResetPasswordContent() {
   }, [searchParamsSnapshot]);
 
   const signInHref = useMemo(() => `/auth?mode=signin&audience=${role}&reset=1`, [role]);
+  const requestResetHref = useMemo(() => `/forgot-password?role=${role}`, [role]);
 
   useEffect(() => {
     let cancelled = false;
@@ -88,11 +89,29 @@ function ResetPasswordContent() {
     async function prepareRecoverySession() {
       setSessionChecking(true);
       setSessionReady(false);
-      setRecoveryReady(false);
       setError(null);
 
       try {
-        const { code, tokenHash, otpType, accessToken, refreshToken } = recoveryParams;
+        const { fromCallback, code, tokenHash, otpType, accessToken, refreshToken } = recoveryParams;
+
+        if (fromCallback) {
+          const callbackSession = await waitForRecoverySession(supabase);
+          if (!callbackSession?.user) {
+            if (!cancelled) {
+              setError(
+                isArabic
+                  ? "تعذر التحقق من جلسة الاستعادة. اطلب رابطاً جديداً لإعادة التعيين."
+                  : "Unable to verify your recovery session. Please request a new reset email."
+              );
+            }
+            return;
+          }
+
+          if (!cancelled) {
+            setSessionReady(true);
+          }
+          return;
+        }
 
         if (tokenHash) {
           if (otpType && otpType !== "recovery") {
@@ -115,6 +134,7 @@ function ResetPasswordContent() {
           }
         } else if (code) {
           const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
+
           if (exchangeError) {
             if (!cancelled) {
               setError(isArabic ? "رابط إعادة التعيين غير صالح أو منتهي الصلاحية." : "Reset link is invalid or expired.");
@@ -135,13 +155,13 @@ function ResetPasswordContent() {
           }
         } else {
           if (!cancelled) {
-            setError(isArabic ? "رابط إعادة التعيين غير صالح أو منتهي الصلاحية." : "Reset link is invalid or expired.");
+            setError(
+              isArabic
+                ? "تعذر العثور على معلومات الاستعادة في الرابط. اطلب رابطاً جديداً لإعادة التعيين."
+                : "Recovery details are missing from this link. Please request a new reset email."
+            );
           }
           return;
-        }
-
-        if (!cancelled) {
-          setRecoveryReady(true);
         }
 
         if (typeof window !== "undefined" && window.location.hash) {
@@ -150,6 +170,13 @@ function ResetPasswordContent() {
 
         const activeSession = await waitForRecoverySession(supabase);
         if (!activeSession?.user) {
+          if (!cancelled) {
+            setError(
+              isArabic
+                ? "تعذر إنشاء جلسة استعادة صالحة. اطلب رابطاً جديداً لإعادة التعيين."
+                : "Unable to establish a valid recovery session. Please request a new reset email."
+            );
+          }
           return;
         }
 
@@ -205,7 +232,11 @@ function ResetPasswordContent() {
     try {
       const activeSession = await ensureRecoverySession();
       if (!activeSession) {
-        setError(isArabic ? "رابط إعادة التعيين غير مكتمل." : "Reset link is incomplete.");
+        setError(
+          isArabic
+            ? "جلسة الاستعادة غير صالحة. اطلب رابطاً جديداً لإعادة التعيين."
+            : "Recovery session is invalid. Please request a new reset email."
+        );
         return;
       }
 
@@ -247,7 +278,7 @@ function ResetPasswordContent() {
           <p className="mt-7 text-sm text-text-secondary">{isArabic ? "جارٍ التحقق من جلسة الاستعادة..." : "Verifying recovery session..."}</p>
         ) : null}
 
-        {!sessionChecking && recoveryReady ? <form className="mt-7 space-y-5" onSubmit={onSubmit}>
+        {!sessionChecking && sessionReady ? <form className="mt-7 space-y-5" onSubmit={onSubmit}>
           <div>
             <label className="mb-2 block text-sm text-text-secondary">{isArabic ? "كلمة المرور الجديدة" : "New Password"}</label>
             <PrimeInput
@@ -284,13 +315,19 @@ function ResetPasswordContent() {
           </p>
         </form> : null}
 
-        {!sessionChecking && !recoveryReady ? (
-          <p className="mt-6 text-sm text-text-secondary">
+        {!sessionChecking && !sessionReady ? <div className="mt-6 space-y-4">
+          {error ? <p className="text-sm text-red-300">{error}</p> : null}
+          <p className="text-sm text-text-secondary">
+            <Link href={requestResetHref} className="font-semibold text-blue-200 hover:text-blue-100">
+              {isArabic ? "طلب رابط إعادة تعيين جديد" : "Request a new reset email"}
+            </Link>
+          </p>
+          <p className="text-sm text-text-secondary">
             <Link href={signInHref} className="font-semibold text-blue-200 hover:text-blue-100">
               {isArabic ? "العودة إلى تسجيل الدخول" : "Back to Sign In"}
             </Link>
           </p>
-        ) : null}
+        </div> : null}
       </section>
     </main>
   );
