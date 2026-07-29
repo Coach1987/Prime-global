@@ -1,11 +1,11 @@
 "use client";
 
-import { FormEvent, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
 import { Suspense } from "react";
 import { useLocale } from "next-intl";
 import { useRouter, Link } from "@/i18n/routing";
 import { useSearchParams } from "next/navigation";
-import { createClient } from "@supabase/supabase-js";
+import { createClient, type Session } from "@supabase/supabase-js";
 import { PrimeInput } from "@/components/ui/prime/PrimeInput";
 import { primeButtonClasses } from "@/components/ui/prime/PrimeButton";
 import { PrimePageTitle } from "@/components/ui/prime/PrimePageTitle";
@@ -31,23 +31,159 @@ function buildSupabaseClient() {
   });
 }
 
+function pause(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function waitForRecoverySession(supabase: ReturnType<typeof buildSupabaseClient>) {
+  for (let attempt = 0; attempt < 12; attempt += 1) {
+    const { data, error } = await supabase.auth.getSession();
+    if (!error && data.session?.user) {
+      return data.session;
+    }
+
+    await pause(120);
+  }
+
+  return null;
+}
+
 function ResetPasswordContent() {
   const locale = useLocale();
   const isArabic = locale === "ar";
   const router = useRouter();
   const searchParams = useSearchParams();
+  const searchParamsSnapshot = searchParams.toString();
   const role = parseRole(searchParams.get("role"));
 
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [sessionReady, setSessionReady] = useState(false);
+  const [sessionChecking, setSessionChecking] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const supabase = useMemo(() => buildSupabaseClient(), []);
+
+  const recoveryParams = useMemo(() => {
+    const parsed = new URLSearchParams(searchParamsSnapshot);
+    const hash = typeof window !== "undefined" ? window.location.hash.replace(/^#/, "") : "";
+    const hashParams = new URLSearchParams(hash);
+
+    return {
+      code: parsed.get("code") ?? hashParams.get("code"),
+      tokenHash: parsed.get("token_hash") ?? hashParams.get("token_hash"),
+      otpType: parsed.get("type") ?? hashParams.get("type"),
+      accessToken: parsed.get("access_token") ?? hashParams.get("access_token"),
+      refreshToken: parsed.get("refresh_token") ?? hashParams.get("refresh_token"),
+    };
+  }, [searchParamsSnapshot]);
 
   const signInHref = useMemo(() => `/auth?mode=signin&audience=${role}&reset=1`, [role]);
 
+  useEffect(() => {
+    let cancelled = false;
+
+    async function prepareRecoverySession() {
+      setSessionChecking(true);
+      setSessionReady(false);
+      setError(null);
+
+      try {
+        const { code, tokenHash, otpType, accessToken, refreshToken } = recoveryParams;
+
+        if (tokenHash) {
+          if (otpType && otpType !== "recovery") {
+            if (!cancelled) {
+              setError(isArabic ? "رابط إعادة التعيين غير صالح أو منتهي الصلاحية." : "Reset link is invalid or expired.");
+            }
+            return;
+          }
+
+          const { error: otpError } = await supabase.auth.verifyOtp({
+            type: "recovery",
+            token_hash: tokenHash,
+          });
+
+          if (otpError) {
+            if (!cancelled) {
+              setError(isArabic ? "رابط إعادة التعيين غير صالح أو منتهي الصلاحية." : "Reset link is invalid or expired.");
+            }
+            return;
+          }
+        } else if (code) {
+          const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
+          if (exchangeError) {
+            if (!cancelled) {
+              setError(isArabic ? "رابط إعادة التعيين غير صالح أو منتهي الصلاحية." : "Reset link is invalid or expired.");
+            }
+            return;
+          }
+        } else if (accessToken && refreshToken) {
+          const { error: sessionError } = await supabase.auth.setSession({
+            access_token: accessToken,
+            refresh_token: refreshToken,
+          });
+
+          if (sessionError) {
+            if (!cancelled) {
+              setError(isArabic ? "رابط إعادة التعيين غير صالح أو منتهي الصلاحية." : "Reset link is invalid or expired.");
+            }
+            return;
+          }
+        } else {
+          if (!cancelled) {
+            setError(isArabic ? "رابط إعادة التعيين غير صالح أو منتهي الصلاحية." : "Reset link is invalid or expired.");
+          }
+          return;
+        }
+
+        if (typeof window !== "undefined" && window.location.hash) {
+          window.history.replaceState({}, document.title, window.location.pathname + window.location.search);
+        }
+
+        const activeSession = await waitForRecoverySession(supabase);
+        if (!activeSession?.user) {
+          if (!cancelled) {
+            setError(isArabic ? "رابط إعادة التعيين غير صالح أو منتهي الصلاحية." : "Reset link is invalid or expired.");
+          }
+          return;
+        }
+
+        if (!cancelled) {
+          setSessionReady(true);
+        }
+      } catch {
+        if (!cancelled) {
+          setError(isArabic ? "حدث خطأ غير متوقع أثناء إعادة التعيين." : "Unexpected error during password reset.");
+        }
+      } finally {
+        if (!cancelled) {
+          setSessionChecking(false);
+        }
+      }
+    }
+
+    void prepareRecoverySession();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isArabic, recoveryParams, supabase]);
+
+  async function ensureRecoverySession(): Promise<Session | null> {
+    const activeSession = await waitForRecoverySession(supabase);
+    return activeSession?.user ? activeSession : null;
+  }
+
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+
+    if (!sessionReady || sessionChecking) {
+      setError(isArabic ? "جارٍ التحقق من رابط إعادة التعيين. حاول مرة أخرى بعد لحظات." : "Validating reset link. Please try again in a moment.");
+      return;
+    }
+
     setError(null);
     setSuccess(null);
 
@@ -64,61 +200,8 @@ function ResetPasswordContent() {
     setLoading(true);
 
     try {
-      const supabase = buildSupabaseClient();
-
-      const hash = typeof window !== "undefined" ? window.location.hash.replace(/^#/, "") : "";
-      const hashParams = new URLSearchParams(hash);
-      const accessToken = hashParams.get("access_token") ?? searchParams.get("access_token");
-      const refreshToken = hashParams.get("refresh_token") ?? searchParams.get("refresh_token");
-      const code = searchParams.get("code") ?? hashParams.get("code");
-      const tokenHash = searchParams.get("token_hash") ?? hashParams.get("token_hash");
-      const otpType = searchParams.get("type") ?? hashParams.get("type");
-      let hasRecoverySession = false;
-
-      if (accessToken && refreshToken) {
-        const { error: sessionError } = await supabase.auth.setSession({
-          access_token: accessToken,
-          refresh_token: refreshToken,
-        });
-
-        if (sessionError) {
-          setError(isArabic ? "رابط إعادة التعيين غير صالح أو منتهي الصلاحية." : "Reset link is invalid or expired.");
-          return;
-        }
-
-        hasRecoverySession = true;
-
-        if (typeof window !== "undefined" && window.location.hash) {
-          window.history.replaceState({}, document.title, window.location.pathname + window.location.search);
-        }
-      } else if (code) {
-        const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
-        if (exchangeError) {
-          setError(isArabic ? "رابط إعادة التعيين غير صالح أو منتهي الصلاحية." : "Reset link is invalid or expired.");
-          return;
-        }
-
-        hasRecoverySession = true;
-      } else if (tokenHash && otpType === "recovery") {
-        const { error: otpError } = await supabase.auth.verifyOtp({
-          type: "recovery",
-          token_hash: tokenHash,
-        });
-
-        if (otpError) {
-          setError(isArabic ? "رابط إعادة التعيين غير صالح أو منتهي الصلاحية." : "Reset link is invalid or expired.");
-          return;
-        }
-
-        hasRecoverySession = true;
-      }
-
-      if (!hasRecoverySession) {
-        const { data: sessionResult } = await supabase.auth.getSession();
-        hasRecoverySession = Boolean(sessionResult.session);
-      }
-
-      if (!hasRecoverySession) {
+      const activeSession = await ensureRecoverySession();
+      if (!activeSession) {
         setError(isArabic ? "رابط إعادة التعيين غير مكتمل." : "Reset link is incomplete.");
         return;
       }
@@ -157,7 +240,11 @@ function ResetPasswordContent() {
             : "Enter a secure new password to complete account recovery."}
         </p>
 
-        <form className="mt-7 space-y-5" onSubmit={onSubmit}>
+        {sessionChecking ? (
+          <p className="mt-7 text-sm text-text-secondary">{isArabic ? "جارٍ التحقق من جلسة الاستعادة..." : "Verifying recovery session..."}</p>
+        ) : null}
+
+        {!sessionChecking && sessionReady ? <form className="mt-7 space-y-5" onSubmit={onSubmit}>
           <div>
             <label className="mb-2 block text-sm text-text-secondary">{isArabic ? "كلمة المرور الجديدة" : "New Password"}</label>
             <PrimeInput
@@ -192,7 +279,15 @@ function ResetPasswordContent() {
               {isArabic ? "العودة إلى تسجيل الدخول" : "Back to Sign In"}
             </Link>
           </p>
-        </form>
+        </form> : null}
+
+        {!sessionChecking && !sessionReady ? (
+          <p className="mt-6 text-sm text-text-secondary">
+            <Link href={signInHref} className="font-semibold text-blue-200 hover:text-blue-100">
+              {isArabic ? "العودة إلى تسجيل الدخول" : "Back to Sign In"}
+            </Link>
+          </p>
+        ) : null}
       </section>
     </main>
   );
