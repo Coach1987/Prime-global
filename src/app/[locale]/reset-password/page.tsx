@@ -36,7 +36,7 @@ function pause(ms: number) {
 }
 
 async function waitForRecoverySession(supabase: ReturnType<typeof buildSupabaseClient>) {
-  for (let attempt = 0; attempt < 12; attempt += 1) {
+  for (let attempt = 0; attempt < 40; attempt += 1) {
     const { data, error } = await supabase.auth.getSession();
     if (!error && data.session?.user) {
       return data.session;
@@ -61,6 +61,7 @@ function ResetPasswordContent() {
   const [loading, setLoading] = useState(false);
   const [sessionReady, setSessionReady] = useState(false);
   const [sessionChecking, setSessionChecking] = useState(true);
+  const [recoveryReady, setRecoveryReady] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const supabase = useMemo(() => buildSupabaseClient(), []);
@@ -87,6 +88,7 @@ function ResetPasswordContent() {
     async function prepareRecoverySession() {
       setSessionChecking(true);
       setSessionReady(false);
+      setRecoveryReady(false);
       setError(null);
 
       try {
@@ -138,15 +140,16 @@ function ResetPasswordContent() {
           return;
         }
 
+        if (!cancelled) {
+          setRecoveryReady(true);
+        }
+
         if (typeof window !== "undefined" && window.location.hash) {
           window.history.replaceState({}, document.title, window.location.pathname + window.location.search);
         }
 
         const activeSession = await waitForRecoverySession(supabase);
         if (!activeSession?.user) {
-          if (!cancelled) {
-            setError(isArabic ? "رابط إعادة التعيين غير صالح أو منتهي الصلاحية." : "Reset link is invalid or expired.");
-          }
           return;
         }
 
@@ -244,7 +247,7 @@ function ResetPasswordContent() {
           <p className="mt-7 text-sm text-text-secondary">{isArabic ? "جارٍ التحقق من جلسة الاستعادة..." : "Verifying recovery session..."}</p>
         ) : null}
 
-        {!sessionChecking && sessionReady ? <form className="mt-7 space-y-5" onSubmit={onSubmit}>
+        {!sessionChecking && recoveryReady ? <form className="mt-7 space-y-5" onSubmit={onSubmit}>
           <div>
             <label className="mb-2 block text-sm text-text-secondary">{isArabic ? "كلمة المرور الجديدة" : "New Password"}</label>
             <PrimeInput
@@ -281,7 +284,7 @@ function ResetPasswordContent() {
           </p>
         </form> : null}
 
-        {!sessionChecking && !sessionReady ? (
+        {!sessionChecking && !recoveryReady ? (
           <p className="mt-6 text-sm text-text-secondary">
             <Link href={signInHref} className="font-semibold text-blue-200 hover:text-blue-100">
               {isArabic ? "العودة إلى تسجيل الدخول" : "Back to Sign In"}
