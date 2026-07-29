@@ -40,6 +40,10 @@ export default function AdminDashboardPage() {
           Open Recruitment Supervision Center
         </a>
 
+        <a href="./advertisements" className={`${primeButtonClasses("secondary")} mt-6 ml-3`}>
+          Open Advertisements Center
+        </a>
+
         <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
           {[
             ["Companies Pending", String(analytics?.companiesPending ?? 0)],

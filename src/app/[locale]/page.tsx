@@ -10,6 +10,7 @@ import { TestimonialsSection } from "@/components/sections/Testimonials";
 import { PartnersSection } from "@/components/sections/Partners/PartnersSection";
 import { EnterpriseCtaSection } from "@/components/sections/CTA/EnterpriseCtaSection";
 import { ContactSection } from "@/components/sections/Contact";
+import { SponsoredAdvertisementsSection } from "@/components/sections/Advertisements";
 import { isLocale } from "@/lib/constants/locales";
 import { buildLocalizedAlternates, buildWebsiteJsonLd } from "@/lib/seo/public";
 
@@ -57,6 +58,7 @@ export default async function HomePage({
       <PartnersSection />
       <EnterpriseCtaSection />
       <ContactSection />
+      <SponsoredAdvertisementsSection locale={locale} />
     </main>
   );
 }

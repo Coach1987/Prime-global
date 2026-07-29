@@ -596,6 +596,90 @@
       "backToServices": "Back to Services"
     }
   },
+  "advertisements": {
+    "sectionLabel": "Sponsored promotions",
+    "badge": "Sponsored",
+    "headline": "Featured Opportunity",
+    "counter": "{current} of {total}",
+    "goTo": "Go to sponsored item {index}"
+  },
+  "advertisementsAdmin": {
+    "title": "Advertisement Operations Center",
+    "subtitle": "Create, moderate, approve, and publish homepage sponsored promotions.",
+    "newDraft": "New Draft",
+    "loading": "Loading advertisements...",
+    "saving": "Saving...",
+    "create": "Create Advertisement",
+    "update": "Update Advertisement",
+    "empty": "No advertisements found for this filter.",
+    "priority": "Priority",
+    "impressions": "Impressions",
+    "clicks": "Clicks",
+    "ctr": "CTR",
+    "preview": "Live Preview",
+    "previewFallback": "Advertisement title preview",
+    "previewDescription": "Advertisement description preview",
+    "uploadHint": "Upload JPG, JPEG, PNG, WEBP, MP4, or WEBM. Images should be at least 1200x420.",
+    "media": {
+      "image": "Image",
+      "video": "Video"
+    },
+    "filters": {
+      "all": "All",
+      "draft": "Draft",
+      "pending_review": "Pending review",
+      "approved": "Approved",
+      "rejected": "Rejected",
+      "active": "Active",
+      "paused": "Paused",
+      "expired": "Expired"
+    },
+    "fields": {
+      "titleEn": "Title (English)",
+      "titleAr": "Title (Arabic)",
+      "descriptionEn": "Description (English)",
+      "descriptionAr": "Description (Arabic)",
+      "ctaEn": "CTA Text (English)",
+      "ctaAr": "CTA Text (Arabic)",
+      "altEn": "Media Alt Text (English)",
+      "altAr": "Media Alt Text (Arabic)",
+      "targetUrl": "Target URL",
+      "priority": "Display Priority",
+      "startsAt": "Start Date/Time",
+      "endsAt": "End Date/Time",
+      "mediaType": "Media Type",
+      "mediaPath": "Storage Media Path",
+      "upload": "Upload Media"
+    },
+    "actions": {
+      "submitReview": "Submit for Review",
+      "approve": "Approve",
+      "reject": "Reject",
+      "activate": "Activate",
+      "pause": "Pause",
+      "delete": "Delete"
+    },
+    "prompts": {
+      "deleteConfirm": "Delete this advertisement permanently?",
+      "rejectionReason": "Rejection reason"
+    },
+    "notices": {
+      "saved": "Advertisement saved successfully.",
+      "uploaded": "Media uploaded successfully.",
+      "deleted": "Advertisement deleted.",
+      "actionCompleted": "Advertisement action completed.",
+      "newDraft": "Draft form reset. Fill details to create a new advertisement."
+    },
+    "errors": {
+      "unauthorized": "You do not have advertisement administration access.",
+      "loadFailed": "Failed to load advertisements.",
+      "saveFailed": "Unable to save advertisement.",
+      "uploadFailed": "Unable to upload media.",
+      "actionFailed": "Unable to complete this action.",
+      "deleteFailed": "Unable to delete advertisement.",
+      "rejectReasonRequired": "A rejection reason of at least 3 characters is required."
+    }
+  },
   "footer": {
     "tagline": "Tunisian expertise, delivered to a global standard.",
     "quickLinks": "Quick Links",

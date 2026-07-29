@@ -596,6 +596,90 @@
       "backToServices": "العودة إلى الخدمات"
     }
   },
+  "advertisements": {
+    "sectionLabel": "العروض الممولة",
+    "badge": "ممول",
+    "headline": "فرصة مميزة",
+    "counter": "{current} من {total}",
+    "goTo": "الانتقال إلى العرض الممول {index}"
+  },
+  "advertisementsAdmin": {
+    "title": "مركز إدارة الإعلانات",
+    "subtitle": "أنشئ الإعلانات الممولة للصفحة الرئيسية وراجعها ووافق عليها وانشرها.",
+    "newDraft": "مسودة جديدة",
+    "loading": "جارٍ تحميل الإعلانات...",
+    "saving": "جارٍ الحفظ...",
+    "create": "إنشاء إعلان",
+    "update": "تحديث الإعلان",
+    "empty": "لا توجد إعلانات لهذا الفلتر.",
+    "priority": "الأولوية",
+    "impressions": "مرات الظهور",
+    "clicks": "النقرات",
+    "ctr": "معدل النقر",
+    "preview": "معاينة مباشرة",
+    "previewFallback": "معاينة عنوان الإعلان",
+    "previewDescription": "معاينة وصف الإعلان",
+    "uploadHint": "ارفع ملفات JPG أو JPEG أو PNG أو WEBP أو MP4 أو WEBM. يجب أن تكون الصورة على الأقل 1200x420.",
+    "media": {
+      "image": "صورة",
+      "video": "فيديو"
+    },
+    "filters": {
+      "all": "الكل",
+      "draft": "مسودة",
+      "pending_review": "قيد المراجعة",
+      "approved": "معتمد",
+      "rejected": "مرفوض",
+      "active": "نشط",
+      "paused": "متوقف",
+      "expired": "منتهي"
+    },
+    "fields": {
+      "titleEn": "العنوان (إنجليزي)",
+      "titleAr": "العنوان (عربي)",
+      "descriptionEn": "الوصف (إنجليزي)",
+      "descriptionAr": "الوصف (عربي)",
+      "ctaEn": "نص الزر (إنجليزي)",
+      "ctaAr": "نص الزر (عربي)",
+      "altEn": "وصف الوسائط (إنجليزي)",
+      "altAr": "وصف الوسائط (عربي)",
+      "targetUrl": "رابط التحويل",
+      "priority": "أولوية العرض",
+      "startsAt": "تاريخ/وقت البداية",
+      "endsAt": "تاريخ/وقت النهاية",
+      "mediaType": "نوع الوسائط",
+      "mediaPath": "مسار الوسائط في التخزين",
+      "upload": "رفع الوسائط"
+    },
+    "actions": {
+      "submitReview": "إرسال للمراجعة",
+      "approve": "اعتماد",
+      "reject": "رفض",
+      "activate": "تفعيل",
+      "pause": "إيقاف",
+      "delete": "حذف"
+    },
+    "prompts": {
+      "deleteConfirm": "هل تريد حذف هذا الإعلان نهائيًا؟",
+      "rejectionReason": "سبب الرفض"
+    },
+    "notices": {
+      "saved": "تم حفظ الإعلان بنجاح.",
+      "uploaded": "تم رفع الوسائط بنجاح.",
+      "deleted": "تم حذف الإعلان.",
+      "actionCompleted": "تم تنفيذ الإجراء على الإعلان.",
+      "newDraft": "تمت إعادة ضبط نموذج المسودة. أدخل التفاصيل لإنشاء إعلان جديد."
+    },
+    "errors": {
+      "unauthorized": "ليس لديك صلاحية إدارة الإعلانات.",
+      "loadFailed": "تعذر تحميل الإعلانات.",
+      "saveFailed": "تعذر حفظ الإعلان.",
+      "uploadFailed": "تعذر رفع الوسائط.",
+      "actionFailed": "تعذر تنفيذ هذا الإجراء.",
+      "deleteFailed": "تعذر حذف الإعلان.",
+      "rejectReasonRequired": "يلزم إدخال سبب رفض لا يقل عن 3 أحرف."
+    }
+  },
   "footer": {
     "tagline": "خبرة تونسية، بمعايير عالمية.",
     "quickLinks": "روابط سريعة",
