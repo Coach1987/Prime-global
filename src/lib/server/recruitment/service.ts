@@ -37,6 +37,358 @@ type NotificationInput = {
   entityId: string;
 };
 
+export type StaffRecruitmentEventSort = "newest" | "oldest";
+
+export interface StaffRecruitmentEventQuery {
+  search?: string;
+  actionPrefix?: string;
+  targetType?: string;
+  sort: StaffRecruitmentEventSort;
+  page: number;
+  pageSize: number;
+}
+
+export interface StaffRecruitmentEventActor {
+  authUserId: string | null;
+  role: string | null;
+  fullName: string | null;
+  email: string | null;
+}
+
+export interface StaffRecruitmentRelatedEntity {
+  id: string;
+  label: string;
+  subtitle: string | null;
+  exists: boolean;
+}
+
+export interface StaffRecruitmentEventDetails {
+  id: string;
+  action: string;
+  targetType: string;
+  targetId: string;
+  actor: StaffRecruitmentEventActor;
+  createdAt: string;
+  ipAddress: string | null;
+  userAgent: string | null;
+  metadata: Record<string, unknown>;
+  related: {
+    candidate: StaffRecruitmentRelatedEntity | null;
+    employer: StaffRecruitmentRelatedEntity | null;
+    job: StaffRecruitmentRelatedEntity | null;
+    advertisement: StaffRecruitmentRelatedEntity | null;
+    conversation: StaffRecruitmentRelatedEntity | null;
+    interview: StaffRecruitmentRelatedEntity | null;
+  };
+}
+
+export interface StaffRecruitmentEventsResult {
+  items: StaffRecruitmentEventDetails[];
+  pagination: {
+    page: number;
+    pageSize: number;
+    totalItems: number;
+    totalPages: number;
+  };
+}
+
+function toRecord(input: unknown) {
+  if (!input || typeof input !== "object" || Array.isArray(input)) {
+    return {} as Record<string, unknown>;
+  }
+
+  return input as Record<string, unknown>;
+}
+
+function firstNonEmptyString(...values: unknown[]) {
+  for (const value of values) {
+    if (typeof value === "string") {
+      const normalized = value.trim();
+      if (normalized) return normalized;
+    }
+  }
+
+  return null;
+}
+
+function collectStringIds(...values: unknown[]) {
+  const ids = values
+    .map((value) => (typeof value === "string" ? value.trim() : ""))
+    .filter((value) => Boolean(value));
+  return Array.from(new Set(ids));
+}
+
+function toRelatedEntity(id: string | null, label: string, subtitle: string | null, exists: boolean): StaffRecruitmentRelatedEntity | null {
+  if (!id) return null;
+  return {
+    id,
+    label,
+    subtitle,
+    exists,
+  };
+}
+
+async function loadAuthUsersById(userIds: string[]) {
+  const supabase = createSupabaseAdminClient();
+  const uniqueIds = Array.from(new Set(userIds.filter(Boolean)));
+  const entries = await Promise.all(
+    uniqueIds.map(async (userId) => {
+      const result = await supabase.auth.admin.getUserById(userId);
+      if (result.error || !result.data.user) {
+        return [userId, null] as const;
+      }
+
+      const user = result.data.user;
+      const appMetadata = toRecord(user.app_metadata);
+      const userMetadata = toRecord(user.user_metadata);
+
+      return [
+        userId,
+        {
+          id: user.id,
+          email: user.email ?? null,
+          role: firstNonEmptyString(appMetadata.app_role, userMetadata.app_role),
+          fullName: firstNonEmptyString(userMetadata.full_name, userMetadata.name, user.email),
+        },
+      ] as const;
+    })
+  );
+
+  return new Map(entries);
+}
+
+export async function getStaffRecruitmentEvents(auth: AuthContext, query: StaffRecruitmentEventQuery): Promise<StaffRecruitmentEventsResult> {
+  if (!isPrimeGlobalStaffRole(auth.role)) {
+    throw new Error("Only Prime Global staff may access this view");
+  }
+
+  const supabase = createSupabaseAdminClient();
+  const from = (query.page - 1) * query.pageSize;
+  const to = from + query.pageSize - 1;
+  const search = query.search?.trim() ?? "";
+
+  let eventQuery = supabase
+    .from("audit_logs")
+    .select("id, actor_auth_user_id, actor_role, action, target_type, target_id, metadata, ip_address, user_agent, created_at", {
+      count: "exact",
+    })
+    .ilike("action", "recruitment.%");
+
+  if (query.actionPrefix) {
+    eventQuery = eventQuery.ilike("action", `${query.actionPrefix}%`);
+  }
+
+  if (query.targetType) {
+    eventQuery = eventQuery.eq("target_type", query.targetType);
+  }
+
+  if (search) {
+    const escaped = search.replace(/,/g, " ").trim();
+    eventQuery = eventQuery.or(`action.ilike.%${escaped}%,target_type.ilike.%${escaped}%,target_id.ilike.%${escaped}%`);
+  }
+
+  const { data, count, error } = await eventQuery
+    .order("created_at", { ascending: query.sort === "oldest" })
+    .range(from, to);
+
+  if (error) throw new Error(error.message);
+
+  const rows = (data ?? []).map((row) => {
+    const metadata = toRecord(row.metadata);
+    const targetType = String(row.target_type ?? "");
+    const targetId = String(row.target_id ?? "");
+
+    const candidateId = firstNonEmptyString(
+      metadata.candidateId,
+      metadata.candidate_id,
+      targetType === "candidate_profile" ? targetId : null,
+      targetType === "candidate_public_profile" ? targetId : null
+    );
+    const employerId = firstNonEmptyString(
+      metadata.employerId,
+      metadata.employer_id,
+      targetType === "employer" ? targetId : null
+    );
+    const jobId = firstNonEmptyString(
+      metadata.relatedJobId,
+      metadata.related_job_id,
+      metadata.jobId,
+      metadata.job_id,
+      targetType === "job" ? targetId : null
+    );
+    const advertisementId = firstNonEmptyString(
+      metadata.advertisementId,
+      metadata.advertisement_id,
+      metadata.adId,
+      targetType === "advertisement" ? targetId : null
+    );
+    const conversationId = firstNonEmptyString(
+      metadata.conversationId,
+      metadata.conversation_id,
+      targetType === "recruitment_conversation" ? targetId : null
+    );
+    const interviewId = firstNonEmptyString(
+      metadata.interviewId,
+      metadata.interview_id,
+      targetType === "recruitment_interview" ? targetId : null
+    );
+
+    return {
+      row,
+      metadata,
+      refs: {
+        candidateId,
+        employerId,
+        jobId,
+        advertisementId,
+        conversationId,
+        interviewId,
+      },
+    };
+  });
+
+  const candidateIds = collectStringIds(...rows.map((item) => item.refs.candidateId));
+  const employerIds = collectStringIds(...rows.map((item) => item.refs.employerId));
+  const jobIds = collectStringIds(...rows.map((item) => item.refs.jobId));
+  const advertisementIds = collectStringIds(...rows.map((item) => item.refs.advertisementId));
+  const conversationIds = collectStringIds(...rows.map((item) => item.refs.conversationId));
+  const interviewIds = collectStringIds(...rows.map((item) => item.refs.interviewId));
+  const actorUserIds = collectStringIds(...rows.map((item) => item.row.actor_auth_user_id));
+
+  const [candidateProfilesResult, employersResult, jobsResult, advertisementsResult, conversationsResult, interviewsResult, actorUsers] = await Promise.all([
+    candidateIds.length
+      ? supabase
+          .from("candidate_public_profiles")
+          .select("candidate_id, candidate_reference, professional_title, desired_role")
+          .in("candidate_id", candidateIds)
+      : Promise.resolve({ data: [], error: null }),
+    employerIds.length
+      ? supabase
+          .from("employers")
+          .select("id, company_name, company_email")
+          .in("id", employerIds)
+      : Promise.resolve({ data: [], error: null }),
+    jobIds.length
+      ? supabase
+          .from("jobs")
+          .select("id, title, status")
+          .in("id", jobIds)
+      : Promise.resolve({ data: [], error: null }),
+    advertisementIds.length
+      ? supabase
+          .from("advertisements")
+          .select("id, title_en, title_ar, status")
+          .in("id", advertisementIds)
+      : Promise.resolve({ data: [], error: null }),
+    conversationIds.length
+      ? supabase
+          .from("recruitment_conversations")
+          .select("id, employer_id, candidate_id, status, recruitment_stage")
+          .in("id", conversationIds)
+      : Promise.resolve({ data: [], error: null }),
+    interviewIds.length
+      ? supabase
+          .from("recruitment_interviews")
+          .select("id, conversation_id, status, scheduled_at")
+          .in("id", interviewIds)
+      : Promise.resolve({ data: [], error: null }),
+    loadAuthUsersById(actorUserIds),
+  ]);
+
+  if (candidateProfilesResult.error) throw new Error(candidateProfilesResult.error.message);
+  if (employersResult.error) throw new Error(employersResult.error.message);
+  if (jobsResult.error) throw new Error(jobsResult.error.message);
+  if (advertisementsResult.error) throw new Error(advertisementsResult.error.message);
+  if (conversationsResult.error) throw new Error(conversationsResult.error.message);
+  if (interviewsResult.error) throw new Error(interviewsResult.error.message);
+
+  const candidateMap = new Map((candidateProfilesResult.data ?? []).map((item) => [String(item.candidate_id), item]));
+  const employerMap = new Map((employersResult.data ?? []).map((item) => [String(item.id), item]));
+  const jobMap = new Map((jobsResult.data ?? []).map((item) => [String(item.id), item]));
+  const advertisementMap = new Map((advertisementsResult.data ?? []).map((item) => [String(item.id), item]));
+  const conversationMap = new Map((conversationsResult.data ?? []).map((item) => [String(item.id), item]));
+  const interviewMap = new Map((interviewsResult.data ?? []).map((item) => [String(item.id), item]));
+
+  const items = rows.map(({ row, metadata, refs }) => {
+    const actorAuthUserId = firstNonEmptyString(row.actor_auth_user_id);
+    const actor = actorAuthUserId ? actorUsers.get(actorAuthUserId) : null;
+
+    const candidate = refs.candidateId ? candidateMap.get(refs.candidateId) : null;
+    const employer = refs.employerId ? employerMap.get(refs.employerId) : null;
+    const job = refs.jobId ? jobMap.get(refs.jobId) : null;
+    const advertisement = refs.advertisementId ? advertisementMap.get(refs.advertisementId) : null;
+    const conversation = refs.conversationId ? conversationMap.get(refs.conversationId) : null;
+    const interview = refs.interviewId ? interviewMap.get(refs.interviewId) : null;
+
+    return {
+      id: String(row.id),
+      action: String(row.action ?? ""),
+      targetType: String(row.target_type ?? ""),
+      targetId: String(row.target_id ?? ""),
+      actor: {
+        authUserId: actorAuthUserId,
+        role: firstNonEmptyString(actor?.role, row.actor_role),
+        fullName: firstNonEmptyString(actor?.fullName),
+        email: firstNonEmptyString(actor?.email),
+      },
+      createdAt: String(row.created_at ?? ""),
+      ipAddress: firstNonEmptyString(row.ip_address),
+      userAgent: firstNonEmptyString(row.user_agent),
+      metadata,
+      related: {
+        candidate: toRelatedEntity(
+          refs.candidateId,
+          candidate?.candidate_reference ? String(candidate.candidate_reference) : "Candidate profile",
+          firstNonEmptyString(candidate?.professional_title, candidate?.desired_role),
+          Boolean(candidate)
+        ),
+        employer: toRelatedEntity(
+          refs.employerId,
+          employer?.company_name ? String(employer.company_name) : "Employer",
+          firstNonEmptyString(employer?.company_email),
+          Boolean(employer)
+        ),
+        job: toRelatedEntity(
+          refs.jobId,
+          job?.title ? String(job.title) : "Job",
+          firstNonEmptyString(job?.status),
+          Boolean(job)
+        ),
+        advertisement: toRelatedEntity(
+          refs.advertisementId,
+          firstNonEmptyString(advertisement?.title_en, advertisement?.title_ar) ?? "Advertisement",
+          firstNonEmptyString(advertisement?.status),
+          Boolean(advertisement)
+        ),
+        conversation: toRelatedEntity(
+          refs.conversationId,
+          "Recruitment conversation",
+          firstNonEmptyString(conversation?.status, conversation?.recruitment_stage),
+          Boolean(conversation)
+        ),
+        interview: toRelatedEntity(
+          refs.interviewId,
+          "Recruitment interview",
+          firstNonEmptyString(interview?.status, interview?.scheduled_at),
+          Boolean(interview)
+        ),
+      },
+    } satisfies StaffRecruitmentEventDetails;
+  });
+
+  const totalItems = count ?? 0;
+
+  return {
+    items,
+    pagination: {
+      page: query.page,
+      pageSize: query.pageSize,
+      totalItems,
+      totalPages: totalItems > 0 ? Math.ceil(totalItems / query.pageSize) : 0,
+    },
+  };
+}
+
 function getRepresentativeLabel(locale: string) {
   return locale === "ar" ? "ممثل برايم جلوبال المكلّف" : "Assigned Prime Global representative";
 }
