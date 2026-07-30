@@ -142,6 +142,19 @@ async function finalizeAuthStateForNavigation() {
   });
 }
 
+async function ensureCsrfToken(currentToken: string) {
+  if (currentToken) return currentToken;
+
+  const response = await fetch("/api/security/csrf", {
+    credentials: "include",
+    cache: "no-store",
+  }).catch(() => null);
+
+  if (!response) return "";
+  const payload = await readJsonResponse<{ data?: { csrfToken?: string } }>(response);
+  return payload?.data?.csrfToken ?? "";
+}
+
 export function UnifiedAuthExperience() {
   const locale = useLocale();
   const isArabic = locale === "ar";
@@ -430,11 +443,12 @@ function CandidateSignInForm({
     setError(null);
 
     try {
+      const requestCsrfToken = await ensureCsrfToken(csrfToken);
       const response = await fetch("/api/auth/login", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "x-csrf-token": csrfToken,
+          "x-csrf-token": requestCsrfToken,
         },
         body: JSON.stringify({ email, password, role: "candidate" }),
       });
@@ -539,11 +553,12 @@ function EmployerSignInForm({
     setError(null);
 
     try {
+      const requestCsrfToken = await ensureCsrfToken(csrfToken);
       const response = await fetch("/api/auth/login", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "x-csrf-token": csrfToken,
+          "x-csrf-token": requestCsrfToken,
         },
         body: JSON.stringify({ email, password, role: "employer" }),
       });

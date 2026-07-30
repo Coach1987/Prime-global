@@ -28,15 +28,15 @@ export async function GET(
 
   const { applicationId } = await params;
 
-  await createAuditLog({
+  void createAuditLog({
     actorAuthUserId: auth.userId,
     actorRole: auth.role,
     action: "employer.blocked_original_cv_access",
     targetType: "job_application",
     targetId: applicationId,
-  });
+  }).catch(() => undefined);
 
-  await logBlockedPrivateCandidateAccess({
+  void logBlockedPrivateCandidateAccess({
     actorAuthUserId: auth.userId,
     actorRole: auth.role,
     attemptChannel: "api",
@@ -46,7 +46,7 @@ export async function GET(
     metadata: {
       endpoint: "/api/employers/applicants/[applicationId]/cv",
     },
-  });
+  }).catch(() => undefined);
 
   return NextResponse.json(
     {

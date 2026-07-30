@@ -7,8 +7,7 @@ import { routing } from "@/i18n/routing";
 import { isLocale } from "@/lib/constants/locales";
 import { SITE_URL } from "@/lib/constants/site";
 import { displaySerif, inter, tajawal } from "@/lib/fonts";
-import { Header } from "@/components/layout/Header";
-import { Footer } from "@/components/layout/Footer";
+import { AppFrame } from "@/components/layout/AppFrame";
 import { SmoothScrollProvider } from "@/components/shared/SmoothScrollProvider";
 import { cn } from "@/lib/utils/cn";
 import "../globals.css";
@@ -149,9 +148,7 @@ export default async function LocaleLayout({
           />
 
           <SmoothScrollProvider>
-            <Header />
-            {children}
-            <Footer />
+            <AppFrame>{children}</AppFrame>
           </SmoothScrollProvider>
         </NextIntlClientProvider>
         <GoogleAnalytics gaId="G-T0NWSPSHXX" />
