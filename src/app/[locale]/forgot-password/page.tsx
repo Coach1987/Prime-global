@@ -9,7 +9,8 @@ import { PrimeInput } from "@/components/ui/prime/PrimeInput";
 import { primeButtonClasses } from "@/components/ui/prime/PrimeButton";
 import { PrimePageTitle } from "@/components/ui/prime/PrimePageTitle";
 
-function parseRole(value: string | null): "candidate" | "employer" {
+function parseRole(value: string | null): "candidate" | "employer" | "staff" {
+  if (value === "staff") return "staff";
   return value === "employer" ? "employer" : "candidate";
 }
 
@@ -43,7 +44,10 @@ function ForgotPasswordContent() {
     };
   }, []);
 
-  const signInHref = useMemo(() => `/auth?mode=signin&audience=${role}`, [role]);
+  const signInHref = useMemo(() => {
+    if (role === "staff") return "/admin/login";
+    return `/auth?mode=signin&audience=${role}`;
+  }, [role]);
 
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -104,6 +108,10 @@ function ForgotPasswordContent() {
                 ? isArabic
                   ? "البريد الإلكتروني للعمل"
                   : "Work Email"
+                : role === "staff"
+                  ? isArabic
+                    ? "بريد الموظف"
+                    : "Staff Email"
                 : isArabic
                   ? "البريد الإلكتروني"
                   : "Email"}

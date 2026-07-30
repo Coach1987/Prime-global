@@ -6,6 +6,7 @@ import { useLocale } from "next-intl";
 import { useSearchParams } from "next/navigation";
 import { PrimeCheckbox, PrimeInput, PrimeLabel, PrimeSelect, PrimeTextarea } from "@/components/ui/prime/PrimeInput";
 import { primeButtonClasses, PrimeButton } from "@/components/ui/prime/PrimeButton";
+import { PrimePasswordInput } from "@/components/ui/prime/PrimePasswordInput";
 import { PrimePageTitle } from "@/components/ui/prime/PrimePageTitle";
 import { CountrySelector } from "@/components/ui/CountrySelector";
 import { InternationalPhoneInput } from "@/components/ui/InternationalPhoneInput";
@@ -477,7 +478,13 @@ function CandidateSignInForm({
 
       <div>
         <label className="mb-2 block text-sm text-text-secondary">{isArabic ? "كلمة المرور" : "Password"}</label>
-        <PrimeInput type="password" required value={password} onChange={(event) => setPassword(event.target.value)} />
+        <PrimePasswordInput
+          required
+          value={password}
+          onChange={(event) => setPassword(event.target.value)}
+          showPasswordLabel={isArabic ? "إظهار كلمة المرور" : "Show password"}
+          hidePasswordLabel={isArabic ? "إخفاء كلمة المرور" : "Hide password"}
+        />
       </div>
 
       <p className="text-sm">
@@ -570,7 +577,13 @@ function EmployerSignInForm({
 
       <div>
         <label className="mb-2 block text-sm text-text-secondary">{isArabic ? "كلمة المرور" : "Password"}</label>
-        <PrimeInput type="password" required value={password} onChange={(event) => setPassword(event.target.value)} />
+        <PrimePasswordInput
+          required
+          value={password}
+          onChange={(event) => setPassword(event.target.value)}
+          showPasswordLabel={isArabic ? "إظهار كلمة المرور" : "Show password"}
+          hidePasswordLabel={isArabic ? "إخفاء كلمة المرور" : "Hide password"}
+        />
       </div>
 
       <p className="text-sm">
@@ -718,12 +731,24 @@ function CandidateRegisterForm({
       <div className="grid gap-5 sm:grid-cols-2">
         <PrimeLabel>
           <span className="mb-2 block">{isArabic ? "كلمة المرور" : "Password"}</span>
-          <PrimeInput type="password" required value={form.password} onChange={(event) => setForm((prev) => ({ ...prev, password: event.target.value }))} />
+          <PrimePasswordInput
+            required
+            value={form.password}
+            onChange={(event) => setForm((prev) => ({ ...prev, password: event.target.value }))}
+            showPasswordLabel={isArabic ? "إظهار كلمة المرور" : "Show password"}
+            hidePasswordLabel={isArabic ? "إخفاء كلمة المرور" : "Hide password"}
+          />
         </PrimeLabel>
 
         <PrimeLabel>
           <span className="mb-2 block">{isArabic ? "تأكيد كلمة المرور" : "Confirm password"}</span>
-          <PrimeInput type="password" required value={form.confirmPassword} onChange={(event) => setForm((prev) => ({ ...prev, confirmPassword: event.target.value }))} />
+          <PrimePasswordInput
+            required
+            value={form.confirmPassword}
+            onChange={(event) => setForm((prev) => ({ ...prev, confirmPassword: event.target.value }))}
+            showPasswordLabel={isArabic ? "إظهار كلمة المرور" : "Show password"}
+            hidePasswordLabel={isArabic ? "إخفاء كلمة المرور" : "Hide password"}
+          />
         </PrimeLabel>
       </div>
 
@@ -914,19 +939,35 @@ function EmployerRegisterForm({
       ].map(([key, label, type]) => (
         <PrimeLabel key={key}>
           <span className="mb-2 block">{label}</span>
-          <PrimeInput
-            required={key !== "website"}
-            type={type}
-            value={form[key as keyof EmployerRegisterState]}
-            onChange={(event) => setForm((prev) => ({ ...prev, [key]: event.target.value }))}
-          />
+          {key === "password" ? (
+            <PrimePasswordInput
+              required
+              value={String(form[key as keyof EmployerRegisterState] ?? "")}
+              onChange={(event) => setForm((prev) => ({ ...prev, [key]: event.target.value }))}
+              showPasswordLabel={isArabic ? "إظهار كلمة المرور" : "Show password"}
+              hidePasswordLabel={isArabic ? "إخفاء كلمة المرور" : "Hide password"}
+            />
+          ) : (
+            <PrimeInput
+              required={key !== "website"}
+              type={type}
+              value={form[key as keyof EmployerRegisterState]}
+              onChange={(event) => setForm((prev) => ({ ...prev, [key]: event.target.value }))}
+            />
+          )}
           {fieldErrors[key] ? <p className="mt-1 text-xs text-red-300">{fieldErrors[key]}</p> : null}
         </PrimeLabel>
       ))}
 
       <PrimeLabel>
         <span className="mb-2 block">{isArabic ? "تأكيد كلمة المرور" : "Confirm Password"}</span>
-        <PrimeInput type="password" required value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} />
+        <PrimePasswordInput
+          required
+          value={confirmPassword}
+          onChange={(event) => setConfirmPassword(event.target.value)}
+          showPasswordLabel={isArabic ? "إظهار كلمة المرور" : "Show password"}
+          hidePasswordLabel={isArabic ? "إخفاء كلمة المرور" : "Hide password"}
+        />
       </PrimeLabel>
 
       <PrimeLabel>

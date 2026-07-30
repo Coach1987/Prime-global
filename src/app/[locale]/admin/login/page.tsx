@@ -5,10 +5,13 @@ import { useParams, useRouter } from "next/navigation";
 import { PrimeCard } from "@/components/ui/prime/PrimeCard";
 import { primeButtonClasses } from "@/components/ui/prime/PrimeButton";
 import { PrimeInput } from "@/components/ui/prime/PrimeInput";
+import { PrimePasswordInput } from "@/components/ui/prime/PrimePasswordInput";
 import { PrimePageTitle } from "@/components/ui/prime/PrimePageTitle";
+import Link from "next/link";
 
 export default function StaffLoginPage() {
   const params = useParams<{ locale: string }>();
+  const isArabic = params.locale === "ar";
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -66,12 +69,16 @@ export default function StaffLoginPage() {
   return (
     <main className="mx-auto w-full max-w-[720px] px-4 pb-20 pt-[124px] sm:px-6 md:px-8">
       <PrimeCard as="section" className="p-8">
-        <PrimePageTitle>Prime Global Staff Login</PrimePageTitle>
-        <p className="mt-3 text-sm text-text-secondary">Access Control Center for supervised chat and interview governance.</p>
+        <PrimePageTitle>{isArabic ? "تسجيل دخول فريق برايم جلوبال" : "Prime Global Staff Login"}</PrimePageTitle>
+        <p className="mt-3 text-sm text-text-secondary">
+          {isArabic
+            ? "الوصول إلى مركز التحكم الخاص بالإشراف على المحادثات والمقابلات."
+            : "Access Control Center for supervised chat and interview governance."}
+        </p>
 
         <form className="mt-8 space-y-5" onSubmit={onSubmit}>
           <div>
-            <label className="mb-2 block text-sm text-text-secondary">Staff Email</label>
+            <label className="mb-2 block text-sm text-text-secondary">{isArabic ? "بريد الموظف" : "Staff Email"}</label>
             <PrimeInput
               type="email"
               required
@@ -81,14 +88,24 @@ export default function StaffLoginPage() {
           </div>
 
           <div>
-            <label className="mb-2 block text-sm text-text-secondary">Password</label>
-            <PrimeInput
-              type="password"
+            <label className="mb-2 block text-sm text-text-secondary">{isArabic ? "كلمة المرور" : "Password"}</label>
+            <PrimePasswordInput
               required
               value={password}
               onChange={(event) => setPassword(event.target.value)}
+              showPasswordLabel={isArabic ? "إظهار كلمة المرور" : "Show password"}
+              hidePasswordLabel={isArabic ? "إخفاء كلمة المرور" : "Hide password"}
             />
           </div>
+
+          <p className="text-sm">
+            <Link
+              href={`/${params.locale}/forgot-password?role=staff`}
+              className="font-semibold text-blue-200 hover:text-blue-100"
+            >
+              {isArabic ? "هل نسيت كلمة المرور؟" : "Forgot Password?"}
+            </Link>
+          </p>
 
           {error ? <p className="text-sm text-red-300">{error}</p> : null}
 
@@ -97,7 +114,7 @@ export default function StaffLoginPage() {
             disabled={loading}
             className={primeButtonClasses("primary")}
           >
-            {loading ? "Signing In..." : "Sign In"}
+            {loading ? (isArabic ? "جارٍ تسجيل الدخول..." : "Signing In...") : isArabic ? "تسجيل الدخول" : "Sign In"}
           </button>
         </form>
       </PrimeCard>

@@ -6,8 +6,8 @@ import { useLocale } from "next-intl";
 import { useRouter, Link } from "@/i18n/routing";
 import { useSearchParams } from "next/navigation";
 import { createClient, type Session } from "@supabase/supabase-js";
-import { PrimeInput } from "@/components/ui/prime/PrimeInput";
 import { primeButtonClasses } from "@/components/ui/prime/PrimeButton";
+import { PrimePasswordInput } from "@/components/ui/prime/PrimePasswordInput";
 import { PrimePageTitle } from "@/components/ui/prime/PrimePageTitle";
 
 function normalizeSupabaseProjectUrl(value: string): string {
@@ -28,7 +28,8 @@ function normalizeSupabaseProjectUrl(value: string): string {
   }
 }
 
-function parseRole(value: string | null): "candidate" | "employer" {
+function parseRole(value: string | null): "candidate" | "employer" | "staff" {
+  if (value === "staff") return "staff";
   return value === "employer" ? "employer" : "candidate";
 }
 
@@ -98,7 +99,10 @@ function ResetPasswordContent() {
     };
   }, [searchParamsSnapshot]);
 
-  const signInHref = useMemo(() => `/auth?mode=signin&audience=${role}&reset=1`, [role]);
+  const signInHref = useMemo(() => {
+    if (role === "staff") return "/admin/login";
+    return `/auth?mode=signin&audience=${role}&reset=1`;
+  }, [role]);
   const requestResetHref = useMemo(() => `/forgot-password?role=${role}`, [role]);
 
   useEffect(() => {
@@ -299,23 +303,25 @@ function ResetPasswordContent() {
         {!sessionChecking && sessionReady ? <form className="mt-7 space-y-5" onSubmit={onSubmit}>
           <div>
             <label className="mb-2 block text-sm text-text-secondary">{isArabic ? "كلمة المرور الجديدة" : "New Password"}</label>
-            <PrimeInput
-              type="password"
+            <PrimePasswordInput
               required
               minLength={8}
               value={password}
               onChange={(event) => setPassword(event.target.value)}
+              showPasswordLabel={isArabic ? "إظهار كلمة المرور" : "Show password"}
+              hidePasswordLabel={isArabic ? "إخفاء كلمة المرور" : "Hide password"}
             />
           </div>
 
           <div>
             <label className="mb-2 block text-sm text-text-secondary">{isArabic ? "تأكيد كلمة المرور" : "Confirm Password"}</label>
-            <PrimeInput
-              type="password"
+            <PrimePasswordInput
               required
               minLength={8}
               value={confirmPassword}
               onChange={(event) => setConfirmPassword(event.target.value)}
+              showPasswordLabel={isArabic ? "إظهار كلمة المرور" : "Show password"}
+              hidePasswordLabel={isArabic ? "إخفاء كلمة المرور" : "Hide password"}
             />
           </div>
 

@@ -63,6 +63,7 @@ function RecoveryCallbackContent() {
   const supabase = useMemo(() => buildSupabaseClient(), []);
   const localeParam = searchParams.get("locale");
   const locale = localeParam && isLocale(localeParam) ? localeParam : DEFAULT_LOCALE;
+  const role = searchParams.get("role") === "staff" ? "staff" : searchParams.get("role") === "employer" ? "employer" : "candidate";
 
   const [error, setError] = useState<string | null>(null);
 
@@ -116,7 +117,7 @@ function RecoveryCallbackContent() {
           window.history.replaceState({}, document.title, window.location.pathname + window.location.search);
         }
 
-        window.location.replace(`/${locale}/reset-password?recovery=1`);
+        window.location.replace(`/${locale}/reset-password?recovery=1&role=${role}`);
       } catch {
         if (!cancelled) {
           setError("Unexpected error while validating reset link. Please request a new one.");
@@ -129,7 +130,7 @@ function RecoveryCallbackContent() {
     return () => {
       cancelled = true;
     };
-  }, [locale, supabase]);
+  }, [locale, role, supabase]);
 
   return (
     <main className="mx-auto w-full max-w-[760px] px-4 pb-20 pt-[124px] sm:px-6 md:px-8">
