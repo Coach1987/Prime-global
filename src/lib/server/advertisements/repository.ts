@@ -71,6 +71,37 @@ export async function getAdminAdvertisementById(id: string) {
   return (data as AdvertisementRecord | null) ?? null;
 }
 
+export async function listEmployerAdvertisements(employerId: string) {
+  const supabase = createSupabaseAdminClient();
+  const { data, error } = await supabase
+    .from("advertisements")
+    .select("*")
+    .eq("created_by", employerId)
+    .order("updated_at", { ascending: false });
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return (data ?? []) as AdvertisementRecord[];
+}
+
+export async function getEmployerAdvertisementById(id: string, employerId: string) {
+  const supabase = createSupabaseAdminClient();
+  const { data, error } = await supabase
+    .from("advertisements")
+    .select("*")
+    .eq("id", id)
+    .eq("created_by", employerId)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return (data as AdvertisementRecord | null) ?? null;
+}
+
 export async function createAdvertisement(input: Partial<AdvertisementRecord>) {
   const supabase = createSupabaseAdminClient();
   const { data, error } = await supabase
@@ -112,7 +143,18 @@ export async function deleteAdvertisement(id: string) {
 
 export async function logAdvertisementAudit(input: {
   advertisementId: string | null;
-  action: "create" | "edit" | "submit_review" | "approve" | "reject" | "activate" | "pause" | "delete";
+  action:
+    | "create"
+    | "edit"
+    | "submit_review"
+    | "approve"
+    | "reject"
+    | "request_edits"
+    | "activate"
+    | "hide"
+    | "pause"
+    | "republish"
+    | "delete";
   actorAuthUserId: string;
   actorRole: string;
   fromStatus?: string | null;
@@ -121,9 +163,17 @@ export async function logAdvertisementAudit(input: {
   metadata?: Record<string, unknown>;
 }) {
   const supabase = createSupabaseAdminClient();
+  const storedAction =
+    input.action === "request_edits"
+      ? "edit"
+      : input.action === "republish"
+        ? "activate"
+        : input.action === "hide"
+          ? "pause"
+          : input.action;
   const { error } = await supabase.from("advertisement_audit_logs").insert({
     advertisement_id: input.advertisementId,
-    action: input.action,
+    action: storedAction,
     actor_auth_user_id: input.actorAuthUserId,
     actor_role: input.actorRole,
     from_status: input.fromStatus ?? null,

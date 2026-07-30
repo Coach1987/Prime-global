@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireAuth, requireRole } from "@/lib/server/security/auth";
 import { enforceRateLimit } from "@/lib/server/http";
-import { getEmployerByAuthUserId } from "@/lib/server/employers";
+import { getEmployerByAuthUserId, normalizeEmployerAccountStatus } from "@/lib/server/employers";
 import { createSupabaseAdminClient } from "@/lib/server/supabase";
 
 export async function GET(request: Request) {
@@ -44,6 +44,7 @@ export async function GET(request: Request) {
       publishedJobs: publishedCount ?? 0,
       totalApplicants: applicationsCount ?? 0,
       verificationStatus: employer.verification_status,
+      accountStatus: normalizeEmployerAccountStatus(employer.verification_status),
     },
   });
 }

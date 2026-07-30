@@ -272,17 +272,17 @@ export function AdvertisementsAdminCenter({ locale }: { locale: string }) {
     }
   }
 
-  async function onAction(action: "submit_review" | "approve" | "reject" | "activate" | "pause") {
+  async function onAction(action: "submit_review" | "approve" | "reject" | "request_edits" | "hide" | "republish") {
     if (!selectedId) {
       return;
     }
 
     const reason =
-      action === "reject"
+      action === "reject" || action === "request_edits"
         ? window.prompt(t("prompts.rejectionReason"), "")?.trim() ?? ""
         : "";
 
-    if (action === "reject" && reason.length < 3) {
+    if ((action === "reject" || action === "request_edits") && reason.length < 3) {
       setError(t("errors.rejectReasonRequired"));
       return;
     }
@@ -642,6 +642,15 @@ export function AdvertisementsAdminCenter({ locale }: { locale: string }) {
                   <button
                     type="button"
                     className={primeButtonClasses("secondary")}
+                    onClick={() => void onAction("request_edits")}
+                    disabled={!selectedId}
+                  >
+                    {t("actions.requestEdits")}
+                  </button>
+
+                  <button
+                    type="button"
+                    className={primeButtonClasses("secondary")}
                     onClick={() => void onAction("reject")}
                     disabled={!selectedId}
                   >
@@ -651,19 +660,19 @@ export function AdvertisementsAdminCenter({ locale }: { locale: string }) {
                   <button
                     type="button"
                     className={primeButtonClasses("secondary")}
-                    onClick={() => void onAction("activate")}
+                    onClick={() => void onAction("republish")}
                     disabled={!selectedId}
                   >
-                    {t("actions.activate")}
+                    {t("actions.republish")}
                   </button>
 
                   <button
                     type="button"
                     className={primeButtonClasses("secondary")}
-                    onClick={() => void onAction("pause")}
+                    onClick={() => void onAction("hide")}
                     disabled={!selectedId}
                   >
-                    {t("actions.pause")}
+                    {t("actions.hide")}
                   </button>
 
                   <button

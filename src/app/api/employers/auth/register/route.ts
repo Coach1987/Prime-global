@@ -6,6 +6,91 @@ import { enforceCsrf, enforceRateLimit, getRequestContext, parseJsonBody } from 
 import { evaluateAgencyPolicy } from "@/lib/server/employer-policy";
 import { LEGAL_DOCUMENT_VERSION, persistLegalAcceptances } from "@/lib/server/security/legal-acceptance";
 
+function buildEmployerRegistrationError(input: {
+  code: string;
+  message: string;
+  fieldErrors?: Record<string, string>;
+  status?: number;
+}) {
+  return NextResponse.json(
+    {
+      success: false,
+      error: {
+        code: input.code,
+        message: input.message,
+      },
+      details: input.fieldErrors
+        ? {
+            fieldErrors: input.fieldErrors,
+          }
+        : undefined,
+    },
+    { status: input.status ?? 400 }
+  );
+}
+
+function mapEmployerInsertError(error: { code?: string; message: string }) {
+  const message = error.message.toLowerCase();
+
+  if (error.code === "23505" || message.includes("duplicate key value") || message.includes("unique constraint")) {
+    if (message.includes("employers_commercial_registration_uq") || message.includes("commercial_registration_number")) {
+      return buildEmployerRegistrationError({
+        code: "COMMERCIAL_REGISTRATION_EXISTS",
+        message: "A company with this commercial registration number already exists.",
+        fieldErrors: {
+          commercialRegistrationNumber: "A company with this commercial registration number already exists.",
+        },
+      });
+    }
+
+    if (message.includes("employers_tax_number_uq") || message.includes("tax_number")) {
+      return buildEmployerRegistrationError({
+        code: "TAX_NUMBER_EXISTS",
+        message: "A company with this tax number already exists.",
+        fieldErrors: {
+          taxNumber: "A company with this tax number already exists.",
+        },
+      });
+    }
+
+    if (message.includes("employers_company_email_uq") || message.includes("company_email")) {
+      return buildEmployerRegistrationError({
+        code: "COMPANY_EMAIL_EXISTS",
+        message: "This email is already associated with an employer account.",
+        fieldErrors: {
+          companyEmail: "This email is already associated with an employer account.",
+        },
+      });
+    }
+  }
+
+  return buildEmployerRegistrationError({
+    code: "EMPLOYER_CREATE_FAILED",
+    message: "Unable to create the company profile at this time.",
+    status: 400,
+  });
+}
+
+function mapEmployerAuthError(error: { message?: string } | null) {
+  const message = (error?.message ?? "").toLowerCase();
+
+  if (message.includes("already") || message.includes("registered") || message.includes("exists")) {
+    return buildEmployerRegistrationError({
+      code: "EMPLOYER_EMAIL_EXISTS",
+      message: "This email is already associated with an employer account.",
+      fieldErrors: {
+        email: "This email is already associated with an employer account.",
+      },
+    });
+  }
+
+  return buildEmployerRegistrationError({
+    code: "AUTH_REGISTER_FAILED",
+    message: "Unable to create the employer account at this time.",
+    status: 400,
+  });
+}
+
 export async function POST(request: Request) {
   const rateLimitResult = enforceRateLimit(request, "employer-register", 20);
   if (rateLimitResult) return rateLimitResult;
@@ -55,10 +140,7 @@ export async function POST(request: Request) {
   });
 
   if (userError || !userData.user) {
-    return NextResponse.json(
-      { success: false, error: { code: "AUTH_REGISTER_FAILED", message: userError?.message ?? "Register failed" } },
-      { status: 400 }
-    );
+    return mapEmployerAuthError(userError);
   }
 
   const { error: employerError } = await supabase.from("employers").insert({
@@ -81,10 +163,7 @@ export async function POST(request: Request) {
 
   if (employerError) {
     await supabase.auth.admin.deleteUser(userData.user.id);
-    return NextResponse.json(
-      { success: false, error: { code: "EMPLOYER_CREATE_FAILED", message: employerError.message } },
-      { status: 400 }
-    );
+    return mapEmployerInsertError(employerError);
   }
 
   try {

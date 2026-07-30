@@ -654,9 +654,10 @@
     "actions": {
       "submitReview": "إرسال للمراجعة",
       "approve": "اعتماد",
+      "requestEdits": "طلب تعديلات",
       "reject": "رفض",
-      "activate": "تفعيل",
-      "pause": "إيقاف",
+      "republish": "إعادة النشر",
+      "hide": "إخفاء",
       "delete": "حذف"
     },
     "prompts": {

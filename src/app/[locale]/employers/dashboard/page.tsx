@@ -8,6 +8,7 @@ type EmployerStats = {
   publishedJobs: number;
   totalApplicants: number;
   verificationStatus: string;
+  accountStatus?: "pending_review" | "approved" | "rejected" | "suspended" | null;
 };
 
 type Job = {
@@ -32,6 +33,13 @@ export default function EmployerDashboardPage() {
   const [jobCountry, setJobCountry] = useState("");
   const [jobCity, setJobCity] = useState("");
   const locale = useLocale();
+
+  function statusLabel(status: EmployerStats["accountStatus"], verificationStatus: string) {
+    if (status === "approved" || verificationStatus === "verified") return "Approved";
+    if (status === "rejected" || verificationStatus === "rejected") return "Rejected";
+    if (status === "suspended" || verificationStatus === "suspended") return "Suspended";
+    return "Pending Review";
+  }
 
   const isReady = useMemo(() => hasSession, [hasSession]);
 
@@ -216,6 +224,9 @@ export default function EmployerDashboardPage() {
         <a href={`/${locale}/employers/jobs`} className="ml-3 mt-6 inline-flex rounded-full border border-gold/30 px-5 py-2 text-sm font-semibold text-gold transition hover:bg-gold/10">
           Jobs
         </a>
+        <a href={`/${locale}/employers/advertisements`} className="ml-3 mt-6 inline-flex rounded-full border border-gold/30 px-5 py-2 text-sm font-semibold text-gold transition hover:bg-gold/10">
+          Advertisements
+        </a>
         <a href={`/${locale}/employers/candidate-profiles`} className="ml-3 mt-6 inline-flex rounded-full border border-gold/30 px-5 py-2 text-sm font-semibold text-gold transition hover:bg-gold/10">
           Candidate Review
         </a>
@@ -232,7 +243,7 @@ export default function EmployerDashboardPage() {
         {stats ? (
           <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             {[
-              ["Verification", stats.verificationStatus],
+              ["Verification", statusLabel(stats.accountStatus ?? null, stats.verificationStatus)],
               ["Total Jobs", String(stats.totalJobs)],
               ["Published", String(stats.publishedJobs)],
               ["Applicants", String(stats.totalApplicants)],

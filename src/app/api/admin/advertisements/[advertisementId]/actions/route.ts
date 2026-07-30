@@ -68,7 +68,7 @@ export async function POST(
     });
 
     patch = {
-      status: moderation.status === "failed" ? "rejected" : "pending_review",
+      status: moderation.status === "failed" ? "draft" : "pending_review",
       moderation_status: moderation.status,
       moderation_reason: moderation.reason,
     };
@@ -76,13 +76,13 @@ export async function POST(
   }
 
   if (action === "approve") {
-    if (existing.status !== "pending_review" || existing.moderation_status !== "passed") {
+    if (existing.status !== "pending_review" || existing.moderation_status === "failed") {
       return NextResponse.json(
         {
           success: false,
           error: {
             code: "APPROVAL_BLOCKED",
-            message: "Only passed advertisements in pending review can be approved",
+            message: "Only advertisements in pending review that did not fail moderation can be approved",
           },
         },
         { status: 400 }
@@ -90,11 +90,12 @@ export async function POST(
     }
 
     patch = {
-      status: "approved",
+      status: "active",
       approved_by: auth.userId,
       approved_at: nowIso,
+      moderation_status: "passed",
     };
-    toStatus = "approved";
+    toStatus = "active";
   }
 
   if (action === "reject") {
@@ -105,25 +106,33 @@ export async function POST(
     toStatus = "rejected";
   }
 
-  if (action === "activate") {
-    if (existing.status !== "approved" || existing.moderation_status !== "passed") {
+  if (action === "request_edits") {
+    patch = {
+      status: "draft",
+      moderation_reason: parsed.data.reason ?? existing.moderation_reason,
+    };
+    toStatus = "draft";
+  }
+
+  if (action === "activate" || action === "republish") {
+    if (!["approved", "paused", "active"].includes(existing.status) || existing.moderation_status === "failed") {
       return NextResponse.json(
         {
           success: false,
           error: {
             code: "ACTIVATION_BLOCKED",
-            message: "Only approved advertisements with passed moderation can be activated",
+            message: "Only approved or hidden advertisements that did not fail moderation can be republished",
           },
         },
         { status: 400 }
       );
     }
 
-    patch = { status: "active" };
+    patch = { status: "active", moderation_status: "passed" };
     toStatus = "active";
   }
 
-  if (action === "pause") {
+  if (action === "pause" || action === "hide") {
     patch = { status: "paused" };
     toStatus = "paused";
   }

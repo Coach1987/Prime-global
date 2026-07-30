@@ -118,6 +118,21 @@ test("admin API routes enforce authz and CSRF guards", () => {
   }
 });
 
+test("employer advertisement routes exist for owned workflow", () => {
+  const listRoute = readRepoFile("src/app/api/employers/advertisements/route.ts");
+  const detailRoute = readRepoFile("src/app/api/employers/advertisements/[advertisementId]/route.ts");
+  const actionRoute = readRepoFile("src/app/api/employers/advertisements/[advertisementId]/actions/route.ts");
+  const uploadRoute = readRepoFile("src/app/api/employers/advertisements/upload/route.ts");
+
+  for (const routeSource of [listRoute, detailRoute, actionRoute, uploadRoute]) {
+    assert.match(routeSource, /requireRole\(auth, \["employer", "admin", "super_admin"\]\)/);
+  }
+
+  for (const routeSource of [listRoute, detailRoute, actionRoute, uploadRoute]) {
+    assert.match(routeSource, /getEmployerByAuthUserId/);
+  }
+});
+
 test("advertisements translations exist for EN and AR locales", () => {
   const en = JSON.parse(readRepoFile("messages/en.json"));
   const ar = JSON.parse(readRepoFile("messages/ar.json"));

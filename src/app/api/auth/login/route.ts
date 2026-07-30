@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { getEmployerByAuthUserId } from "@/lib/server/employers";
+import { getEmployerByAuthUserId, normalizeEmployerAccountStatus } from "@/lib/server/employers";
 import { createSupabasePublicClient } from "@/lib/server/supabase";
 import { enforceCsrf, enforceRateLimit, parseJsonBody } from "@/lib/server/http";
 import { setAuthCookies } from "@/lib/server/security/session-cookies";
@@ -77,7 +77,7 @@ export async function POST(request: Request) {
   if (actualRole === "employer") {
     const employer = await getEmployerByAuthUserId(data.user.id);
     verificationStatus = (employer?.verification_status as string | null) ?? null;
-    accountStatus = verificationStatus === "verified" ? "active" : "pending_review";
+    accountStatus = normalizeEmployerAccountStatus(verificationStatus);
   }
 
   if (actualRole === "candidate") {

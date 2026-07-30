@@ -1,4 +1,4 @@
-import { StaffRecruitmentCenter } from "@/features/recruitment/components/StaffRecruitmentCenter";
+import { AdminCompanyManagementCenter } from "@/features/admin/components/AdminCompanyManagementCenter";
 
 export default async function AdminControlCenterPage({
   params,
@@ -6,5 +6,5 @@ export default async function AdminControlCenterPage({
   params: Promise<{ locale: string }>;
 }) {
   const { locale } = await params;
-  return <StaffRecruitmentCenter locale={locale} />;
+  return <AdminCompanyManagementCenter locale={locale} />;
 }

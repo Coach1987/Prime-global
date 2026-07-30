@@ -26,7 +26,7 @@ export const updateAdvertisementSchema = advertisementBaseSchema.partial().refin
 );
 
 export const advertisementActionSchema = z.object({
-  action: z.enum(["submit_review", "approve", "reject", "activate", "pause"]),
+  action: z.enum(["submit_review", "approve", "reject", "request_edits", "activate", "hide", "pause", "republish"]),
   reason: z.string().trim().min(3).max(500).optional(),
 });
 

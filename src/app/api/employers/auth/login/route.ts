@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { employerLoginSchema } from "@/features/employers/schemas/portal";
+import { getEmployerByAuthUserId, normalizeEmployerAccountStatus } from "@/lib/server/employers";
 import { createSupabasePublicClient } from "@/lib/server/supabase";
 import { createAuditLog } from "@/lib/server/security/audit";
 import { enforceCsrf, enforceRateLimit, getRequestContext, parseJsonBody } from "@/lib/server/http";
@@ -48,6 +49,10 @@ export async function POST(request: Request) {
     userAgent,
   });
 
+  const employer = await getEmployerByAuthUserId(data.user.id);
+  const verificationStatus = (employer?.verification_status as string | null) ?? null;
+  const accountStatus = normalizeEmployerAccountStatus(verificationStatus);
+
   const response = NextResponse.json({
     success: true,
     data: {
@@ -55,6 +60,8 @@ export async function POST(request: Request) {
         id: data.user.id,
         email: data.user.email,
         role,
+        verificationStatus,
+        accountStatus,
       },
     },
   });

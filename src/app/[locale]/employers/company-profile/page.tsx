@@ -23,6 +23,13 @@ export default function EmployerCompanyProfilePage() {
   const [message, setMessage] = useState<string | null>(null);
   const [profile, setProfile] = useState<EmployerProfile | null>(null);
 
+  function statusLabel(status: string) {
+    if (status === "verified") return "Approved";
+    if (status === "rejected") return "Rejected";
+    if (status === "suspended") return "Suspended";
+    return "Pending Review";
+  }
+
   useEffect(() => {
     Promise.all([
       fetch("/api/security/csrf"),
@@ -86,7 +93,7 @@ export default function EmployerCompanyProfilePage() {
     <main className="mx-auto w-full max-w-[980px] px-4 pb-20 pt-[124px] sm:px-6 md:px-8">
       <section className="rounded-3xl border border-gold/20 bg-bg-secondary/80 p-7 backdrop-blur-xl md:p-10">
         <h1 className="font-heading text-3xl text-text-primary">Company Profile</h1>
-        <p className="mt-3 text-sm text-text-secondary">Verification status: {profile.verification_status}</p>
+        <p className="mt-3 text-sm text-text-secondary">Verification status: {statusLabel(profile.verification_status)}</p>
         {message ? <p className="mt-3 text-sm text-emerald-200">{message}</p> : null}
 
         <form onSubmit={onSubmit} className="mt-8 grid gap-4 md:grid-cols-2">

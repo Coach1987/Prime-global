@@ -654,9 +654,10 @@
     "actions": {
       "submitReview": "Submit for Review",
       "approve": "Approve",
+      "requestEdits": "Request Edits",
       "reject": "Reject",
-      "activate": "Activate",
-      "pause": "Pause",
+      "republish": "Republish",
+      "hide": "Hide",
       "delete": "Delete"
     },
     "prompts": {

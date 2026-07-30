@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { enforceRateLimit } from "@/lib/server/http";
-import { getEmployerByAuthUserId } from "@/lib/server/employers";
+import { getEmployerByAuthUserId, normalizeEmployerAccountStatus } from "@/lib/server/employers";
 import { requireAuth } from "@/lib/server/security/auth";
 import { evaluateCandidateProfileCompletion } from "@/lib/server/candidates/profile-completion";
 import { persistRefreshedSession } from "@/lib/server/security/session-cookies";
@@ -37,8 +37,7 @@ export async function GET(request: Request) {
       auth.role === "candidate" ? await evaluateCandidateProfileCompletion(auth.userId) : null;
     const employer = auth.role === "employer" ? await getEmployerByAuthUserId(auth.userId) : null;
     const verificationStatus = (employer?.verification_status as string | null) ?? null;
-    const accountStatus =
-      auth.role === "employer" ? (verificationStatus === "verified" ? "active" : "pending_review") : null;
+    const accountStatus = auth.role === "employer" ? normalizeEmployerAccountStatus(verificationStatus) : null;
 
     const response = NextResponse.json({
       success: true,
