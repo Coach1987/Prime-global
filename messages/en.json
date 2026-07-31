@@ -617,6 +617,20 @@
     "clicks": "Clicks",
     "ctr": "CTR",
     "preview": "Live Preview",
+    "tabs": {
+      "general": "General",
+      "media": "Media",
+      "schedule": "Schedule",
+      "preview": "Preview",
+      "publishing": "Publishing"
+    },
+    "sections": {
+      "general": "General details",
+      "media": "Media configuration",
+      "schedule": "Scheduling",
+      "preview": "Preview",
+      "publishing": "Publishing actions"
+    },
     "previewFallback": "Advertisement title preview",
     "previewDescription": "Advertisement description preview",
     "uploadHint": "Upload JPG, JPEG, PNG, WEBP, MP4, or WEBM. Images should be at least 1200x420.",
@@ -679,6 +693,397 @@
       "actionFailed": "Unable to complete this action.",
       "deleteFailed": "Unable to delete advertisement.",
       "rejectReasonRequired": "A rejection reason of at least 3 characters is required."
+    }
+  },
+  "ownerPortal": {
+    "shell": {
+      "internalPortal": "Internal Management Portal",
+      "dashboardControlCenter": "Dashboard / Control Center",
+      "companyManagement": "Company Management",
+      "staffDashboard": "Staff Dashboard",
+      "account": "Account",
+      "logout": "Logout",
+      "recruitment": "Recruitment Center",
+      "candidateProfiles": "Candidate Profiles",
+      "advertisements": "Advertisements Center"
+    },
+    "login": {
+      "title": "Prime Global Owner Login",
+      "subtitle": "Access owner control center for supervised chat and interview governance.",
+      "staffEmail": "Staff Email",
+      "password": "Password",
+      "showPassword": "Show password",
+      "hidePassword": "Hide password",
+      "forgotPassword": "Forgot Password?",
+      "signingIn": "Signing In...",
+      "signIn": "Sign In",
+      "errors": {
+        "signInFailed": "Unable to sign in",
+        "unexpected": "Unexpected error while logging in"
+      }
+    },
+    "dashboard": {
+      "title": "Executive Control Center",
+      "subtitle": "Monitor approvals, operations, governance alerts, and platform execution from one owner dashboard.",
+      "quickActions": {
+        "openControlCenter": "Open Company Control Center",
+        "openRecruitmentCenter": "Open Recruitment Center",
+        "openAdvertisementsCenter": "Open Advertisements Center",
+        "openCandidateAiQueue": "Open Candidate AI Queue"
+      },
+      "metrics": {
+        "pendingCompanies": "Pending Companies",
+        "pendingAdvertisements": "Pending Advertisements",
+        "pendingCandidateAiReviews": "Pending Candidate AI Reviews",
+        "interviewsToday": "Interviews Today",
+        "criticalAlerts": "Critical Alerts",
+        "systemNotifications": "System Notifications",
+        "moderationQueue": "Moderation Queue",
+        "recruitersAssigned": "Recruiters Assigned",
+        "aiQueue": "AI Queue",
+        "companiesToday": "Companies Today",
+        "jobsToday": "Jobs Today",
+        "pendingReviews": "Pending Reviews",
+        "aiInterviews": "AI Interviews",
+        "successfulPlacements": "Successful Placements",
+        "revenue": "Revenue",
+        "activeEmployers": "Active Employers",
+        "activeCandidates": "Active Candidates",
+        "systemHealth": "System Health"
+      },
+      "sections": {
+        "auditLogs": "Recent Important Activities",
+        "auditSubtitle": "Human-readable owner and internal governance actions.",
+        "systemNotifications": "System Notifications",
+        "systemNotificationsSubtitle": "Latest internal notifications and alerts.",
+        "weeklyActivity": "Weekly Activity",
+        "monthlyReports": "Monthly Reports",
+        "recruitmentKpis": "Recruitment KPIs",
+        "aiStatistics": "AI Statistics",
+        "businessOverview": "Business Overview"
+      },
+      "kpis": {
+        "requestsApproved": "Requests approved",
+        "requestsRejected": "Requests rejected",
+        "interviewsStarted": "Interviews started",
+        "pendingManualReview": "Pending manual review",
+        "criticalCases": "Critical cases",
+        "aiQueue": "AI queue",
+        "verifiedCompanies": "Verified companies",
+        "activeJobs": "Active jobs",
+        "applications": "Applications",
+        "candidates": "Candidates"
+      },
+      "audit": {
+        "ownerApprovedCompany": "Owner approved company \"{company}\"",
+        "ownerRejectedCompany": "Owner rejected company \"{company}\"",
+        "ownerSuspendedCompany": "Owner suspended company \"{company}\"",
+        "ownerReactivatedCompany": "Owner reactivated company \"{company}\"",
+        "fallback": "{action} on {target}",
+        "details": "Audit details",
+        "close": "Close",
+        "user": "User",
+        "action": "Action",
+        "target": "Target",
+        "dateTime": "Date & time",
+        "reason": "Reason",
+        "unknownUser": "Unknown user",
+        "unknownTarget": "Unknown target"
+      }
+    },
+    "recruitmentCenter": {
+      "title": "Recruitment Operations Workspace",
+      "subtitle": "Coordinate requests, supervision, and interview governance from a single operations view.",
+      "overview": "Operational overview",
+      "requests": "Request queue",
+      "moderation": "Moderation queue",
+      "conversations": "Assigned conversations",
+      "alerts": "Operational alerts",
+      "statistics": "Platform statistics",
+      "quickActions": "Quick actions",
+      "search": "Search",
+      "action": "Action",
+      "target": "Target",
+      "actor": "Actor",
+      "time": "Time",
+      "empty": "No queue items available right now.",
+      "emptyEvents": "No events match these filters.",
+      "status": {
+        "pending": "Pending",
+        "approved": "Approved",
+        "rejected": "Rejected",
+        "review": "Needs review"
+      },
+      "stats": {
+        "requests": "Pending requests",
+        "moderation": "Needs review",
+        "conversations": "Assigned conversations",
+        "interviews": "Interviews today"
+      },
+      "actions": {
+        "openCandidate": "Open candidate profile",
+        "openConversation": "Open conversation",
+        "openInterview": "Open interview",
+        "openJob": "Open job",
+        "openAdvertisement": "Open advertisement board",
+        "openDashboard": "Open admin dashboard"
+      },
+      "audit": {
+        "title": "Recent activity",
+        "filterSearch": "Search by action, target, or ID",
+        "filterAction": "Action",
+        "filterTarget": "Target type",
+        "sort": "Sort",
+        "rows": "Rows",
+        "newest": "Newest first",
+        "oldest": "Oldest first",
+        "previous": "Previous",
+        "next": "Next",
+        "loading": "Loading events...",
+        "loadingDetail": "Loading event details..."
+      },
+      "eventDetails": {
+        "title": "Event details",
+        "close": "Close",
+        "target": "Target",
+        "actor": "Actor",
+        "relatedEntities": "Related entities",
+        "notLinked": "Not linked",
+        "quickActions": "Quick actions",
+        "requestContext": "Request context",
+        "payload": "Event payload (JSON)",
+        "missing": "No quick actions available for this event."
+      }
+    },
+    "companyManagement": {
+      "title": "Company Management",
+      "subtitle": "Review, verify, moderate, and govern company lifecycle operations.",
+      "openAdvertisements": "Open Advertisements Center",
+      "openRecruitment": "Open Recruitment Center",
+      "searchPlaceholder": "Search company, registration number, email, or country",
+      "search": "Search",
+      "hideTestData": "Hide test companies and records",
+      "loading": "Loading companies...",
+      "loadingDetail": "Loading company details...",
+      "selectCompany": "Select a company to inspect registration, verification, and activity timeline.",
+      "empty": "No companies found.",
+      "statusLabel": "Status",
+      "officialCompany": "Official Company",
+      "copy": "Copy",
+      "openDocument": "Open document",
+      "previewDocument": "Preview document",
+      "emptyRegistrationDocuments": "No registration documents uploaded.",
+      "emptyTaxDocuments": "No tax documents uploaded.",
+      "emptyHistory": "No verification history found.",
+      "emptyJobs": "No jobs found.",
+      "emptyAdvertisements": "No advertisements found.",
+      "emptyTimeline": "No activity timeline records found.",
+      "notesPlaceholder": "Enter review reason or internal note",
+      "currentNote": "Current note",
+      "yes": "Yes",
+      "no": "No",
+      "filters": {
+        "all": "All",
+        "pending_review": "Pending review",
+        "approved": "Approved",
+        "rejected": "Rejected",
+        "suspended": "Suspended"
+      },
+      "status": {
+        "pending_review": "Pending review",
+        "approved": "Approved",
+        "rejected": "Rejected",
+        "suspended": "Suspended"
+      },
+      "sections": {
+        "logo": "Company Logo",
+        "registrationInfo": "Registration Information",
+        "companyProfile": "Company Profile",
+        "registrationDocuments": "Registration Documents",
+        "taxDocuments": "Tax Documents",
+        "verificationHistory": "Verification History",
+        "jobs": "Jobs",
+        "advertisements": "Advertisements",
+        "activityTimeline": "Activity Timeline",
+        "reviewNotes": "Review Notes",
+        "deletionPolicy": "Deletion Policy"
+      },
+      "fields": {
+        "accountEmail": "Account email",
+        "companyEmail": "Company email",
+        "commercialRegistration": "Commercial registration",
+        "taxNumber": "Tax number",
+        "registered": "Registered",
+        "verifiedAt": "Verified at",
+        "lastLogin": "Last login",
+        "country": "Country",
+        "city": "City",
+        "address": "Address",
+        "website": "Website",
+        "hrContact": "HR contact",
+        "phone": "Phone",
+        "industry": "Industry",
+        "companySize": "Company size",
+        "actor": "Actor",
+        "reason": "Reason",
+        "jobsCount": "Jobs",
+        "documentsCount": "Documents",
+        "advertisementsCount": "Advertisements",
+        "deleteAllowed": "Delete allowed"
+      },
+      "timeline": {
+        "approved": "Approved",
+        "rejected": "Rejected",
+        "suspended": "Suspended",
+        "reactivated": "Reactivated",
+        "other": "Other activity"
+      },
+      "actions": {
+        "approve": "Approve company",
+        "reject": "Reject company",
+        "suspend": "Suspend company",
+        "reactivate": "Reactivate company",
+        "delete": "Delete company"
+      },
+      "deleteDialog": {
+        "title": "Delete company",
+        "subtitle": "To delete {company}, type the exact company name and provide a deletion reason.",
+        "typeName": "Type company name",
+        "reason": "Deletion reason",
+        "confirm": "Confirm delete",
+        "cancel": "Cancel"
+      },
+      "messages": {
+        "actionCompleted": "Company action completed.",
+        "copied": "Copied to clipboard."
+      },
+      "errors": {
+        "loadEmployers": "Failed to load employers",
+        "loadDetail": "Failed to load employer details",
+        "actionFailed": "Unable to complete company action",
+        "reasonRequired": "A reason of at least 3 characters is required.",
+        "copyFailed": "Unable to copy value",
+        "invalidEmployerId": "Invalid employer id",
+        "employerNotFound": "Employer not found",
+        "deleteBlocked": "Deletion is blocked by company policy.",
+        "onlyRejectedOrSuspended": "Only rejected or suspended companies can be deleted.",
+        "ownedJobsBlocked": "Deletion is blocked while the company still owns job records.",
+        "invalidRole": "Invalid role"
+      }
+    },
+    "account": {
+      "title": "Owner Account",
+      "subtitle": "Review the current session details and access basics.",
+      "sections": {
+        "profile": "Profile",
+        "session": "Current Session",
+        "locale": "Language"
+      },
+      "fields": {
+        "displayName": "Display name",
+        "email": "Email",
+        "role": "Role",
+        "accountId": "Account ID",
+        "locale": "Current language"
+      },
+      "values": {
+        "owner": "Owner",
+        "recruiter": "Recruiter",
+        "admin": "Admin",
+        "superAdmin": "Super admin",
+        "unknown": "Unknown"
+      },
+      "languageOptions": {
+        "ar": "Arabic",
+        "en": "English"
+      },
+      "messages": {
+        "loading": "Loading account...",
+        "loadFailed": "Unable to load account data",
+        "sessionMissing": "No active session"
+      }
+    },
+    "candidateProfiles": {
+      "title": "Candidate Profiles",
+      "subtitle": "Review AI candidate outputs and moderation timeline before employer visibility.",
+      "searchPlaceholder": "Search by reference, title, location, or skill",
+      "filters": {
+        "all": "All statuses",
+        "pendingReview": "Pending review",
+        "approved": "Approved",
+        "needsChanges": "Needs changes",
+        "rejected": "Rejected"
+      },
+      "stats": {
+        "total": "Total",
+        "pending": "Pending",
+        "approved": "Approved"
+      },
+      "emptyTitle": "No candidate profiles yet",
+      "emptyBody": "The queue is clear right now. Filters and summary cards remain available for the next review cycle.",
+      "emptyAction": "Refresh data",
+      "emptyProfile": "Professional profile pending",
+      "emptyLocation": "Location not set",
+      "aiScore": "AI score",
+      "experience": "Experience",
+      "visibility": "Employer visibility",
+      "visible": "Visible",
+      "hidden": "Hidden",
+      "timeline": "Timeline",
+      "noTimeline": "No timeline yet",
+      "skills": "Skills",
+      "empty": "No candidate profiles found.",
+      "errors": {
+        "loadFailed": "Failed to load candidate profiles"
+      }
+    },
+    "candidateProfileDetail": {
+      "title": "Candidate Profile Review",
+      "approve": "Approve",
+      "reject": "Reject",
+      "changes": "Needs Changes",
+      "regenerate": "Regenerate",
+      "save": "Save Edits",
+      "sections": {
+        "privateProfile": "Private candidate profile",
+        "employerProfile": "Employer profile",
+        "certificates": "Certificates",
+        "reviewHistory": "Review history",
+        "employerSummary": "Employer-facing summary"
+      },
+      "status": {
+        "pendingReview": "Pending review",
+        "approved": "Approved",
+        "needsChanges": "Needs changes",
+        "rejected": "Rejected",
+        "unknown": "Unknown"
+      },
+      "fields": {
+        "reference": "Reference",
+        "fullName": "Full name",
+        "email": "Email",
+        "phone": "Phone",
+        "address": "Address",
+        "originalCvPath": "Original CV path",
+        "supportingDocs": "Supporting docs",
+        "identityVerification": "Identity verification",
+        "confidence": "Confidence score",
+        "staffReviewStatus": "Staff review status",
+        "aiReasoning": "AI reasoning",
+        "professionalTitle": "Professional title",
+        "professionalSummary": "Professional summary",
+        "reviewNotes": "Review notes",
+        "status": "Status",
+        "visibility": "Employer visibility"
+      },
+      "visible": "Visible",
+      "hidden": "Hidden",
+      "noNotes": "No notes",
+      "noSummary": "No summary yet.",
+      "errors": {
+        "loadFailed": "Failed to load candidate profile",
+        "updateFailed": "Unable to update profile"
+      }
     }
   },
   "footer": {

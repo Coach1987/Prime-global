@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useTranslations } from "next-intl";
 import { PrimeCard } from "@/components/ui/prime/PrimeCard";
 import { PrimePageTitle } from "@/components/ui/prime/PrimePageTitle";
 import { primeButtonClasses } from "@/components/ui/prime/PrimeButton";
@@ -20,6 +21,42 @@ type EmployerListItem = {
   updatedAt: string;
 };
 
+type EmployerDocument = {
+  id: string;
+  documentType: string;
+  storagePath: string;
+  originalFilename: string;
+  mimeType: string;
+  sizeBytes: number;
+  uploadedAt: string;
+  signedUrl: string | null;
+};
+
+type EmployerTimelineEntry = {
+  id: string;
+  eventType: "approved" | "rejected" | "suspended" | "reactivated" | "other";
+  action: string;
+  actorAuthUserId: string | null;
+  actorRole: string | null;
+  reason: string | null;
+  timestamp: string;
+};
+
+type EmployerJob = {
+  id: string;
+  title: string;
+  status: string;
+  publishDate: string | null;
+  createdAt: string;
+};
+
+type EmployerAdvertisement = {
+  id: string;
+  title: string;
+  status: string;
+  updatedAt: string;
+};
+
 type EmployerDetail = EmployerListItem & {
   registration: {
     authUserId: string;
@@ -36,63 +73,160 @@ type EmployerDetail = EmployerListItem & {
     companySize: string;
     companyDescription: string;
     logoStoragePath: string | null;
+    logoSignedUrl: string | null;
   };
-  documents: Array<{
-    id: string;
-    documentType: string;
-    originalFilename: string;
-    mimeType: string;
-    sizeBytes: number;
-    uploadedAt: string;
-    signedUrl: string | null;
-  }>;
+  documents: EmployerDocument[];
+  registrationDocuments: EmployerDocument[];
+  taxDocuments: EmployerDocument[];
   deletionPolicy: {
     allowed: boolean;
     reasons: string[];
     jobsCount: number;
     documentsCount: number;
   };
+  jobs: EmployerJob[];
+  advertisements: EmployerAdvertisement[];
+  verificationHistory: EmployerTimelineEntry[];
+  activityTimeline: EmployerTimelineEntry[];
+  lastLoginAt: string | null;
+  isSystemCompany: boolean;
 };
 
-const FILTERS = [
-  { value: "all", label: "All" },
-  { value: "pending_review", label: "Pending Review" },
-  { value: "approved", label: "Approved" },
-  { value: "rejected", label: "Rejected" },
-  { value: "suspended", label: "Suspended" },
-] as const;
+const FILTERS = ["all", "pending_review", "approved", "rejected", "suspended"] as const;
 
-function statusLabel(status: EmployerListItem["accountStatus"]) {
-  if (status === "approved") return "Approved";
-  if (status === "rejected") return "Rejected";
-  if (status === "suspended") return "Suspended";
-  return "Pending Review";
-}
+type FilterValue = (typeof FILTERS)[number];
 
 function statusClasses(status: EmployerListItem["accountStatus"]) {
-  if (status === "approved") return "border-emerald-400/30 text-emerald-200";
-  if (status === "rejected") return "border-red-400/30 text-red-200";
-  if (status === "suspended") return "border-amber-400/30 text-amber-200";
-  return "border-gold/30 text-gold";
+  if (status === "approved") return "border-emerald-400/30 bg-emerald-500/10 text-emerald-200";
+  if (status === "rejected") return "border-red-400/30 bg-red-500/10 text-red-200";
+  if (status === "suspended") return "border-amber-400/30 bg-amber-500/10 text-amber-200";
+  return "border-gold/30 bg-gold/10 text-gold";
+}
+
+function formatDateTime(value: string | null, locale: string) {
+  if (!value) return "-";
+  const date = new Date(value);
+  if (!Number.isFinite(date.getTime())) return value;
+  return new Intl.DateTimeFormat(locale === "ar" ? "ar" : "en", {
+    dateStyle: "medium",
+    timeStyle: "short",
+  }).format(date);
+}
+
+function localizeOperationalStatus(status: string, locale: string) {
+  const normalized = status.trim().toLowerCase();
+  if (locale !== "ar") return status;
+
+  if (normalized === "approved" || normalized === "verified") return "معتمد";
+  if (normalized === "pending_review" || normalized === "pending") return "قيد المراجعة";
+  if (normalized === "published") return "منشور";
+  if (normalized === "active") return "نشط";
+  if (normalized === "inactive") return "غير نشط";
+  if (normalized === "archived") return "مؤرشف";
+  if (normalized === "rejected") return "مرفوض";
+  if (normalized === "suspended") return "معلّق";
+  if (normalized === "reactivated") return "مُعاد التفعيل";
+  if (normalized === "paused") return "متوقف";
+  if (normalized === "expired") return "منتهي";
+  if (normalized === "draft") return "مسودة";
+  return status;
+}
+
+function localizeActorRole(role: string | null, locale: string) {
+  if (!role) return "-";
+  if (locale !== "ar") return role;
+
+  if (role === "prime_global_recruiter") return "مجند";
+  if (role === "prime_global_admin") return "مالك";
+  if (role === "admin") return "مسؤول";
+  if (role === "super_admin") return "مسؤول أعلى";
+  if (role === "employer") return "صاحب عمل";
+  if (role === "candidate") return "مرشح";
+
+  return role;
+}
+
+function localizeReason(reason: string, locale: string) {
+  if (locale !== "ar") return reason;
+  if (reason === "Only rejected or suspended companies can be deleted.") return "يُسمح بالحذف فقط للشركات المرفوضة أو المعلّقة.";
+  if (reason === "Deletion is blocked while the company still owns job records.") return "الحذف محظور طالما أن الشركة لا تزال تملك سجلات وظائف.";
+  if (reason === "Delete is blocked while the company still owns job records.") return "الحذف محظور طالما أن الشركة لا تزال تملك سجلات وظائف.";
+  if (reason === "A reason is required for this action.") return "سبب هذا الإجراء مطلوب.";
+  if (reason === "Invalid employer id") return "معرّف الشركة غير صالح";
+  if (reason === "Employer not found") return "لم يتم العثور على الشركة";
+  if (reason === "Invalid role") return "الدور غير صالح";
+  if (reason === "Employer deletion is blocked by policy.") return "الحذف محظور بسبب سياسة الشركة.";
+  return reason;
+}
+
+function localizeErrorMessage(message: string | null | undefined, locale: string, t: ReturnType<typeof useTranslations>) {
+  if (!message) return t("errors.actionFailed");
+  if (locale !== "ar") return message;
+
+  const localized = localizeReason(message, locale);
+  if (localized !== message) return localized;
+
+  if (message === t("errors.loadEmployers") || message === t("errors.loadDetail") || message === t("errors.actionFailed") || message === t("errors.copyFailed")) {
+    return message;
+  }
+
+  if (message.toLowerCase().includes("invalid credentials") || message.toLowerCase().includes("role mismatch")) {
+    return t("errors.invalidRole");
+  }
+
+  // Keep Arabic UI free of raw backend English strings.
+  return t("errors.actionFailed");
+}
+
+function localizeDeletionReason(reason: string, locale: string) {
+  if (locale !== "ar") return reason;
+
+  if (reason === "Only rejected or suspended companies can be deleted.") {
+    return "يُسمح بالحذف فقط للشركات المرفوضة أو المعلّقة.";
+  }
+
+  if (reason === "Delete is blocked while the company still owns job records.") {
+    return "الحذف محظور طالما أن الشركة لا تزال تملك سجلات وظائف.";
+  }
+
+  if (reason === "Deletion is blocked while the company still owns job records.") {
+    return "الحذف محظور طالما أن الشركة لا تزال تملك سجلات وظائف.";
+  }
+
+  return reason;
+}
+
+function isLikelyTestCompany(item: EmployerListItem) {
+  const source = `${item.companyName} ${item.companyEmail} ${item.commercialRegistrationNumber}`.toLowerCase();
+  return source.includes("test") || source.includes("demo") || source.includes("sample") || source.includes("dummy");
 }
 
 export function AdminCompanyManagementCenter({ locale }: { locale: string }) {
+  const t = useTranslations("ownerPortal.companyManagement");
+  const isArabic = locale === "ar";
   const [csrfToken, setCsrfToken] = useState("");
   const [loading, setLoading] = useState(true);
   const [detailsLoading, setDetailsLoading] = useState(false);
   const [acting, setActing] = useState(false);
   const [query, setQuery] = useState("");
-  const [filter, setFilter] = useState<(typeof FILTERS)[number]["value"]>("all");
+  const [filter, setFilter] = useState<FilterValue>("all");
+  const [hideTestData, setHideTestData] = useState(true);
   const [items, setItems] = useState<EmployerListItem[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [detail, setDetail] = useState<EmployerDetail | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [note, setNote] = useState("");
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [deleteName, setDeleteName] = useState("");
+  const [deleteReason, setDeleteReason] = useState("");
 
-  const hasSelection = useMemo(() => Boolean(selectedId), [selectedId]);
+  const visibleItems = useMemo(() => {
+    if (!hideTestData) return items;
+    return items.filter((item) => !isLikelyTestCompany(item));
+  }, [hideTestData, items]);
 
-  const loadEmployers = useCallback(async (nextQuery: string, nextFilter: string) => {
+  const loadEmployers = useCallback(async (nextQuery: string, nextFilter: FilterValue) => {
     const params = new URLSearchParams();
     if (nextQuery.trim()) params.set("q", nextQuery.trim());
     if (nextFilter) params.set("status", nextFilter);
@@ -103,7 +237,7 @@ export function AdminCompanyManagementCenter({ locale }: { locale: string }) {
     const payload = await response.json();
 
     if (!response.ok || !payload?.success) {
-      throw new Error(payload?.error?.message ?? "Failed to load employers");
+      throw new Error(localizeErrorMessage(payload?.error?.message ?? t("errors.loadEmployers"), locale, t));
     }
 
     const nextItems = (payload.data ?? []) as EmployerListItem[];
@@ -118,7 +252,7 @@ export function AdminCompanyManagementCenter({ locale }: { locale: string }) {
     if (!selectedId || !nextItems.some((item) => item.id === selectedId)) {
       setSelectedId(nextItems[0].id);
     }
-  }, [selectedId]);
+  }, [locale, selectedId, t]);
 
   const loadEmployerDetail = useCallback(async (employerId: string) => {
     setDetailsLoading(true);
@@ -129,7 +263,7 @@ export function AdminCompanyManagementCenter({ locale }: { locale: string }) {
       const payload = await response.json();
 
       if (!response.ok || !payload?.success) {
-        throw new Error(payload?.error?.message ?? "Failed to load employer details");
+        throw new Error(localizeErrorMessage(payload?.error?.message ?? t("errors.loadDetail"), locale, t));
       }
 
       setDetail((payload.data ?? null) as EmployerDetail | null);
@@ -137,7 +271,7 @@ export function AdminCompanyManagementCenter({ locale }: { locale: string }) {
     } finally {
       setDetailsLoading(false);
     }
-  }, []);
+  }, [locale, t]);
 
   useEffect(() => {
     async function bootstrap() {
@@ -149,21 +283,21 @@ export function AdminCompanyManagementCenter({ locale }: { locale: string }) {
         setCsrfToken(String(csrfPayload?.data?.csrfToken ?? ""));
         await loadEmployers(query, filter);
       } catch (bootstrapError) {
-        setError(bootstrapError instanceof Error ? bootstrapError.message : "Failed to load employers");
+        setError(bootstrapError instanceof Error ? bootstrapError.message : t("errors.loadEmployers"));
       } finally {
         setLoading(false);
       }
     }
 
     void bootstrap();
-  }, [filter, loadEmployers, query]);
+  }, [filter, loadEmployers, locale, query, t]);
 
   useEffect(() => {
     if (!selectedId) return;
     void loadEmployerDetail(selectedId).catch((detailError) => {
-      setError(detailError instanceof Error ? detailError.message : "Failed to load employer details");
+      setError(detailError instanceof Error ? detailError.message : t("errors.loadDetail"));
     });
-  }, [loadEmployerDetail, selectedId]);
+  }, [loadEmployerDetail, selectedId, t]);
 
   async function onSearchSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -173,21 +307,18 @@ export function AdminCompanyManagementCenter({ locale }: { locale: string }) {
     try {
       await loadEmployers(query, filter);
     } catch (searchError) {
-      setError(searchError instanceof Error ? searchError.message : "Failed to load employers");
+      setError(searchError instanceof Error ? localizeErrorMessage(searchError.message, locale, t) : t("errors.loadEmployers"));
     }
   }
 
-  async function runAction(action: "approve" | "reject" | "suspend" | "reactivate" | "delete") {
+  async function runAction(action: "approve" | "reject" | "suspend" | "reactivate" | "delete", reasonOverride?: string) {
     if (!selectedId) {
       return;
     }
 
-    if (action === "delete" && !window.confirm("Delete this company account if policy allows it?")) {
-      return;
-    }
-
-    if ((action === "reject" || action === "suspend") && note.trim().length < 3) {
-      setError("A reason of at least 3 characters is required for this action.");
+    const actionReason = (reasonOverride ?? note).trim();
+    if ((action === "reject" || action === "suspend" || action === "delete") && actionReason.length < 3) {
+      setError(t("errors.reasonRequired"));
       return;
     }
 
@@ -203,18 +334,18 @@ export function AdminCompanyManagementCenter({ locale }: { locale: string }) {
           "content-type": "application/json",
           "x-csrf-token": csrfToken,
         },
-        body: JSON.stringify({ action, reason: note.trim() || undefined }),
+        body: JSON.stringify({ action, reason: actionReason || undefined }),
       });
       const payload = await response.json();
 
       if (!response.ok || !payload?.success) {
         if (payload?.error?.code === "DELETE_BLOCKED" && Array.isArray(payload?.data?.reasons)) {
-          throw new Error(payload.data.reasons.join(" "));
+          throw new Error(payload.data.reasons.map((reason: string) => localizeReason(reason, locale)).join(" "));
         }
-        throw new Error(payload?.error?.message ?? "Unable to complete company action");
+        throw new Error(localizeErrorMessage(payload?.error?.message ?? t("errors.actionFailed"), locale, t));
       }
 
-      setMessage(`Company action completed: ${action}.`);
+      setMessage(t("messages.actionCompleted"));
 
       if (payload?.data?.deleted) {
         setSelectedId(null);
@@ -228,29 +359,39 @@ export function AdminCompanyManagementCenter({ locale }: { locale: string }) {
         await loadEmployerDetail(selectedId);
       }
     } catch (actionError) {
-      setError(actionError instanceof Error ? actionError.message : "Unable to complete company action");
+      setError(actionError instanceof Error ? localizeErrorMessage(actionError.message, locale, t) : t("errors.actionFailed"));
     } finally {
       setActing(false);
     }
   }
+
+  async function copyText(value: string) {
+    try {
+      await navigator.clipboard.writeText(value);
+      setMessage(t("messages.copied"));
+    } catch {
+      setError(t("errors.copyFailed"));
+    }
+  }
+
+  const canDelete = Boolean(detail?.deletionPolicy.allowed);
+  const companyNameMatches = deleteName.trim() === (detail?.companyName ?? "");
 
   return (
     <main className="mx-auto w-full max-w-[1340px] px-4 pb-20 pt-[124px] sm:px-6 md:px-8">
       <PrimeCard as="section" className="p-7 md:p-10">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
-            <PrimePageTitle>Company Management</PrimePageTitle>
-            <p className="mt-3 text-sm text-text-secondary">
-              Review employer registrations, inspect documents, and manage company lifecycle decisions from the admin portal.
-            </p>
+            <PrimePageTitle>{t("title")}</PrimePageTitle>
+            <p className="mt-3 text-sm text-text-secondary">{t("subtitle")}</p>
           </div>
 
           <div className="flex flex-wrap gap-3">
             <a href={`/${locale}/admin/advertisements`} className={primeButtonClasses("secondary")}>
-              Open Advertisements Center
+              {t("openAdvertisements")}
             </a>
             <a href={`/${locale}/admin/recruitment`} className={primeButtonClasses("secondary")}>
-              Open Recruitment Center
+              {t("openRecruitment")}
             </a>
           </div>
         </div>
@@ -259,34 +400,44 @@ export function AdminCompanyManagementCenter({ locale }: { locale: string }) {
           <input
             value={query}
             onChange={(event) => setQuery(event.target.value)}
-            placeholder="Search company, registration number, email, or country"
+            placeholder={t("searchPlaceholder")}
             className="min-w-[280px] flex-1 rounded-xl border border-gold/20 bg-bg-primary px-4 py-3 text-sm text-text-primary"
           />
 
           <select
             value={filter}
-            onChange={(event) => setFilter(event.target.value as (typeof FILTERS)[number]["value"])}
+            onChange={(event) => setFilter(event.target.value as FilterValue)}
             className="rounded-xl border border-gold/20 bg-bg-primary px-4 py-3 text-sm text-text-primary"
           >
             {FILTERS.map((entry) => (
-              <option key={entry.value} value={entry.value}>
-                {entry.label}
+              <option key={entry} value={entry}>
+                {t(`filters.${entry}`)}
               </option>
             ))}
           </select>
 
           <button type="submit" className={primeButtonClasses("primary")}>
-            Search
+            {t("search")}
           </button>
         </form>
 
-        {loading ? <p className="mt-6 text-sm text-text-secondary">Loading companies...</p> : null}
+        <label className="mt-4 inline-flex items-center gap-2 text-sm text-text-secondary">
+          <input
+            type="checkbox"
+            checked={hideTestData}
+            onChange={(event) => setHideTestData(event.target.checked)}
+            className="h-4 w-4 rounded border-gold/20 bg-bg-primary"
+          />
+          <span>{t("hideTestData")}</span>
+        </label>
+
+        {loading ? <p className="mt-6 text-sm text-text-secondary">{t("loading")}</p> : null}
         {message ? <p className="mt-4 text-sm text-emerald-300">{message}</p> : null}
         {error ? <p className="mt-4 text-sm text-red-300">{error}</p> : null}
 
         <div className="mt-8 grid gap-6 xl:grid-cols-[420px_minmax(0,1fr)]">
           <div className="space-y-4">
-            {items.map((item) => (
+            {visibleItems.map((item) => (
               <button
                 key={item.id}
                 type="button"
@@ -300,117 +451,254 @@ export function AdminCompanyManagementCenter({ locale }: { locale: string }) {
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <h2 className="font-heading text-2xl text-text-primary">{item.companyName}</h2>
                   <span className={`rounded-full border px-3 py-1 text-xs uppercase tracking-[0.16em] ${statusClasses(item.accountStatus)}`}>
-                    {statusLabel(item.accountStatus)}
+                    {t(`status.${item.accountStatus ?? "pending_review"}`)}
                   </span>
                 </div>
                 <p className="mt-3 text-sm text-text-secondary">{item.commercialRegistrationNumber}</p>
-                <p className="mt-2 text-sm text-text-tertiary">{item.companyEmail} • {item.country}</p>
+                <p className="mt-2 text-sm text-text-tertiary">
+                  <span dir="ltr" className="[unicode-bidi:isolate]">{item.companyEmail}</span>
+                  <span>{" • "}</span>
+                  <span>{item.country}</span>
+                </p>
               </button>
             ))}
 
-            {!loading && items.length === 0 ? <p className="text-sm text-text-secondary">No companies found.</p> : null}
+            {!loading && visibleItems.length === 0 ? <p className="text-sm text-text-secondary">{t("empty")}</p> : null}
           </div>
 
           <PrimeCard className="p-6">
-            {detailsLoading ? <p className="text-sm text-text-secondary">Loading company details...</p> : null}
-            {!detailsLoading && !detail ? <p className="text-sm text-text-secondary">Select a company to inspect its registration and profile.</p> : null}
+            {detailsLoading ? <p className="text-sm text-text-secondary">{t("loadingDetail")}</p> : null}
+            {!detailsLoading && !detail ? <p className="text-sm text-text-secondary">{t("selectCompany")}</p> : null}
 
             {detail ? (
               <div>
                 <div className="flex flex-wrap items-start justify-between gap-4">
                   <div>
                     <h2 className="font-heading text-3xl text-text-primary">{detail.companyName}</h2>
-                    <p className="mt-2 text-sm text-text-secondary">Status: {statusLabel(detail.accountStatus)}</p>
+                    <p className="mt-2 text-sm text-text-secondary">{t("statusLabel")}: {t(`status.${detail.accountStatus ?? "pending_review"}`)}</p>
+                    {detail.isSystemCompany ? (
+                      <span className="mt-3 inline-flex rounded-full border border-blue-200/40 px-3 py-1 text-xs uppercase tracking-[0.14em] text-blue-100">
+                        {t("officialCompany")}
+                      </span>
+                    ) : null}
                   </div>
                   <span className={`rounded-full border px-3 py-1 text-xs uppercase tracking-[0.16em] ${statusClasses(detail.accountStatus)}`}>
-                    {detail.verificationStatus}
+                      {localizeOperationalStatus(detail.verificationStatus, locale)}
                   </span>
+                </div>
+
+                <div className="mt-6 flex flex-wrap items-start gap-4 rounded-2xl border border-gold/15 bg-bg-primary/50 p-4">
+                  {detail.profile.logoSignedUrl ? (
+                    <img src={detail.profile.logoSignedUrl} alt={detail.companyName} className="h-20 w-20 rounded-xl object-cover ring-1 ring-gold/20" />
+                  ) : (
+                    <div className="flex h-20 w-20 items-center justify-center rounded-xl border border-dashed border-gold/20 bg-bg-secondary text-sm text-text-tertiary">
+                      {t("sections.logo")}
+                    </div>
+                  )}
+                  <div className="flex-1">
+                    <h3 className="font-heading text-2xl text-text-primary">{detail.companyName}</h3>
+                    <p className="mt-2 text-sm text-text-secondary">
+                      <span dir="ltr" className="[unicode-bidi:isolate] break-all">{detail.companyEmail}</span>
+                    </p>
+                    <div className="mt-4 flex flex-wrap gap-3 text-sm">
+                      <div className="rounded-full border border-gold/15 bg-bg-secondary px-3 py-1 text-text-secondary">{t("fields.jobsCount")}: {detail.jobs.length}</div>
+                      <div className="rounded-full border border-gold/15 bg-bg-secondary px-3 py-1 text-text-secondary">{t("fields.documentsCount")}: {detail.documents.length}</div>
+                      <div className="rounded-full border border-gold/15 bg-bg-secondary px-3 py-1 text-text-secondary">{t("fields.advertisementsCount")}: {detail.advertisements.length}</div>
+                    </div>
+                  </div>
                 </div>
 
                 <div className="mt-6 grid gap-4 lg:grid-cols-2">
                   <section className="rounded-2xl border border-gold/15 bg-bg-primary/50 p-4 text-sm text-text-secondary">
-                    <h3 className="font-semibold text-text-primary">Registration Information</h3>
-                    <p className="mt-3">Account email: {detail.registration.accountEmail ?? "-"}</p>
-                    <p className="mt-2">Company email: {detail.companyEmail}</p>
-                    <p className="mt-2">Commercial registration: {detail.commercialRegistrationNumber}</p>
-                    <p className="mt-2">Tax number: {detail.profile.taxNumber}</p>
-                    <p className="mt-2">Registered: {new Date(detail.registration.registeredAt).toLocaleString(locale)}</p>
-                    <p className="mt-2">Verified at: {detail.verifiedAt ? new Date(detail.verifiedAt).toLocaleString(locale) : "-"}</p>
+                    <h3 className="font-semibold text-text-primary">{t("sections.registrationInfo")}</h3>
+                    <p className="mt-3">{t("fields.accountEmail")}: <span dir="ltr" className="[unicode-bidi:isolate] break-all">{detail.registration.accountEmail ?? "-"}</span></p>
+                    <p className="mt-2">{t("fields.companyEmail")}: <span dir="ltr" className="[unicode-bidi:isolate] break-all">{detail.companyEmail}</span></p>
+                    <p className="mt-2">{t("fields.commercialRegistration")}: <span dir="ltr" className="[unicode-bidi:isolate] break-all">{detail.commercialRegistrationNumber}</span></p>
+                    <p className="mt-2">{t("fields.taxNumber")}: <span dir="ltr" className="[unicode-bidi:isolate] break-all">{detail.profile.taxNumber}</span></p>
+                    <p className="mt-2">{t("fields.registered")}: <span dir={isArabic ? "rtl" : "ltr"} className="[unicode-bidi:isolate]">{formatDateTime(detail.registration.registeredAt, locale)}</span></p>
+                    <p className="mt-2">{t("fields.verifiedAt")}: <span dir={isArabic ? "rtl" : "ltr"} className="[unicode-bidi:isolate]">{formatDateTime(detail.verifiedAt, locale)}</span></p>
+                    <p className="mt-2">{t("fields.lastLogin")}: <span dir={isArabic ? "rtl" : "ltr"} className="[unicode-bidi:isolate]">{formatDateTime(detail.lastLoginAt, locale)}</span></p>
                   </section>
 
                   <section className="rounded-2xl border border-gold/15 bg-bg-primary/50 p-4 text-sm text-text-secondary">
-                    <h3 className="font-semibold text-text-primary">Company Profile</h3>
-                    <p className="mt-3">Country: {detail.country}</p>
-                    <p className="mt-2">City: {detail.city}</p>
-                    <p className="mt-2">Address: {detail.profile.address}</p>
-                    <p className="mt-2">Website: {detail.profile.website ?? "-"}</p>
-                    <p className="mt-2">HR contact: {detail.profile.hrContact}</p>
-                    <p className="mt-2">Phone: {detail.profile.phoneNumber}</p>
-                    <p className="mt-2">Industry: {detail.profile.industry}</p>
-                    <p className="mt-2">Company size: {detail.profile.companySize}</p>
+                    <h3 className="font-semibold text-text-primary">{t("sections.companyProfile")}</h3>
+                    <p className="mt-3">{t("fields.country")}: {detail.country}</p>
+                    <p className="mt-2">{t("fields.city")}: {detail.city}</p>
+                    <p className="mt-2">{t("fields.address")}: {detail.profile.address}</p>
+                    <p className="mt-2">
+                      {t("fields.website")}: {detail.profile.website ? (
+                        <a href={detail.profile.website} target="_blank" rel="noreferrer" dir="ltr" className="text-gold hover:underline [unicode-bidi:isolate] break-all">{detail.profile.website}</a>
+                      ) : "-"}
+                    </p>
+                    <p className="mt-2">{t("fields.hrContact")}: {detail.profile.hrContact}</p>
+                    <p className="mt-2">
+                      {t("fields.phone")}: <span dir="ltr" className="[unicode-bidi:isolate]">{detail.profile.phoneNumber}</span>
+                      <button type="button" onClick={() => void copyText(detail.profile.phoneNumber)} className="ms-2 text-xs text-gold hover:underline">{t("copy")}</button>
+                    </p>
+                    <p className="mt-2">
+                      {t("fields.companyEmail")}: <span dir="ltr" className="[unicode-bidi:isolate] break-all">{detail.companyEmail}</span>
+                      <button type="button" onClick={() => void copyText(detail.companyEmail)} className="ms-2 text-xs text-gold hover:underline">{t("copy")}</button>
+                    </p>
+                    <p className="mt-2">{t("fields.industry")}: {detail.profile.industry}</p>
+                    <p className="mt-2">{t("fields.companySize")}: {detail.profile.companySize}</p>
                   </section>
                 </div>
 
                 <section className="mt-4 rounded-2xl border border-gold/15 bg-bg-primary/50 p-4 text-sm text-text-secondary">
-                  <h3 className="font-semibold text-text-primary">Uploaded Documents</h3>
-                  <div className="mt-4 space-y-3">
-                    {detail.documents.map((document) => (
-                      <div key={document.id} className="rounded-xl border border-gold/10 px-4 py-3">
-                        <p className="text-text-primary">{document.documentType}</p>
-                        <p className="mt-1 text-xs text-text-tertiary">{document.originalFilename} • {document.mimeType} • {Math.round(document.sizeBytes / 1024)} KB</p>
-                        <p className="mt-1 text-xs text-text-tertiary">Uploaded: {new Date(document.uploadedAt).toLocaleString(locale)}</p>
+                  <h3 className="font-semibold text-text-primary">{t("sections.registrationDocuments")}</h3>
+                  <div className="mt-4 grid gap-3 lg:grid-cols-2">
+                    {detail.registrationDocuments.map((document) => (
+                      <div key={document.id} className="rounded-xl border border-gold/10 bg-bg-secondary/60 px-4 py-3">
+                        <p className="text-text-primary">{document.originalFilename}</p>
+                        <p className="mt-1 text-xs text-text-tertiary"><span dir="ltr" className="[unicode-bidi:isolate]">{document.mimeType}</span> • <span dir="ltr" className="[unicode-bidi:isolate]">{Math.round(document.sizeBytes / 1024)} KB</span></p>
+                        <p className="mt-1 text-xs text-text-tertiary">{formatDateTime(document.uploadedAt, locale)}</p>
                         {document.signedUrl ? (
-                          <a href={document.signedUrl} target="_blank" rel="noreferrer" className="mt-2 inline-flex text-sm font-semibold text-gold hover:underline">
-                            Open document
-                          </a>
+                          <div className="mt-3 flex flex-wrap gap-2">
+                            <a href={document.signedUrl} target="_blank" rel="noreferrer" className="inline-flex rounded-full border border-gold/20 px-3 py-1.5 text-sm font-semibold text-gold hover:bg-gold/10">
+                              {t("openDocument")}
+                            </a>
+                            <a href={document.signedUrl} target="_blank" rel="noreferrer" className="inline-flex rounded-full border border-gold/20 px-3 py-1.5 text-sm font-semibold text-text-secondary hover:bg-gold/10">
+                              {t("previewDocument")}
+                            </a>
+                          </div>
                         ) : null}
                       </div>
                     ))}
-                    {detail.documents.length === 0 ? <p>No uploaded documents.</p> : null}
+                    {detail.registrationDocuments.length === 0 ? <p>{t("emptyRegistrationDocuments")}</p> : null}
                   </div>
                 </section>
 
                 <section className="mt-4 rounded-2xl border border-gold/15 bg-bg-primary/50 p-4 text-sm text-text-secondary">
-                  <h3 className="font-semibold text-text-primary">Review Notes</h3>
+                  <h3 className="font-semibold text-text-primary">{t("sections.taxDocuments")}</h3>
+                  <div className="mt-4 grid gap-3 lg:grid-cols-2">
+                    {detail.taxDocuments.map((document) => (
+                      <div key={document.id} className="rounded-xl border border-gold/10 bg-bg-secondary/60 px-4 py-3">
+                        <p className="text-text-primary">{document.originalFilename}</p>
+                        <p className="mt-1 text-xs text-text-tertiary"><span dir="ltr" className="[unicode-bidi:isolate]">{document.mimeType}</span> • <span dir="ltr" className="[unicode-bidi:isolate]">{Math.round(document.sizeBytes / 1024)} KB</span></p>
+                        <p className="mt-1 text-xs text-text-tertiary">{formatDateTime(document.uploadedAt, locale)}</p>
+                        {document.signedUrl ? (
+                          <div className="mt-3 flex flex-wrap gap-2">
+                            <a href={document.signedUrl} target="_blank" rel="noreferrer" className="inline-flex rounded-full border border-gold/20 px-3 py-1.5 text-sm font-semibold text-gold hover:bg-gold/10">
+                              {t("openDocument")}
+                            </a>
+                            <a href={document.signedUrl} target="_blank" rel="noreferrer" className="inline-flex rounded-full border border-gold/20 px-3 py-1.5 text-sm font-semibold text-text-secondary hover:bg-gold/10">
+                              {t("previewDocument")}
+                            </a>
+                          </div>
+                        ) : null}
+                      </div>
+                    ))}
+                    {detail.taxDocuments.length === 0 ? <p>{t("emptyTaxDocuments")}</p> : null}
+                  </div>
+                </section>
+
+                <section className="mt-4 rounded-2xl border border-gold/15 bg-bg-primary/50 p-4 text-sm text-text-secondary">
+                  <h3 className="font-semibold text-text-primary">{t("sections.verificationHistory")}</h3>
+                  <div className="mt-4 space-y-3">
+                    {detail.verificationHistory.map((entry) => (
+                      <div key={entry.id} className="rounded-xl border border-gold/10 px-4 py-3">
+                        <p className="text-text-primary">{t(`timeline.${entry.eventType}`)}</p>
+                        <p className="mt-1 text-xs text-text-tertiary">{formatDateTime(entry.timestamp, locale)}</p>
+                        <p className="mt-1 text-xs text-text-tertiary">{t("fields.actor")}: <span dir="ltr" className="[unicode-bidi:isolate]">{localizeActorRole(entry.actorRole, locale)}</span></p>
+                        {entry.reason ? <p className="mt-1 text-xs text-text-tertiary">{t("fields.reason")}: {localizeReason(entry.reason, locale)}</p> : null}
+                      </div>
+                    ))}
+                    {detail.verificationHistory.length === 0 ? <p>{t("emptyHistory")}</p> : null}
+                  </div>
+                </section>
+
+                <section className="mt-4 grid gap-4 lg:grid-cols-2">
+                  <PrimeCard className="p-4 text-sm text-text-secondary">
+                    <h3 className="font-semibold text-text-primary">{t("sections.jobs")}</h3>
+                    <div className="mt-3 space-y-2">
+                      {detail.jobs.slice(0, 8).map((job) => (
+                        <div key={job.id} className="rounded-lg border border-gold/10 px-3 py-2">
+                          <p className="text-text-primary">{job.title}</p>
+                          <p className="mt-1 text-xs text-text-tertiary">{localizeOperationalStatus(job.status, locale)} • <span dir={isArabic ? "rtl" : "ltr"} className="[unicode-bidi:isolate]">{formatDateTime(job.publishDate ?? job.createdAt, locale)}</span></p>
+                        </div>
+                      ))}
+                      {detail.jobs.length === 0 ? <p>{t("emptyJobs")}</p> : null}
+                    </div>
+                  </PrimeCard>
+
+                  <PrimeCard className="p-4 text-sm text-text-secondary">
+                    <h3 className="font-semibold text-text-primary">{t("sections.advertisements")}</h3>
+                    <div className="mt-3 space-y-2">
+                      {detail.advertisements.slice(0, 8).map((ad) => (
+                        <div key={ad.id} className="rounded-lg border border-gold/10 px-3 py-2">
+                          <p className="text-text-primary">{ad.title}</p>
+                          <p className="mt-1 text-xs text-text-tertiary">{localizeOperationalStatus(ad.status, locale)} • <span dir={isArabic ? "rtl" : "ltr"} className="[unicode-bidi:isolate]">{formatDateTime(ad.updatedAt, locale)}</span></p>
+                        </div>
+                      ))}
+                      {detail.advertisements.length === 0 ? <p>{t("emptyAdvertisements")}</p> : null}
+                    </div>
+                  </PrimeCard>
+                </section>
+
+                <section className="mt-4 rounded-2xl border border-gold/15 bg-bg-primary/50 p-4 text-sm text-text-secondary">
+                  <h3 className="font-semibold text-text-primary">{t("sections.activityTimeline")}</h3>
+                  <div className="mt-3 space-y-2">
+                    {detail.activityTimeline.slice(0, 20).map((entry) => (
+                      <div key={entry.id} className="rounded-lg border border-gold/10 px-3 py-2">
+                        <p className="text-text-primary">{t(`timeline.${entry.eventType}`)}</p>
+                        <p className="mt-1 text-xs text-text-tertiary"><span dir={isArabic ? "rtl" : "ltr"} className="[unicode-bidi:isolate]">{formatDateTime(entry.timestamp, locale)}</span></p>
+                        {entry.reason ? <p className="mt-1 text-xs text-text-tertiary">{t("fields.reason")}: {localizeReason(entry.reason, locale)}</p> : null}
+                      </div>
+                    ))}
+                    {detail.activityTimeline.length === 0 ? <p>{t("emptyTimeline")}</p> : null}
+                  </div>
+                </section>
+
+                <section className="mt-4 rounded-2xl border border-gold/15 bg-bg-primary/50 p-4 text-sm text-text-secondary">
+                  <h3 className="font-semibold text-text-primary">{t("sections.reviewNotes")}</h3>
                   <textarea
                     value={note}
                     onChange={(event) => setNote(event.target.value)}
                     rows={4}
-                    placeholder="Enter review reason or internal note"
+                    placeholder={t("notesPlaceholder")}
                     className="mt-3 w-full rounded-xl border border-gold/20 bg-bg-primary px-4 py-3 text-sm text-text-primary"
                   />
-                  {detail.verificationNotes ? <p className="mt-3">Current note: {detail.verificationNotes}</p> : null}
+                  {detail.verificationNotes ? <p className="mt-3">{t("currentNote")}: {detail.verificationNotes}</p> : null}
                 </section>
 
                 <section className="mt-4 rounded-2xl border border-gold/15 bg-bg-primary/50 p-4 text-sm text-text-secondary">
-                  <h3 className="font-semibold text-text-primary">Deletion Policy</h3>
-                  <p className="mt-3">Jobs: {detail.deletionPolicy.jobsCount}</p>
-                  <p className="mt-2">Documents: {detail.deletionPolicy.documentsCount}</p>
-                  <p className="mt-2">Delete allowed: {detail.deletionPolicy.allowed ? "Yes" : "No"}</p>
+                  <h3 className="font-semibold text-text-primary">{t("sections.deletionPolicy")}</h3>
+                  <p className="mt-3">{t("fields.jobsCount")}: {detail.deletionPolicy.jobsCount}</p>
+                  <p className="mt-2">{t("fields.documentsCount")}: {detail.deletionPolicy.documentsCount}</p>
+                  <p className="mt-2">{t("fields.deleteAllowed")}: {detail.deletionPolicy.allowed ? t("yes") : t("no")}</p>
                   {detail.deletionPolicy.reasons.length > 0 ? (
                     <ul className="mt-3 space-y-1">
                       {detail.deletionPolicy.reasons.map((reason) => (
-                        <li key={reason}>{reason}</li>
+                        <li key={reason}>{localizeDeletionReason(reason, locale)}</li>
                       ))}
                     </ul>
                   ) : null}
                 </section>
 
                 <div className="mt-6 flex flex-wrap gap-3">
-                  <button type="button" disabled={acting || !hasSelection} onClick={() => void runAction("approve")} className={primeButtonClasses("primary")}>
-                    Approve Company
+                  <button type="button" disabled={acting} onClick={() => void runAction("approve")} className={primeButtonClasses("primary")}>
+                    {t("actions.approve")}
                   </button>
-                  <button type="button" disabled={acting || !hasSelection} onClick={() => void runAction("reject")} className={primeButtonClasses("secondary")}>
-                    Reject Company
+                  <button type="button" disabled={acting} onClick={() => void runAction("reject")} className={primeButtonClasses("secondary")}>
+                    {t("actions.reject")}
                   </button>
-                  <button type="button" disabled={acting || !hasSelection} onClick={() => void runAction("suspend")} className={primeButtonClasses("secondary")}>
-                    Suspend Company
+                  <button type="button" disabled={acting} onClick={() => void runAction("suspend")} className={primeButtonClasses("secondary")}>
+                    {t("actions.suspend")}
                   </button>
-                  <button type="button" disabled={acting || !hasSelection} onClick={() => void runAction("reactivate")} className={primeButtonClasses("secondary")}>
-                    Reactivate Company
+                  <button type="button" disabled={acting} onClick={() => void runAction("reactivate")} className={primeButtonClasses("secondary")}>
+                    {t("actions.reactivate")}
                   </button>
-                  <button type="button" disabled={acting || !hasSelection || !detail.deletionPolicy.allowed} onClick={() => void runAction("delete")} className={primeButtonClasses("secondary")}>
-                    Delete Company
+                  <button
+                    type="button"
+                    disabled={acting || !canDelete}
+                    onClick={() => {
+                      setDeleteName("");
+                      setDeleteReason("");
+                      setShowDeleteDialog(true);
+                    }}
+                    className={primeButtonClasses("secondary")}
+                  >
+                    {t("actions.delete")}
                   </button>
                 </div>
               </div>
@@ -418,6 +706,52 @@ export function AdminCompanyManagementCenter({ locale }: { locale: string }) {
           </PrimeCard>
         </div>
       </PrimeCard>
+
+      {showDeleteDialog && detail ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={() => setShowDeleteDialog(false)}>
+          <div className="w-full max-w-xl rounded-2xl border border-gold/20 bg-bg-primary p-6" onClick={(event) => event.stopPropagation()}>
+            <h3 className="font-heading text-2xl text-text-primary">{t("deleteDialog.title")}</h3>
+            <p className="mt-2 text-sm text-text-secondary">{t("deleteDialog.subtitle", { company: detail.companyName })}</p>
+
+            <label className="mt-4 block text-sm text-text-secondary">
+              {t("deleteDialog.typeName")}
+              <input
+                value={deleteName}
+                onChange={(event) => setDeleteName(event.target.value)}
+                className="mt-1.5 w-full rounded-xl border border-gold/20 bg-bg-secondary px-3 py-2 text-text-primary"
+              />
+            </label>
+
+            <label className="mt-4 block text-sm text-text-secondary">
+              {t("deleteDialog.reason")}
+              <textarea
+                rows={4}
+                value={deleteReason}
+                onChange={(event) => setDeleteReason(event.target.value)}
+                className="mt-1.5 w-full rounded-xl border border-gold/20 bg-bg-secondary px-3 py-2 text-text-primary"
+              />
+            </label>
+
+            <div className="mt-5 flex flex-wrap gap-3">
+              <button
+                type="button"
+                className={primeButtonClasses("primary")}
+                disabled={!companyNameMatches || deleteReason.trim().length < 3 || acting}
+                onClick={() => {
+                  void runAction("delete", deleteReason).then(() => {
+                    setShowDeleteDialog(false);
+                  });
+                }}
+              >
+                {t("deleteDialog.confirm")}
+              </button>
+              <button type="button" className={primeButtonClasses("secondary")} onClick={() => setShowDeleteDialog(false)}>
+                {t("deleteDialog.cancel")}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </main>
   );
 }

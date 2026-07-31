@@ -2,6 +2,7 @@
 
 import { ReactNode, useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter, Link } from "@/i18n/routing";
+import { useTranslations } from "next-intl";
 import { primeButtonClasses } from "@/components/ui/prime/PrimeButton";
 import { emitAuthSessionChanged } from "@/lib/auth/client-session-sync";
 
@@ -24,7 +25,12 @@ function isInternalRole(role: string | null | undefined): role is InternalRole {
   return role === "prime_global_recruiter" || role === "prime_global_admin" || role === "admin" || role === "super_admin";
 }
 
+function isOwnerRole(role: InternalRole | null) {
+  return role === "prime_global_admin" || role === "admin" || role === "super_admin";
+}
+
 export function InternalManagementShell({ locale, children }: InternalManagementShellProps) {
+  const t = useTranslations("ownerPortal.shell");
   const router = useRouter();
   const pathname = usePathname();
   const [resolved, setResolved] = useState(false);
@@ -67,37 +73,37 @@ export function InternalManagementShell({ locale, children }: InternalManagement
     }).catch(() => undefined);
 
     emitAuthSessionChanged({ role: null, displayName: null });
-    router.push("/admin/login");
+    router.push(`/${locale}/admin/login`);
     router.refresh();
   }
 
-  const copy = useMemo(() => {
-    const isArabic = locale === "ar";
-    return {
-      internalPortal: isArabic ? "البوابة الداخلية" : "Internal Management Portal",
-      dashboardControlCenter: isArabic ? "لوحة التحكم" : "Dashboard / Control Center",
-      staffDashboard: isArabic ? "لوحة الموظف" : "Staff Dashboard",
-      account: isArabic ? "الحساب" : "Account",
-      logout: isArabic ? "تسجيل الخروج" : "Logout",
-      modules: isArabic ? "الوحدات" : "Modules",
-      recruitment: isArabic ? "مركز التوظيف" : "Recruitment Center",
-      candidateProfiles: isArabic ? "ملفات المرشحين" : "Candidate Profiles",
-      advertisements: isArabic ? "مركز الإعلانات" : "Advertisements Center",
-    };
-  }, [locale]);
+  const copy = useMemo(
+    () => ({
+      internalPortal: t("internalPortal"),
+      dashboardControlCenter: t("dashboardControlCenter"),
+      companyManagement: t("companyManagement"),
+      staffDashboard: t("staffDashboard"),
+      account: t("account"),
+      logout: t("logout"),
+      recruitment: t("recruitment"),
+      candidateProfiles: t("candidateProfiles"),
+      advertisements: t("advertisements"),
+    }),
+    [t]
+  );
 
-  const isOwnerOrAdmin = role === "prime_global_admin" || role === "admin" || role === "super_admin";
+  const ownerPrimaryLinks = [
+    { href: "/admin/dashboard", label: copy.dashboardControlCenter },
+    { href: "/admin/control-center", label: copy.companyManagement },
+    { href: "/admin/recruitment", label: copy.recruitment },
+    { href: "/admin/candidate-profiles", label: copy.candidateProfiles },
+    { href: "/admin/advertisements", label: copy.advertisements },
+  ];
 
-  const moduleLinks = isOwnerOrAdmin
-    ? [
-        { href: "/admin/recruitment", label: copy.recruitment },
-        { href: "/admin/candidate-profiles", label: copy.candidateProfiles },
-        { href: "/admin/advertisements", label: copy.advertisements },
-      ]
-    : [
-        { href: "/admin/recruitment", label: copy.recruitment },
-        { href: "/admin/candidate-profiles", label: copy.candidateProfiles },
-      ];
+  const staffPrimaryLinks = [{ href: "/admin/dashboard", label: copy.staffDashboard }];
+
+  const primaryLinks = role === "prime_global_recruiter" ? staffPrimaryLinks : ownerPrimaryLinks;
+  const showPrimaryLinks = !resolved || role === null || isOwnerRole(role) || role === "prime_global_recruiter";
 
   if (isLoginRoute) {
     return <>{children}</>;
@@ -113,19 +119,16 @@ export function InternalManagementShell({ locale, children }: InternalManagement
           </div>
 
           <nav className="hidden items-center gap-2 md:flex">
-            <Link href="/admin/control-center" className={primeButtonClasses("secondary", "sm")}>
-              {isOwnerOrAdmin ? copy.dashboardControlCenter : copy.staffDashboard}
-            </Link>
-            <Link href="/admin/dashboard" className={primeButtonClasses("secondary", "sm")}>
-              {copy.account}
-            </Link>
-            {resolved && role ? (
-              moduleLinks.map((item) => (
+            {showPrimaryLinks ? (
+              primaryLinks.map((item) => (
                 <Link key={item.href} href={item.href} className={primeButtonClasses("secondary", "sm")}>
                   {item.label}
                 </Link>
               ))
             ) : null}
+            <Link href={`/${locale}/admin/account`} className={primeButtonClasses("secondary", "sm")}>
+              {copy.account}
+            </Link>
             <button
               type="button"
               onClick={handleLogout}
@@ -137,19 +140,16 @@ export function InternalManagementShell({ locale, children }: InternalManagement
         </div>
 
         <div className="mx-auto flex w-full max-w-[1380px] flex-wrap gap-2 px-4 pb-3 sm:px-6 md:hidden">
-          <Link href="/admin/control-center" className={primeButtonClasses("secondary", "sm")}>
-            {isOwnerOrAdmin ? copy.dashboardControlCenter : copy.staffDashboard}
-          </Link>
-          <Link href="/admin/dashboard" className={primeButtonClasses("secondary", "sm")}>
-            {copy.account}
-          </Link>
-          {resolved && role
-            ? moduleLinks.map((item) => (
+          {showPrimaryLinks
+            ? primaryLinks.map((item) => (
                 <Link key={item.href} href={item.href} className={primeButtonClasses("secondary", "sm")}>
                   {item.label}
                 </Link>
               ))
             : null}
+          <Link href={`/${locale}/admin/account`} className={primeButtonClasses("secondary", "sm")}>
+            {copy.account}
+          </Link>
           <button
             type="button"
             onClick={handleLogout}

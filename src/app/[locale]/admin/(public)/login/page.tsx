@@ -2,6 +2,7 @@
 
 import { FormEvent, useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { PrimeCard } from "@/components/ui/prime/PrimeCard";
 import { primeButtonClasses } from "@/components/ui/prime/PrimeButton";
 import { PrimeInput } from "@/components/ui/prime/PrimeInput";
@@ -9,9 +10,21 @@ import { PrimePasswordInput } from "@/components/ui/prime/PrimePasswordInput";
 import { PrimePageTitle } from "@/components/ui/prime/PrimePageTitle";
 import Link from "next/link";
 
+function localizeLoginError(message: string | null | undefined, locale: string, t: ReturnType<typeof useTranslations>) {
+  if (!message) return t("errors.signInFailed");
+  if (locale !== "ar") return message;
+
+  if (message === "Role mismatch for this login path.") return "هذا الحساب غير مخصص لهذه البوابة.";
+  if (message === "Invalid credentials" || message.toLowerCase().includes("invalid")) return "بيانات تسجيل الدخول غير صحيحة.";
+  if (message.toLowerCase().includes("rate") || message.toLowerCase().includes("too many")) return "عدد المحاولات كبير. حاول مرة أخرى بعد قليل.";
+
+  return t("errors.signInFailed");
+}
+
 export default function StaffLoginPage() {
   const params = useParams<{ locale: string }>();
-  const isArabic = params.locale === "ar";
+  const locale = String(params.locale ?? "en");
+  const t = useTranslations("ownerPortal.login");
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -54,13 +67,13 @@ export default function StaffLoginPage() {
 
       const payload = await response.json();
       if (!response.ok || !payload.success) {
-        setError(payload?.error?.message ?? "Unable to sign in");
+        setError(localizeLoginError(payload?.error?.message, locale, t));
         return;
       }
 
       router.push(`/${params.locale}/admin/control-center`);
     } catch {
-      setError("Unexpected error while logging in");
+      setError(locale === "ar" ? "حدث خطأ غير متوقع أثناء محاولة تسجيل الدخول." : t("errors.unexpected"));
     } finally {
       setLoading(false);
     }
@@ -69,16 +82,14 @@ export default function StaffLoginPage() {
   return (
     <main className="mx-auto w-full max-w-[720px] px-4 pb-20 pt-[124px] sm:px-6 md:px-8">
       <PrimeCard as="section" className="p-8">
-        <PrimePageTitle>{isArabic ? "تسجيل دخول فريق برايم جلوبال" : "Prime Global Staff Login"}</PrimePageTitle>
+        <PrimePageTitle>{t("title")}</PrimePageTitle>
         <p className="mt-3 text-sm text-text-secondary">
-          {isArabic
-            ? "الوصول إلى مركز التحكم الخاص بالإشراف على المحادثات والمقابلات."
-            : "Access Control Center for supervised chat and interview governance."}
+          {t("subtitle")}
         </p>
 
         <form className="mt-8 space-y-5" onSubmit={onSubmit}>
           <div>
-            <label className="mb-2 block text-sm text-text-secondary">{isArabic ? "بريد الموظف" : "Staff Email"}</label>
+            <label className="mb-2 block text-sm text-text-secondary">{t("staffEmail")}</label>
             <PrimeInput
               type="email"
               required
@@ -88,13 +99,13 @@ export default function StaffLoginPage() {
           </div>
 
           <div>
-            <label className="mb-2 block text-sm text-text-secondary">{isArabic ? "كلمة المرور" : "Password"}</label>
+            <label className="mb-2 block text-sm text-text-secondary">{t("password")}</label>
             <PrimePasswordInput
               required
               value={password}
               onChange={(event) => setPassword(event.target.value)}
-              showPasswordLabel={isArabic ? "إظهار كلمة المرور" : "Show password"}
-              hidePasswordLabel={isArabic ? "إخفاء كلمة المرور" : "Hide password"}
+              showPasswordLabel={t("showPassword")}
+              hidePasswordLabel={t("hidePassword")}
             />
           </div>
 
@@ -103,7 +114,7 @@ export default function StaffLoginPage() {
               href={`/${params.locale}/forgot-password?role=staff`}
               className="font-semibold text-blue-200 hover:text-blue-100"
             >
-              {isArabic ? "هل نسيت كلمة المرور؟" : "Forgot Password?"}
+              {t("forgotPassword")}
             </Link>
           </p>
 
@@ -114,7 +125,7 @@ export default function StaffLoginPage() {
             disabled={loading}
             className={primeButtonClasses("primary")}
           >
-            {loading ? (isArabic ? "جارٍ تسجيل الدخول..." : "Signing In...") : isArabic ? "تسجيل الدخول" : "Sign In"}
+            {loading ? t("signingIn") : t("signIn")}
           </button>
         </form>
       </PrimeCard>

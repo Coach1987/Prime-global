@@ -617,6 +617,20 @@
     "clicks": "النقرات",
     "ctr": "معدل النقر",
     "preview": "معاينة مباشرة",
+    "tabs": {
+      "general": "عام",
+      "media": "الوسائط",
+      "schedule": "الجدول",
+      "preview": "المعاينة",
+      "publishing": "النشر"
+    },
+    "sections": {
+      "general": "التفاصيل العامة",
+      "media": "إعداد الوسائط",
+      "schedule": "الجدولة",
+      "preview": "المعاينة",
+      "publishing": "إجراءات النشر"
+    },
     "previewFallback": "معاينة عنوان الإعلان",
     "previewDescription": "معاينة وصف الإعلان",
     "uploadHint": "ارفع ملفات JPG أو JPEG أو PNG أو WEBP أو MP4 أو WEBM. يجب أن تكون الصورة على الأقل 1200x420.",
@@ -679,6 +693,398 @@
       "actionFailed": "تعذر تنفيذ هذا الإجراء.",
       "deleteFailed": "تعذر حذف الإعلان.",
       "rejectReasonRequired": "يلزم إدخال سبب رفض لا يقل عن 3 أحرف."
+    }
+  },
+  "ownerPortal": {
+    "shell": {
+      "internalPortal": "البوابة الداخلية للإدارة",
+      "dashboardControlCenter": "لوحة التحكم / مركز التحكم",
+      "companyManagement": "إدارة الشركات",
+      "staffDashboard": "لوحة الموظف",
+      "account": "الحساب",
+      "logout": "تسجيل الخروج",
+      "recruitment": "مركز التوظيف",
+      "candidateProfiles": "ملفات المرشحين",
+      "advertisements": "مركز الإعلانات"
+    },
+    "login": {
+      "title": "تسجيل دخول مالك برايم جلوبال",
+      "subtitle": "الوصول إلى مركز تحكم المالك للإشراف على المحادثات والمقابلات.",
+      "staffEmail": "بريد الموظف",
+      "password": "كلمة المرور",
+      "showPassword": "إظهار كلمة المرور",
+      "hidePassword": "إخفاء كلمة المرور",
+      "forgotPassword": "هل نسيت كلمة المرور؟",
+      "signingIn": "جارٍ تسجيل الدخول...",
+      "signIn": "تسجيل الدخول",
+      "errors": {
+        "signInFailed": "تعذر تسجيل الدخول",
+        "unexpected": "حدث خطأ غير متوقع أثناء تسجيل الدخول"
+      }
+    },
+    "dashboard": {
+      "title": "لوحة القيادة التنفيذية",
+      "subtitle": "راقب الاعتمادات، التشغيل، التنبيهات الحاكمة، وتنفيذ المنصة من لوحة المالك.",
+      "quickActions": {
+        "openControlCenter": "فتح مركز تحكم الشركات",
+        "openRecruitmentCenter": "فتح مركز التوظيف",
+        "openAdvertisementsCenter": "فتح مركز الإعلانات",
+        "openCandidateAiQueue": "فتح طابور ذكاء المرشحين"
+      },
+      "metrics": {
+        "pendingCompanies": "الشركات المعلّقة",
+        "pendingAdvertisements": "الإعلانات المعلّقة",
+        "pendingJobs": "الوظائف المعلّقة",
+        "pendingCandidateAiReviews": "مراجعات ذكاء المرشحين المعلّقة",
+        "interviewsToday": "مقابلات اليوم",
+        "criticalAlerts": "تنبيهات حرجة",
+        "systemNotifications": "إشعارات النظام",
+        "moderationQueue": "طابور الإشراف",
+        "recruitersAssigned": "المجندون المكلّفون",
+        "aiQueue": "طابور الذكاء",
+        "companiesToday": "الشركات اليوم",
+        "jobsToday": "الوظائف اليوم",
+        "pendingReviews": "المراجعات المعلّقة",
+        "aiInterviews": "المقابلات الذكية",
+        "successfulPlacements": "الترشيحات الناجحة",
+        "revenue": "الإيرادات",
+        "activeEmployers": "أصحاب العمل النشطون",
+        "activeCandidates": "المرشحون النشطون",
+        "systemHealth": "صحة النظام"
+      },
+      "sections": {
+        "auditLogs": "أنشطة مهمة حديثة",
+        "auditSubtitle": "إجراءات المالك والإدارة معروضة بصياغة واضحة.",
+        "systemNotifications": "إشعارات النظام",
+        "systemNotificationsSubtitle": "آخر الإشعارات والتنبيهات الداخلية.",
+        "weeklyActivity": "النشاط الأسبوعي",
+        "monthlyReports": "التقارير الشهرية",
+        "recruitmentKpis": "مؤشرات التوظيف",
+        "aiStatistics": "إحصائيات الذكاء الاصطناعي",
+        "businessOverview": "نظرة عامة على الأعمال"
+      },
+      "kpis": {
+        "requestsApproved": "الطلبات المعتمدة",
+        "requestsRejected": "الطلبات المرفوضة",
+        "interviewsStarted": "المقابلات التي بدأت",
+        "pendingManualReview": "قيد المراجعة اليدوية",
+        "criticalCases": "الحالات الحرجة",
+        "aiQueue": "طابور الذكاء",
+        "verifiedCompanies": "الشركات المعتمدة",
+        "activeJobs": "الوظائف النشطة",
+        "applications": "الطلبات",
+        "candidates": "المرشحون"
+      },
+      "audit": {
+        "ownerApprovedCompany": "اعتمد المالك الشركة \"{company}\"",
+        "ownerRejectedCompany": "رفض المالك الشركة \"{company}\"",
+        "ownerSuspendedCompany": "علّق المالك الشركة \"{company}\"",
+        "ownerReactivatedCompany": "أعاد المالك تفعيل الشركة \"{company}\"",
+        "fallback": "{action} على {target}",
+        "details": "تفاصيل السجل",
+        "close": "إغلاق",
+        "user": "المستخدم",
+        "action": "الإجراء",
+        "target": "الهدف",
+        "dateTime": "التاريخ والوقت",
+        "reason": "السبب",
+        "unknownUser": "مستخدم غير معروف",
+        "unknownTarget": "هدف غير معروف"
+      }
+    },
+    "recruitmentCenter": {
+      "title": "مساحة تشغيل التوظيف",
+      "subtitle": "نسق الطلبات والإشراف ومراجعة المقابلات من واجهة تشغيل موحدة.",
+      "overview": "نظرة تشغيلية",
+      "requests": "طابور الطلبات",
+      "moderation": "طابور المراجعة",
+      "conversations": "المحادثات المكلّفة",
+      "alerts": "تنبيهات التشغيل",
+      "statistics": "إحصائيات المنصة",
+      "quickActions": "إجراءات سريعة",
+      "search": "بحث",
+      "action": "الإجراء",
+      "target": "الهدف",
+      "actor": "المنفذ",
+      "time": "الوقت",
+      "empty": "لا توجد عناصر في الطوابير حاليًا.",
+      "emptyEvents": "لا توجد أحداث تطابق هذه المرشحات.",
+      "status": {
+        "pending": "قيد الانتظار",
+        "approved": "معتمد",
+        "rejected": "مرفوض",
+        "review": "يحتاج مراجعة"
+      },
+      "stats": {
+        "requests": "الطلبات المعلّقة",
+        "moderation": "تحتاج مراجعة",
+        "conversations": "المحادثات المكلّفة",
+        "interviews": "المقابلات اليوم"
+      },
+      "actions": {
+        "openCandidate": "فتح ملف المرشح",
+        "openConversation": "فتح المحادثة",
+        "openInterview": "فتح المقابلة",
+        "openJob": "فتح الوظيفة",
+        "openAdvertisement": "فتح لوحة الإعلانات",
+        "openDashboard": "فتح لوحة الإدارة"
+      },
+      "audit": {
+        "title": "النشاط الأخير",
+        "filterSearch": "ابحث بالإجراء أو الهدف أو المعرف",
+        "filterAction": "الإجراء",
+        "filterTarget": "نوع الهدف",
+        "sort": "الترتيب",
+        "rows": "الصفوف",
+        "newest": "الأحدث أولاً",
+        "oldest": "الأقدم أولاً",
+        "previous": "السابق",
+        "next": "التالي",
+        "loading": "جارٍ تحميل الأحداث...",
+        "loadingDetail": "جارٍ تحميل تفاصيل الحدث..."
+      },
+      "eventDetails": {
+        "title": "تفاصيل الحدث",
+        "close": "إغلاق",
+        "target": "الهدف",
+        "actor": "المنفذ",
+        "relatedEntities": "الكيانات ذات الصلة",
+        "notLinked": "غير مرتبط",
+        "quickActions": "إجراءات سريعة",
+        "requestContext": "سياق الطلب",
+        "payload": "حمولة الحدث (JSON)",
+        "missing": "لا توجد إجراءات سريعة لهذا الحدث."
+      }
+    },
+    "companyManagement": {
+      "title": "إدارة الشركات",
+      "subtitle": "مراجعة الشركات واعتمادها وإدارة دورة حياتها التشغيلية.",
+      "openAdvertisements": "فتح مركز الإعلانات",
+      "openRecruitment": "فتح مركز التوظيف",
+      "searchPlaceholder": "ابحث باسم الشركة أو السجل التجاري أو البريد أو الدولة",
+      "search": "بحث",
+      "hideTestData": "إخفاء شركات وبيانات الاختبار",
+      "loading": "جارٍ تحميل الشركات...",
+      "loadingDetail": "جارٍ تحميل تفاصيل الشركة...",
+      "selectCompany": "اختر شركة لمراجعة التسجيل والتحقق والتسلسل الزمني.",
+      "empty": "لا توجد شركات.",
+      "statusLabel": "الحالة",
+      "officialCompany": "شركة رسمية",
+      "copy": "نسخ",
+      "openDocument": "فتح المستند",
+      "previewDocument": "معاينة المستند",
+      "emptyRegistrationDocuments": "لا توجد مستندات تسجيل مرفوعة.",
+      "emptyTaxDocuments": "لا توجد مستندات ضريبية مرفوعة.",
+      "emptyHistory": "لا يوجد سجل تحقق.",
+      "emptyJobs": "لا توجد وظائف.",
+      "emptyAdvertisements": "لا توجد إعلانات.",
+      "emptyTimeline": "لا توجد سجلات في التسلسل الزمني.",
+      "notesPlaceholder": "أدخل سبب المراجعة أو ملاحظة داخلية",
+      "currentNote": "الملاحظة الحالية",
+      "yes": "نعم",
+      "no": "لا",
+      "filters": {
+        "all": "الكل",
+        "pending_review": "قيد المراجعة",
+        "approved": "معتمد",
+        "rejected": "مرفوض",
+        "suspended": "معلّق"
+      },
+      "status": {
+        "pending_review": "قيد المراجعة",
+        "approved": "معتمد",
+        "rejected": "مرفوض",
+        "suspended": "معلّق"
+      },
+      "sections": {
+        "logo": "شعار الشركة",
+        "registrationInfo": "معلومات التسجيل",
+        "companyProfile": "ملف الشركة",
+        "registrationDocuments": "مستندات التسجيل",
+        "taxDocuments": "المستندات الضريبية",
+        "verificationHistory": "سجل التحقق",
+        "jobs": "الوظائف",
+        "advertisements": "الإعلانات",
+        "activityTimeline": "التسلسل الزمني للنشاط",
+        "reviewNotes": "ملاحظات المراجعة",
+        "deletionPolicy": "سياسة الحذف"
+      },
+      "fields": {
+        "accountEmail": "بريد الحساب",
+        "companyEmail": "بريد الشركة",
+        "commercialRegistration": "السجل التجاري",
+        "taxNumber": "الرقم الضريبي",
+        "registered": "تاريخ التسجيل",
+        "verifiedAt": "تاريخ الاعتماد",
+        "lastLogin": "آخر تسجيل دخول",
+        "country": "الدولة",
+        "city": "المدينة",
+        "address": "العنوان",
+        "website": "الموقع الإلكتروني",
+        "hrContact": "مسؤول الموارد البشرية",
+        "phone": "الهاتف",
+        "industry": "القطاع",
+        "companySize": "حجم الشركة",
+        "actor": "المنفذ",
+        "reason": "السبب",
+        "jobsCount": "الوظائف",
+        "documentsCount": "المستندات",
+        "advertisementsCount": "الإعلانات",
+        "deleteAllowed": "السماح بالحذف"
+      },
+      "timeline": {
+        "approved": "تم الاعتماد",
+        "rejected": "تم الرفض",
+        "suspended": "تم التعليق",
+        "reactivated": "تمت إعادة التفعيل",
+        "other": "نشاط آخر"
+      },
+      "actions": {
+        "approve": "اعتماد الشركة",
+        "reject": "رفض الشركة",
+        "suspend": "تعليق الشركة",
+        "reactivate": "إعادة تفعيل الشركة",
+        "delete": "حذف الشركة"
+      },
+      "deleteDialog": {
+        "title": "حذف الشركة",
+        "subtitle": "لحذف {company}، اكتب اسم الشركة بدقة وأدخل سبب الحذف.",
+        "typeName": "اكتب اسم الشركة",
+        "reason": "سبب الحذف",
+        "confirm": "تأكيد الحذف",
+        "cancel": "إلغاء"
+      },
+      "messages": {
+        "actionCompleted": "تم تنفيذ الإجراء على الشركة.",
+        "copied": "تم النسخ إلى الحافظة."
+      },
+      "errors": {
+        "loadEmployers": "تعذر تحميل الشركات",
+        "loadDetail": "تعذر تحميل تفاصيل الشركة",
+        "actionFailed": "تعذر تنفيذ إجراء الشركة",
+        "reasonRequired": "سبب لا يقل عن 3 أحرف مطلوب.",
+        "copyFailed": "تعذر النسخ",
+        "invalidEmployerId": "معرّف الشركة غير صالح",
+        "employerNotFound": "لم يتم العثور على الشركة",
+        "deleteBlocked": "الحذف محظور بسبب سياسة الشركة.",
+        "onlyRejectedOrSuspended": "يُسمح بالحذف فقط للشركات المرفوضة أو المعلّقة.",
+        "ownedJobsBlocked": "الحذف محظور طالما أن الشركة لا تزال تملك سجلات وظائف.",
+        "invalidRole": "الدور غير صالح"
+      }
+    },
+    "account": {
+      "title": "حساب المالك",
+      "subtitle": "راجع معلومات الجلسة الحالية وإعدادات الوصول الأساسية.",
+      "sections": {
+        "profile": "الملف الشخصي",
+        "session": "الجلسة الحالية",
+        "locale": "اللغة"
+      },
+      "fields": {
+        "displayName": "الاسم المعروض",
+        "email": "البريد الإلكتروني",
+        "role": "الدور",
+        "accountId": "معرّف الحساب",
+        "locale": "اللغة الحالية"
+      },
+      "values": {
+        "owner": "مالك",
+        "recruiter": "مجند",
+        "admin": "مسؤول",
+        "superAdmin": "مسؤول أعلى",
+        "unknown": "غير معروف"
+      },
+      "languageOptions": {
+        "ar": "العربية",
+        "en": "الإنجليزية"
+      },
+      "messages": {
+        "loading": "جارٍ تحميل الحساب...",
+        "loadFailed": "تعذر تحميل بيانات الحساب",
+        "sessionMissing": "لا توجد جلسة نشطة"
+      }
+    },
+    "candidateProfiles": {
+      "title": "ملفات المرشحين",
+      "subtitle": "مراجعة مخرجات الذكاء الاصطناعي وتسلسل المراجعة قبل الظهور لأصحاب العمل.",
+      "searchPlaceholder": "ابحث بالمرجع أو المسمى أو الموقع أو المهارة",
+      "filters": {
+        "all": "كل الحالات",
+        "pendingReview": "قيد المراجعة",
+        "approved": "معتمد",
+        "needsChanges": "يحتاج تعديلات",
+        "rejected": "مرفوض"
+      },
+      "stats": {
+        "total": "الإجمالي",
+        "pending": "قيد المراجعة",
+        "approved": "المعتمد"
+      },
+      "emptyTitle": "لا توجد ملفات مرشحين بعد",
+      "emptyBody": "الطابور واضح الآن. تبقى المرشحات وبطاقات الملخص متاحة لدورة المراجعة القادمة.",
+      "emptyAction": "تحديث البيانات",
+      "emptyProfile": "الملف المهني قيد التجهيز",
+      "emptyLocation": "الموقع غير محدد",
+      "aiScore": "درجة الذكاء",
+      "experience": "الخبرة",
+      "visibility": "ظهور صاحب العمل",
+      "visible": "مرئي",
+      "hidden": "مخفي",
+      "timeline": "التسلسل الزمني",
+      "noTimeline": "لا يوجد تسلسل زمني بعد",
+      "skills": "المهارات",
+      "empty": "لا توجد ملفات مرشحين.",
+      "errors": {
+        "loadFailed": "تعذر تحميل ملفات المرشحين"
+      }
+    },
+    "candidateProfileDetail": {
+      "title": "مراجعة ملف المرشح",
+      "approve": "اعتماد",
+      "reject": "رفض",
+      "changes": "يحتاج تعديلات",
+      "regenerate": "إعادة توليد",
+      "save": "حفظ التعديلات",
+      "sections": {
+        "privateProfile": "الملف الخاص للمرشح",
+        "employerProfile": "ملف صاحب العمل",
+        "certificates": "الشهادات",
+        "reviewHistory": "سجل المراجعة",
+        "employerSummary": "ملخص موجّه لصاحب العمل"
+      },
+      "status": {
+        "pendingReview": "قيد المراجعة",
+        "approved": "معتمد",
+        "needsChanges": "يحتاج تعديلات",
+        "rejected": "مرفوض",
+        "unknown": "غير معروف"
+      },
+      "fields": {
+        "reference": "المرجع",
+        "fullName": "الاسم الكامل",
+        "email": "البريد الإلكتروني",
+        "phone": "الهاتف",
+        "address": "العنوان",
+        "originalCvPath": "مسار السيرة الأصلية",
+        "supportingDocs": "المستندات الداعمة",
+        "identityVerification": "التحقق من الهوية",
+        "confidence": "درجة الثقة",
+        "staffReviewStatus": "حالة مراجعة الموظف",
+        "aiReasoning": "تفسير الذكاء الاصطناعي",
+        "professionalTitle": "المسمى المهني",
+        "professionalSummary": "الملخص المهني",
+        "reviewNotes": "ملاحظات المراجعة",
+        "status": "الحالة",
+        "visibility": "الظهور لصاحب العمل"
+      },
+      "visible": "مرئي",
+      "hidden": "مخفي",
+      "noNotes": "لا توجد ملاحظات",
+      "noSummary": "لا يوجد ملخص بعد.",
+      "errors": {
+        "loadFailed": "تعذر تحميل ملف المرشح",
+        "updateFailed": "تعذر تحديث الملف"
+      }
     }
   },
   "footer": {

@@ -73,13 +73,59 @@ function formatDateTime(value: string, locale: string) {
   }).format(date);
 }
 
-function getEventQuickActions(event: ExplorerEvent, locale: string) {
+function localizeAuditAction(action: string, locale: string) {
+  if (locale !== "ar") return action;
+
+  if (action === "admin.employer.approve") return "اعتماد شركة";
+  if (action === "admin.employer.reject") return "رفض شركة";
+  if (action === "admin.employer.suspend") return "تعليق شركة";
+  if (action === "admin.employer.reactivate") return "إعادة تفعيل شركة";
+  if (action === "recruitment.conversation") return "محادثة";
+  if (action === "recruitment.conversation_request") return "طلب محادثة";
+  if (action === "recruitment.interview") return "مقابلة";
+  if (action === "recruitment.message") return "مراجعة رسالة";
+  if (action === "recruitment.ai_supervisor") return "إشراف الذكاء الاصطناعي";
+  if (action === "recruitment.internal_note") return "ملاحظة داخلية";
+
+  return "نشاط إداري";
+}
+
+function localizeAuditTargetType(targetType: string, locale: string) {
+  if (locale !== "ar") return targetType;
+
+  if (targetType === "employer") return "شركة";
+  if (targetType === "recruitment_conversation_request") return "طلب محادثة";
+  if (targetType === "recruitment_conversation") return "محادثة";
+  if (targetType === "recruitment_message") return "رسالة";
+  if (targetType === "recruitment_interview") return "مقابلة";
+  if (targetType === "candidate") return "مرشح";
+  if (targetType === "job") return "وظيفة";
+  if (targetType === "advertisement") return "إعلان";
+
+  return "هدف";
+}
+
+function localizeActorRole(role: string | null | undefined, locale: string) {
+  const normalized = String(role ?? "").trim();
+  if (!normalized) return "-";
+  if (locale !== "ar") return normalized;
+
+  if (normalized === "prime_global_recruiter") return "مجند";
+  if (normalized === "prime_global_admin") return "مالك";
+  if (normalized === "admin") return "مسؤول";
+  if (normalized === "super_admin") return "مسؤول أعلى";
+  if (normalized === "employer") return "صاحب عمل";
+  if (normalized === "candidate") return "مرشح";
+  return "غير معروف";
+}
+
+function getEventQuickActions(event: ExplorerEvent, locale: string, copy: ReturnType<typeof getCopy>) {
   const actions: Array<{ id: string; label: string; href: string; disabled?: boolean }> = [];
 
   if (event.related.candidate) {
     actions.push({
       id: "candidate",
-      label: "Open candidate profile",
+      label: copy.openCandidate,
       href: `/${locale}/admin/candidate-profiles/${event.related.candidate.id}`,
       disabled: !event.related.candidate.exists,
     });
@@ -88,7 +134,7 @@ function getEventQuickActions(event: ExplorerEvent, locale: string) {
   if (event.related.conversation) {
     actions.push({
       id: "conversation",
-      label: "Open conversation",
+      label: copy.openConversation,
       href: `/${locale}/admin/recruitment/${event.related.conversation.id}`,
       disabled: !event.related.conversation.exists,
     });
@@ -97,7 +143,7 @@ function getEventQuickActions(event: ExplorerEvent, locale: string) {
   if (event.related.interview && event.related.conversation?.exists) {
     actions.push({
       id: "interview",
-      label: "Open interview",
+      label: copy.openInterview,
       href: `/${locale}/admin/recruitment/${event.related.conversation.id}/interviews/${event.related.interview.id}`,
       disabled: !event.related.interview.exists,
     });
@@ -106,7 +152,7 @@ function getEventQuickActions(event: ExplorerEvent, locale: string) {
   if (event.related.job) {
     actions.push({
       id: "job",
-      label: "Open job",
+      label: copy.openJob,
       href: `/${locale}/jobs/${event.related.job.id}`,
       disabled: !event.related.job.exists,
     });
@@ -115,7 +161,7 @@ function getEventQuickActions(event: ExplorerEvent, locale: string) {
   if (event.related.advertisement) {
     actions.push({
       id: "advertisement",
-      label: "Open advertisement board",
+      label: copy.openAdvertisement,
       href: `/${locale}/admin/advertisements?highlight=${event.related.advertisement.id}`,
       disabled: !event.related.advertisement.exists,
     });
@@ -124,7 +170,7 @@ function getEventQuickActions(event: ExplorerEvent, locale: string) {
   if (event.related.employer) {
     actions.push({
       id: "employer",
-      label: "Open admin dashboard",
+      label: copy.openDashboard,
       href: `/${locale}/admin/dashboard?employerId=${event.related.employer.id}`,
       disabled: !event.related.employer.exists,
     });
@@ -150,10 +196,103 @@ function getCopy(locale: string) {
     approveMessage: isArabic ? "إجازة الرسالة" : "Approve message",
     rejectMessage: isArabic ? "رفض الرسالة" : "Reject message",
     open: isArabic ? "فتح" : "Open",
+    search: isArabic ? "بحث" : "Search",
+    action: isArabic ? "الإجراء" : "Action",
+    target: isArabic ? "الهدف" : "Target",
+    actor: isArabic ? "المنفذ" : "Actor",
+    time: isArabic ? "الوقت" : "Time",
+    event: isArabic ? "حدث" : "Event",
+    unknownUser: isArabic ? "مستخدم غير معروف" : "Unknown user",
+    noEmail: isArabic ? "لا يوجد بريد إلكتروني" : "No email",
+    roleLabel: isArabic ? "الدور" : "Role",
+    userIdLabel: isArabic ? "معرّف المستخدم" : "User id",
+    relatedRecordMissing: isArabic ? "لم يعد السجل المرتبط موجودًا." : "Related record no longer exists.",
+    allActions: isArabic ? "كل الإجراءات" : "All actions",
+    allTargets: isArabic ? "كل الأهداف" : "All targets",
+    noEventsAvailable: isArabic ? "لا توجد أحداث متاحة" : "No events available",
+    eventDetailsLabel: isArabic ? "تفاصيل الحدث" : "Event details",
+    targetLabel: isArabic ? "الهدف" : "Target",
+    actorLabel: isArabic ? "المنفذ" : "Actor",
+    timeLabel: isArabic ? "الوقت" : "Time",
+    empty: isArabic ? "لا توجد عناصر في الطوابير حاليًا." : "No queue items available right now.",
+    emptyEvents: isArabic ? "لا توجد أحداث تطابق هذه المرشحات." : "No events match these filters.",
+    openCandidate: isArabic ? "فتح ملف المرشح" : "Open candidate profile",
+    openConversation: isArabic ? "فتح المحادثة" : "Open conversation",
+    openInterview: isArabic ? "فتح المقابلة" : "Open interview",
+    openJob: isArabic ? "فتح الوظيفة" : "Open job",
+    openAdvertisement: isArabic ? "فتح لوحة الإعلانات" : "Open advertisement board",
+    openDashboard: isArabic ? "فتح لوحة الإدارة" : "Open admin dashboard",
+    openCompanyManagement: isArabic ? "فتح إدارة الشركات" : "Open company management",
     notice: isArabic
       ? "تخضع هذه المحادثة لإشراف برايم جلوبال. لا يُسمح بتبادل بيانات التواصل المباشر أو نقل التواصل خارج المنصة أثناء إجراءات التوظيف."
       : "This conversation is supervised by Prime Global. Direct contact information and communication outside the platform are not permitted during the recruitment process.",
+    auditTitle: isArabic ? "النشاط الأخير" : "Recent activity",
+    filterSearch: isArabic ? "ابحث بالإجراء أو الهدف أو المعرف" : "Search by action, target, or ID",
+    filterAction: isArabic ? "الإجراء" : "Action",
+    filterTarget: isArabic ? "نوع الهدف" : "Target type",
+    sort: isArabic ? "الترتيب" : "Sort",
+    rows: isArabic ? "الصفوف" : "Rows",
+    newest: isArabic ? "الأحدث أولاً" : "Newest first",
+    oldest: isArabic ? "الأقدم أولاً" : "Oldest first",
+    previous: isArabic ? "السابق" : "Previous",
+    next: isArabic ? "التالي" : "Next",
+    loadingEvents: isArabic ? "جارٍ تحميل الأحداث..." : "Loading events...",
+    eventDetails: isArabic ? "تفاصيل الحدث" : "Event details",
+    close: isArabic ? "إغلاق" : "Close",
+    relatedEntities: isArabic ? "الكيانات ذات الصلة" : "Related entities",
+    relatedCandidate: isArabic ? "المرشح" : "Candidate",
+    relatedEmployer: isArabic ? "صاحب العمل" : "Employer",
+    relatedJob: isArabic ? "الوظيفة" : "Job",
+    relatedAdvertisement: isArabic ? "الإعلان" : "Advertisement",
+    relatedConversation: isArabic ? "المحادثة" : "Conversation",
+    relatedInterview: isArabic ? "المقابلة" : "Interview",
+    notLinked: isArabic ? "غير مرتبط" : "Not linked",
+    quickActions: isArabic ? "إجراءات سريعة" : "Quick actions",
+    requestContext: isArabic ? "سياق الطلب" : "Request context",
+    payload: isArabic ? "حمولة الحدث (JSON)" : "Event payload (JSON)",
+    missingActions: isArabic ? "لا توجد إجراءات سريعة لهذا الحدث." : "No quick actions available for this event.",
+    actionConversation: isArabic ? "محادثة" : "Conversation",
+    actionConversationRequest: isArabic ? "طلب محادثة" : "Conversation request",
+    actionInterview: isArabic ? "مقابلة" : "Interview",
+    actionMessageModeration: isArabic ? "مراجعة الرسائل" : "Message moderation",
+    actionAiSupervisor: isArabic ? "مساعد الذكاء" : "AI supervisor",
+    actionInternalNotes: isArabic ? "ملاحظات داخلية" : "Internal notes",
+    targetConversationRequest: isArabic ? "طلب محادثة" : "Conversation request",
+    targetConversation: isArabic ? "محادثة" : "Conversation",
+    targetMessage: isArabic ? "رسالة" : "Message",
+    targetInterview: isArabic ? "مقابلة" : "Interview",
+    rowUnknown: isArabic ? "غير معروف" : "Unknown",
+    pageSummary: isArabic
+      ? "عرض الصفحة {page} من {totalPages} ({totalItems} حدث)"
+      : "Showing page {page} of {totalPages} ({totalItems} events)",
+    eventAriaOpen: isArabic ? "فتح تفاصيل" : "Open",
+    ipLabel: isArabic ? "عنوان IP" : "IP",
+    userAgentLabel: isArabic ? "وكيل المستخدم" : "User-Agent",
+    overviewLoadFailed: isArabic ? "تعذر تحميل نظرة عامة المركز." : "Failed to load overview.",
+    eventsLoadFailed: isArabic ? "تعذر تحميل الأحداث." : "Failed to load events.",
+    requestUpdateFailed: isArabic ? "تعذر تحديث الطلب." : "Failed to update request.",
+    moderationFailed: isArabic ? "تعذر مراجعة الرسالة." : "Failed to moderate message",
+    employerFallback: isArabic ? "صاحب عمل" : "Employer",
+    candidateFallback: isArabic ? "مرشح برايم جلوبال" : "PG Candidate",
+    statusPending: isArabic ? "قيد الانتظار" : "Pending",
+    statusApproved: isArabic ? "معتمد" : "Approved",
+    statusRejected: isArabic ? "مرفوض" : "Rejected",
+    statusAssigned: isArabic ? "مُسند" : "Assigned",
   };
+}
+
+function localizeQueueStatus(status: string, locale: string, copy: ReturnType<typeof getCopy>) {
+  const normalized = status.trim().toLowerCase();
+  if (normalized === "pending" || normalized === "pending_review") return copy.statusPending;
+  if (normalized === "approved") return copy.statusApproved;
+  if (normalized === "rejected") return copy.statusRejected;
+  if (normalized === "assigned") return copy.statusAssigned;
+
+  if (locale === "ar") {
+    return copy.statusPending;
+  }
+
+  return status;
 }
 
 export function StaffRecruitmentCenter({ locale }: { locale: string }) {
@@ -181,11 +320,11 @@ export function StaffRecruitmentCenter({ locale }: { locale: string }) {
     });
     const payload = await response.json();
     if (!response.ok || !payload.success) {
-      setError(payload?.error?.message ?? "Failed to load overview");
+      setError(payload?.error?.message ?? copy.overviewLoadFailed);
       return;
     }
     setData(payload.data);
-  }, [locale]);
+  }, [copy.overviewLoadFailed, locale]);
 
   const loadEvents = useCallback(async (nextQuery: EventExplorerQuery) => {
     setEventsLoading(true);
@@ -202,14 +341,14 @@ export function StaffRecruitmentCenter({ locale }: { locale: string }) {
     });
     const payload = await response.json();
     if (!response.ok || !payload.success) {
-      setError(payload?.error?.message ?? "Failed to load events");
+      setError(payload?.error?.message ?? copy.eventsLoadFailed);
       setEventsLoading(false);
       return;
     }
 
     setEvents(payload.data as EventExplorerPayload);
     setEventsLoading(false);
-  }, []);
+  }, [copy.eventsLoadFailed]);
 
   useEffect(() => {
     fetch("/api/auth/me", {
@@ -295,7 +434,7 @@ export function StaffRecruitmentCenter({ locale }: { locale: string }) {
     });
     const payload = await response.json();
     if (!response.ok || !payload.success) {
-      setError(payload?.error?.message ?? "Failed to update request");
+      setError(payload?.error?.message ?? copy.requestUpdateFailed);
       return;
     }
     await loadOverview();
@@ -315,7 +454,7 @@ export function StaffRecruitmentCenter({ locale }: { locale: string }) {
     });
     const payload = await response.json();
     if (!response.ok || !payload.success) {
-      setError(payload?.error?.message ?? "Failed to moderate message");
+      setError(payload?.error?.message ?? copy.moderationFailed);
       return;
     }
     await loadOverview();
@@ -333,12 +472,15 @@ export function StaffRecruitmentCenter({ locale }: { locale: string }) {
 
         <section className="mt-8 grid gap-6 xl:grid-cols-2">
           <PrimeCard className="p-5">
-            <h2 className="font-heading text-2xl text-text-primary">{copy.requests}</h2>
+            <div className="flex items-center justify-between gap-3">
+              <h2 className="font-heading text-2xl text-text-primary">{copy.requests}</h2>
+              <span className="rounded-full border border-gold/15 bg-gold/10 px-3 py-1 text-xs uppercase tracking-[0.16em] text-gold">{(data?.requests ?? []).length}</span>
+            </div>
             <div className="mt-4 space-y-3">
               {(data?.requests ?? []).map((request) => (
                 <PrimeCard key={String(request.id)} className="p-4">
-                  <p className="text-sm font-medium text-text-primary">{String((request.candidateProfile as Record<string, unknown> | undefined)?.candidate_reference ?? "PG Candidate")}</p>
-                  <p className="mt-2 text-sm text-text-secondary">{String(request.status ?? "pending")}</p>
+                  <p className="text-sm font-medium text-text-primary">{String((request.candidateProfile as Record<string, unknown> | undefined)?.candidate_reference ?? copy.candidateFallback)}</p>
+                  <p className="mt-2 text-sm text-text-secondary">{localizeQueueStatus(String(request.status ?? "pending"), locale, copy)}</p>
                   <div className="mt-3 flex flex-wrap gap-2">
                     <button onClick={() => reviewRequest(String(request.id), "assign")} className={primeButtonClasses("secondary", "sm")}>{copy.assign}</button>
                     <button onClick={() => reviewRequest(String(request.id), "approve")} className={primeButtonClasses("secondary", "sm")}>{copy.approve}</button>
@@ -350,7 +492,10 @@ export function StaffRecruitmentCenter({ locale }: { locale: string }) {
           </PrimeCard>
 
           <PrimeCard className="p-5">
-            <h2 className="font-heading text-2xl text-text-primary">{copy.moderation}</h2>
+            <div className="flex items-center justify-between gap-3">
+              <h2 className="font-heading text-2xl text-text-primary">{copy.moderation}</h2>
+              <span className="rounded-full border border-amber-400/20 bg-amber-500/10 px-3 py-1 text-xs uppercase tracking-[0.16em] text-amber-200">{(data?.moderationQueue ?? []).length}</span>
+            </div>
             <div className="mt-4 space-y-3">
               {(data?.moderationQueue ?? []).map((item) => (
                 <PrimeCard key={String(item.id)} className="p-4">
@@ -367,12 +512,15 @@ export function StaffRecruitmentCenter({ locale }: { locale: string }) {
 
         <section className="mt-8 grid gap-6 xl:grid-cols-2">
           <PrimeCard className="p-5">
-            <h2 className="font-heading text-2xl text-text-primary">{copy.conversations}</h2>
+            <div className="flex items-center justify-between gap-3">
+              <h2 className="font-heading text-2xl text-text-primary">{copy.conversations}</h2>
+              <span className="rounded-full border border-blue-200/20 bg-blue-200/10 px-3 py-1 text-xs uppercase tracking-[0.16em] text-blue-100">{(data?.conversations ?? []).length}</span>
+            </div>
             <div className="mt-4 space-y-3">
               {(data?.conversations ?? []).map((conversation) => (
                 <PrimeCard key={String(conversation.id)} className="p-4">
-                  <p className="text-sm font-medium text-text-primary">{String((conversation.employer as Record<string, unknown> | undefined)?.company_name ?? "Employer")}</p>
-                  <p className="mt-2 text-sm text-text-secondary">{String((conversation.candidateProfile as Record<string, unknown> | undefined)?.candidate_reference ?? "PG Candidate")}</p>
+                  <p className="text-sm font-medium text-text-primary">{String((conversation.employer as Record<string, unknown> | undefined)?.company_name ?? copy.employerFallback)}</p>
+                  <p className="mt-2 text-sm text-text-secondary">{String((conversation.candidateProfile as Record<string, unknown> | undefined)?.candidate_reference ?? copy.candidateFallback)}</p>
                   <a href={`/${locale}/admin/recruitment/${String(conversation.id)}`} className={`${primeButtonClasses("secondary")} mt-4`}>{copy.open}</a>
                 </PrimeCard>
               ))}
@@ -384,51 +532,51 @@ export function StaffRecruitmentCenter({ locale }: { locale: string }) {
             <div className="mt-4 space-y-4">
               <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
                 <label className="space-y-2 text-sm text-text-secondary md:col-span-2">
-                  <span className="block">Search</span>
+                  <span className="block">{copy.search}</span>
                   <input
                     value={query.search}
                     onChange={(event) => setQuery((current) => ({ ...current, search: event.target.value, page: 1 }))}
-                    placeholder="Action, target type, or id"
+                    placeholder={copy.filterSearch}
                     className="w-full rounded-xl border border-gold/15 bg-bg-secondary px-4 py-2.5 text-text-primary"
                   />
                 </label>
 
                 <label className="space-y-2 text-sm text-text-secondary">
-                  <span className="block">Action</span>
+                  <span className="block">{copy.filterAction}</span>
                   <select
                     value={query.actionPrefix}
                     onChange={(event) => setQuery((current) => ({ ...current, actionPrefix: event.target.value, page: 1 }))}
                     className="w-full rounded-xl border border-gold/15 bg-bg-secondary px-4 py-2.5 text-text-primary"
                   >
-                    <option value="">All actions</option>
-                    <option value="recruitment.conversation">Conversation</option>
-                    <option value="recruitment.conversation_request">Conversation request</option>
-                    <option value="recruitment.interview">Interview</option>
-                    <option value="recruitment.message">Message moderation</option>
-                    <option value="recruitment.ai_supervisor">AI supervisor</option>
-                    <option value="recruitment.internal_note">Internal notes</option>
+                    <option value="">{copy.allActions}</option>
+                    <option value="recruitment.conversation">{copy.actionConversation}</option>
+                    <option value="recruitment.conversation_request">{copy.actionConversationRequest}</option>
+                    <option value="recruitment.interview">{copy.actionInterview}</option>
+                    <option value="recruitment.message">{copy.actionMessageModeration}</option>
+                    <option value="recruitment.ai_supervisor">{copy.actionAiSupervisor}</option>
+                    <option value="recruitment.internal_note">{copy.actionInternalNotes}</option>
                   </select>
                 </label>
 
                 <label className="space-y-2 text-sm text-text-secondary">
-                  <span className="block">Target type</span>
+                  <span className="block">{copy.filterTarget}</span>
                   <select
                     value={query.targetType}
                     onChange={(event) => setQuery((current) => ({ ...current, targetType: event.target.value, page: 1 }))}
                     className="w-full rounded-xl border border-gold/15 bg-bg-secondary px-4 py-2.5 text-text-primary"
                   >
-                    <option value="">All targets</option>
-                    <option value="recruitment_conversation_request">Conversation request</option>
-                    <option value="recruitment_conversation">Conversation</option>
-                    <option value="recruitment_message">Message</option>
-                    <option value="recruitment_interview">Interview</option>
+                    <option value="">{copy.allTargets}</option>
+                    <option value="recruitment_conversation_request">{copy.targetConversationRequest}</option>
+                    <option value="recruitment_conversation">{copy.targetConversation}</option>
+                    <option value="recruitment_message">{copy.targetMessage}</option>
+                    <option value="recruitment_interview">{copy.targetInterview}</option>
                   </select>
                 </label>
               </div>
 
               <div className="flex flex-wrap items-center justify-between gap-3 text-sm text-text-secondary">
                 <div className="flex items-center gap-2">
-                  <span>Sort</span>
+                  <span>{copy.sort}</span>
                   <select
                     value={query.sort}
                     onChange={(event) => {
@@ -437,12 +585,12 @@ export function StaffRecruitmentCenter({ locale }: { locale: string }) {
                     }}
                     className="rounded-xl border border-gold/15 bg-bg-secondary px-3 py-2 text-text-primary"
                   >
-                    <option value="newest">Newest first</option>
-                    <option value="oldest">Oldest first</option>
+                    <option value="newest">{copy.newest}</option>
+                    <option value="oldest">{copy.oldest}</option>
                   </select>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span>Rows</span>
+                  <span>{copy.rows}</span>
                   <select
                     value={String(query.pageSize)}
                     onChange={(event) => {
@@ -463,10 +611,10 @@ export function StaffRecruitmentCenter({ locale }: { locale: string }) {
                   <table className="min-w-full divide-y divide-gold/10 text-sm">
                     <thead className="bg-bg-primary/90 text-left text-xs uppercase tracking-[0.15em] text-text-tertiary">
                       <tr>
-                        <th className="px-4 py-3">Event</th>
-                        <th className="px-4 py-3">Target</th>
-                        <th className="px-4 py-3">Actor</th>
-                        <th className="px-4 py-3">Time</th>
+                        <th className="px-4 py-3">{copy.event}</th>
+                        <th className="px-4 py-3">{copy.target}</th>
+                        <th className="px-4 py-3">{copy.actor}</th>
+                        <th className="px-4 py-3">{copy.time}</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gold/5 bg-bg-primary/60">
@@ -475,19 +623,19 @@ export function StaffRecruitmentCenter({ locale }: { locale: string }) {
                           key={item.id}
                           onClick={() => setSelectedEvent(item)}
                           className="cursor-pointer transition hover:bg-gold/5"
-                          aria-label={`Open ${item.action}`}
+                          aria-label={`${copy.eventAriaOpen} ${localizeAuditAction(item.action, locale)}`}
                         >
                           <td className="px-4 py-3 text-text-primary">
-                            <p className="font-medium">{item.action}</p>
-                            <p className="mt-1 text-xs text-text-tertiary">{item.id}</p>
+                            <p className="font-medium">{localizeAuditAction(item.action, locale)}</p>
+                            <p className="mt-1 text-xs text-text-tertiary"><span dir="ltr" className="[unicode-bidi:isolate]">{item.id}</span></p>
                           </td>
                           <td className="px-4 py-3 text-text-secondary">
-                            <p>{item.targetType}</p>
-                            <p className="mt-1 text-xs text-text-tertiary">{item.targetId}</p>
+                            <p>{localizeAuditTargetType(item.targetType, locale)}</p>
+                            <p className="mt-1 text-xs text-text-tertiary"><span dir="ltr" className="[unicode-bidi:isolate]">{item.targetId}</span></p>
                           </td>
                           <td className="px-4 py-3 text-text-secondary">
-                            <p>{item.actor.fullName ?? item.actor.email ?? item.actor.authUserId ?? "Unknown"}</p>
-                            <p className="mt-1 text-xs text-text-tertiary">{item.actor.role ?? "-"}</p>
+                            <p>{item.actor.fullName ?? item.actor.email ?? item.actor.authUserId ?? copy.rowUnknown}</p>
+                            <p className="mt-1 text-xs text-text-tertiary">{localizeActorRole(item.actor.role, locale)}</p>
                           </td>
                           <td className="px-4 py-3 text-xs text-text-tertiary">{formatDateTime(item.createdAt, locale)}</td>
                         </tr>
@@ -496,7 +644,7 @@ export function StaffRecruitmentCenter({ locale }: { locale: string }) {
                       {!eventsLoading && (events?.items?.length ?? 0) === 0 ? (
                         <tr>
                           <td colSpan={4} className="px-4 py-8 text-center text-text-tertiary">
-                            No events match these filters.
+                            {copy.emptyEvents}
                           </td>
                         </tr>
                       ) : null}
@@ -508,8 +656,11 @@ export function StaffRecruitmentCenter({ locale }: { locale: string }) {
               <div className="flex items-center justify-between gap-3 text-sm text-text-secondary">
                 <p>
                   {(events?.pagination.totalItems ?? 0) > 0
-                    ? `Showing page ${events?.pagination.page ?? 1} of ${events?.pagination.totalPages ?? 1} (${events?.pagination.totalItems ?? 0} events)`
-                    : "No events available"}
+                    ? copy.pageSummary
+                      .replace("{page}", String(events?.pagination.page ?? 1))
+                      .replace("{totalPages}", String(events?.pagination.totalPages ?? 1))
+                      .replace("{totalItems}", String(events?.pagination.totalItems ?? 0))
+                    : copy.noEventsAvailable}
                 </p>
                 <div className="flex items-center gap-2">
                   <button
@@ -517,7 +668,7 @@ export function StaffRecruitmentCenter({ locale }: { locale: string }) {
                     disabled={(events?.pagination.page ?? 1) <= 1 || eventsLoading}
                     className="rounded-full border border-gold/20 px-3 py-1.5 text-xs font-semibold text-text-primary disabled:cursor-not-allowed disabled:opacity-50"
                   >
-                    Previous
+                    {copy.previous}
                   </button>
                   <button
                     onClick={() => {
@@ -528,12 +679,12 @@ export function StaffRecruitmentCenter({ locale }: { locale: string }) {
                     disabled={(events?.pagination.page ?? 1) >= (events?.pagination.totalPages ?? 1) || eventsLoading}
                     className="rounded-full border border-gold/20 px-3 py-1.5 text-xs font-semibold text-text-primary disabled:cursor-not-allowed disabled:opacity-50"
                   >
-                    Next
+                    {copy.next}
                   </button>
                 </div>
               </div>
 
-              {eventsLoading ? <p className="text-xs text-text-tertiary">Loading events...</p> : null}
+              {eventsLoading ? <p className="text-xs text-text-tertiary">{copy.loadingEvents}</p> : null}
             </div>
           </PrimeCard>
         </section>
@@ -544,48 +695,48 @@ export function StaffRecruitmentCenter({ locale }: { locale: string }) {
           <aside
             className="h-full w-full max-w-[560px] overflow-y-auto border-l border-gold/20 bg-bg-primary p-6"
             onClick={(event) => event.stopPropagation()}
-            aria-label="Event details"
+            aria-label={copy.eventDetails}
           >
             <div className="flex items-start justify-between gap-4">
               <div>
-                <p className="text-xs uppercase tracking-[0.15em] text-text-tertiary">Event details</p>
-                <h3 className="mt-2 break-all font-heading text-2xl text-text-primary">{selectedEvent.action}</h3>
+                <p className="text-xs uppercase tracking-[0.15em] text-text-tertiary">{copy.eventDetails}</p>
+                <h3 className="mt-2 break-all font-heading text-2xl text-text-primary">{localizeAuditAction(selectedEvent.action, locale)}</h3>
                 <p className="mt-2 text-xs text-text-tertiary">{formatDateTime(selectedEvent.createdAt, locale)}</p>
               </div>
               <button
                 onClick={() => setSelectedEvent(null)}
                 className="rounded-full border border-gold/20 px-3 py-1 text-xs font-semibold text-text-primary"
               >
-                Close
+                {copy.close}
               </button>
             </div>
 
             <div className="mt-6 space-y-5 text-sm text-text-secondary">
               <PrimeCard className="p-4">
-                <p className="text-xs uppercase tracking-[0.15em] text-text-tertiary">Target</p>
-                <p className="mt-2 break-all text-text-primary">{selectedEvent.targetType}</p>
-                <p className="mt-1 break-all text-xs text-text-tertiary">{selectedEvent.targetId}</p>
+                <p className="text-xs uppercase tracking-[0.15em] text-text-tertiary">{copy.targetLabel}</p>
+                <p className="mt-2 break-all text-text-primary">{localizeAuditTargetType(selectedEvent.targetType, locale)}</p>
+                <p className="mt-1 break-all text-xs text-text-tertiary"><span dir="ltr" className="[unicode-bidi:isolate]">{selectedEvent.targetId}</span></p>
               </PrimeCard>
 
               <PrimeCard className="p-4">
-                <p className="text-xs uppercase tracking-[0.15em] text-text-tertiary">Actor</p>
-                <p className="mt-2 text-text-primary">{selectedEvent.actor.fullName ?? "Unknown user"}</p>
-                <p className="mt-1 break-all">{selectedEvent.actor.email ?? "No email"}</p>
-                <p className="mt-1">Role: {selectedEvent.actor.role ?? "-"}</p>
-                <p className="mt-1 break-all text-xs text-text-tertiary">User id: {selectedEvent.actor.authUserId ?? "-"}</p>
+                <p className="text-xs uppercase tracking-[0.15em] text-text-tertiary">{copy.actorLabel}</p>
+                <p className="mt-2 text-text-primary">{selectedEvent.actor.fullName ?? copy.unknownUser}</p>
+                <p className="mt-1 break-all"><span dir="ltr" className="[unicode-bidi:isolate]">{selectedEvent.actor.email ?? copy.noEmail}</span></p>
+                <p className="mt-1">{copy.roleLabel}: {localizeActorRole(selectedEvent.actor.role, locale)}</p>
+                <p className="mt-1 break-all text-xs text-text-tertiary">{copy.userIdLabel}: <span dir="ltr" className="[unicode-bidi:isolate]">{selectedEvent.actor.authUserId ?? "-"}</span></p>
               </PrimeCard>
 
               <PrimeCard className="p-4">
-                <p className="text-xs uppercase tracking-[0.15em] text-text-tertiary">Related entities</p>
+                <p className="text-xs uppercase tracking-[0.15em] text-text-tertiary">{copy.relatedEntities}</p>
                 <div className="mt-3 space-y-3">
                   {(
                     [
-                      ["Candidate", selectedEvent.related.candidate],
-                      ["Employer", selectedEvent.related.employer],
-                      ["Job", selectedEvent.related.job],
-                      ["Advertisement", selectedEvent.related.advertisement],
-                      ["Conversation", selectedEvent.related.conversation],
-                      ["Interview", selectedEvent.related.interview],
+                      [copy.relatedCandidate, selectedEvent.related.candidate],
+                      [copy.relatedEmployer, selectedEvent.related.employer],
+                      [copy.relatedJob, selectedEvent.related.job],
+                      [copy.relatedAdvertisement, selectedEvent.related.advertisement],
+                      [copy.relatedConversation, selectedEvent.related.conversation],
+                      [copy.relatedInterview, selectedEvent.related.interview],
                     ] as Array<[string, ExplorerRelatedEntity | null]>
                   ).map(([label, entity]) => (
                     <div key={label} className="rounded-xl border border-gold/10 px-3 py-2">
@@ -595,10 +746,10 @@ export function StaffRecruitmentCenter({ locale }: { locale: string }) {
                           <p className="mt-1 break-all text-xs text-text-tertiary">{entity.id}</p>
                           <p className="mt-1">{entity.label}</p>
                           <p className="mt-1 text-xs">{entity.subtitle ?? "-"}</p>
-                          {!entity.exists ? <p className="mt-1 text-xs text-amber-300">Related record no longer exists.</p> : null}
+                          {!entity.exists ? <p className="mt-1 text-xs text-amber-300">{copy.relatedRecordMissing}</p> : null}
                         </>
                       ) : (
-                        <p className="mt-1 text-xs text-text-tertiary">Not linked</p>
+                        <p className="mt-1 text-xs text-text-tertiary">{copy.notLinked}</p>
                       )}
                     </div>
                   ))}
@@ -606,9 +757,9 @@ export function StaffRecruitmentCenter({ locale }: { locale: string }) {
               </PrimeCard>
 
               <PrimeCard className="p-4">
-                <p className="text-xs uppercase tracking-[0.15em] text-text-tertiary">Quick actions</p>
+                <p className="text-xs uppercase tracking-[0.15em] text-text-tertiary">{copy.quickActions}</p>
                 <div className="mt-3 flex flex-wrap gap-2">
-                  {getEventQuickActions(selectedEvent, locale).map((action) =>
+                  {getEventQuickActions(selectedEvent, locale, copy).map((action) =>
                     action.disabled ? (
                       <span key={action.id} className="cursor-not-allowed rounded-full border border-gold/10 px-3 py-1.5 text-xs text-text-tertiary">
                         {action.label}
@@ -623,20 +774,20 @@ export function StaffRecruitmentCenter({ locale }: { locale: string }) {
                       </Link>
                     )
                   )}
-                  {getEventQuickActions(selectedEvent, locale).length === 0 ? (
-                    <p className="text-xs text-text-tertiary">No quick actions available for this event.</p>
+                  {getEventQuickActions(selectedEvent, locale, copy).length === 0 ? (
+                    <p className="text-xs text-text-tertiary">{copy.missingActions}</p>
                   ) : null}
                 </div>
               </PrimeCard>
 
               <PrimeCard className="p-4">
-                <p className="text-xs uppercase tracking-[0.15em] text-text-tertiary">Request context</p>
-                <p className="mt-2 text-xs text-text-tertiary">IP: {selectedEvent.ipAddress ?? "-"}</p>
-                <p className="mt-1 break-all text-xs text-text-tertiary">User-Agent: {selectedEvent.userAgent ?? "-"}</p>
+                <p className="text-xs uppercase tracking-[0.15em] text-text-tertiary">{copy.requestContext}</p>
+                <p className="mt-2 text-xs text-text-tertiary">{copy.ipLabel}: <span dir="ltr" className="[unicode-bidi:isolate]">{selectedEvent.ipAddress ?? "-"}</span></p>
+                <p className="mt-1 break-all text-xs text-text-tertiary">{copy.userAgentLabel}: <span dir="ltr" className="[unicode-bidi:isolate]">{selectedEvent.userAgent ?? "-"}</span></p>
               </PrimeCard>
 
               <PrimeCard className="p-4">
-                <p className="text-xs uppercase tracking-[0.15em] text-text-tertiary">Event payload (JSON)</p>
+                <p className="text-xs uppercase tracking-[0.15em] text-text-tertiary">{copy.payload}</p>
                 <pre className="mt-3 overflow-auto rounded-xl bg-bg-secondary p-3 text-xs text-text-secondary">{JSON.stringify(selectedEvent.metadata, null, 2)}</pre>
               </PrimeCard>
             </div>
