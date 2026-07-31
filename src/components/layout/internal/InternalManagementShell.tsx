@@ -83,7 +83,6 @@ export function InternalManagementShell({ locale, children }: InternalManagement
       dashboardControlCenter: t("dashboardControlCenter"),
       companyManagement: t("companyManagement"),
       staffDashboard: t("staffDashboard"),
-      account: t("account"),
       logout: t("logout"),
       recruitment: t("recruitment"),
       candidateProfiles: t("candidateProfiles"),
@@ -126,9 +125,6 @@ export function InternalManagementShell({ locale, children }: InternalManagement
                 </Link>
               ))
             ) : null}
-            <Link href={`/${locale}/admin/account`} className={primeButtonClasses("secondary", "sm")}>
-              {copy.account}
-            </Link>
             <button
               type="button"
               onClick={handleLogout}
@@ -147,9 +143,6 @@ export function InternalManagementShell({ locale, children }: InternalManagement
                 </Link>
               ))
             : null}
-          <Link href={`/${locale}/admin/account`} className={primeButtonClasses("secondary", "sm")}>
-            {copy.account}
-          </Link>
           <button
             type="button"
             onClick={handleLogout}
