@@ -104,6 +104,7 @@ function buildPayload(form: AdvertisementFormState) {
 
 export function AdvertisementsAdminCenter({ locale }: { locale: string }) {
   const t = useTranslations("advertisementsAdmin");
+  const isArabic = locale === "ar";
   const [csrfToken, setCsrfToken] = useState("");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -115,6 +116,7 @@ export function AdvertisementsAdminCenter({ locale }: { locale: string }) {
   const [items, setItems] = useState<AdminAdvertisementItem[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [form, setForm] = useState<AdvertisementFormState>(INITIAL_FORM);
+  const [activeTab, setActiveTab] = useState<"general" | "media" | "schedule" | "preview" | "publishing">("general");
 
   const readErrorMessage = useCallback(async (response: Response, fallback: string) => {
     try {
@@ -408,13 +410,13 @@ export function AdvertisementsAdminCenter({ locale }: { locale: string }) {
                       className={`w-full rounded-xl border p-4 text-left transition ${selectedItem ? "border-blue-200/70 bg-blue-200/15" : "border-white/10 bg-[#08162b]/65 hover:border-blue-200/35"}`}
                     >
                       <div className="flex items-center justify-between gap-3">
-                        <h2 className="line-clamp-1 font-semibold text-text-primary">{item.title_en}</h2>
+                        <h2 className="line-clamp-1 font-semibold text-text-primary">{isArabic ? item.title_ar : item.title_en}</h2>
                         <span className="rounded-full border border-blue-200/30 px-2.5 py-1 text-[10px] uppercase tracking-[0.16em] text-blue-100">
                           {t(`filters.${item.status}`)}
                         </span>
                       </div>
 
-                      <p className="mt-2 line-clamp-2 text-xs text-text-secondary">{item.description_en}</p>
+                      <p className="mt-2 line-clamp-2 text-xs text-text-secondary">{isArabic ? item.description_ar : item.description_en}</p>
                       <div className="mt-3 flex flex-wrap gap-3 text-[11px] text-text-tertiary">
                         <span>{t("priority")}: {item.priority}</span>
                         <span>{t("impressions")}: {item.metrics?.impressions ?? 0}</span>
@@ -432,264 +434,302 @@ export function AdvertisementsAdminCenter({ locale }: { locale: string }) {
             </section>
 
             <section className="rounded-2xl border border-white/10 bg-[#071429]/70 p-5">
+              <div className="mb-4 flex flex-wrap gap-2">
+                {(["general", "media", "schedule", "preview", "publishing"] as const).map((tab) => (
+                  <button
+                    key={tab}
+                    type="button"
+                    onClick={() => setActiveTab(tab)}
+                    className={`rounded-full border px-3 py-1.5 text-xs uppercase tracking-[0.14em] ${activeTab === tab ? "border-gold/40 bg-gold/10 text-gold" : "border-white/10 text-text-secondary"}`}
+                  >
+                    {t(`tabs.${tab}`)}
+                  </button>
+                ))}
+              </div>
+
               <form className="space-y-4" onSubmit={onSubmit}>
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <label className="text-sm text-text-secondary">
-                    {t("fields.titleEn")}
-                    <input
-                      required
-                      value={form.title_en}
-                      onChange={(event) => updateField("title_en", event.target.value)}
-                      className="mt-1.5 w-full rounded-xl border border-white/20 bg-[#031024] px-3 py-2 text-sm text-text-primary"
-                    />
-                  </label>
+                {activeTab === "general" ? (
+                  <div className="rounded-2xl border border-white/10 bg-[#08162b]/60 p-4">
+                    <h3 className="text-sm font-semibold uppercase tracking-[0.16em] text-text-tertiary">{t("sections.general")}</h3>
+                    <div className="mt-4 grid gap-4 sm:grid-cols-2">
+                      <label className="text-sm text-text-secondary">
+                        {t("fields.titleEn")}
+                        <input
+                          required
+                          value={form.title_en}
+                          onChange={(event) => updateField("title_en", event.target.value)}
+                          className="mt-1.5 w-full rounded-xl border border-white/20 bg-[#031024] px-3 py-2 text-sm text-text-primary"
+                        />
+                      </label>
 
-                  <label className="text-sm text-text-secondary">
-                    {t("fields.titleAr")}
-                    <input
-                      required
-                      dir="rtl"
-                      value={form.title_ar}
-                      onChange={(event) => updateField("title_ar", event.target.value)}
-                      className="mt-1.5 w-full rounded-xl border border-white/20 bg-[#031024] px-3 py-2 text-sm text-text-primary"
-                    />
-                  </label>
-                </div>
+                      <label className="text-sm text-text-secondary">
+                        {t("fields.titleAr")}
+                        <input
+                          required
+                          dir="rtl"
+                          value={form.title_ar}
+                          onChange={(event) => updateField("title_ar", event.target.value)}
+                          className="mt-1.5 w-full rounded-xl border border-white/20 bg-[#031024] px-3 py-2 text-sm text-text-primary"
+                        />
+                      </label>
+                    </div>
 
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <label className="text-sm text-text-secondary">
-                    {t("fields.descriptionEn")}
-                    <textarea
-                      required
-                      rows={4}
-                      value={form.description_en}
-                      onChange={(event) => updateField("description_en", event.target.value)}
-                      className="mt-1.5 w-full rounded-xl border border-white/20 bg-[#031024] px-3 py-2 text-sm text-text-primary"
-                    />
-                  </label>
+                    <div className="mt-4 grid gap-4 sm:grid-cols-2">
+                      <label className="text-sm text-text-secondary">
+                        {t("fields.descriptionEn")}
+                        <textarea
+                          required
+                          rows={4}
+                          value={form.description_en}
+                          onChange={(event) => updateField("description_en", event.target.value)}
+                          className="mt-1.5 w-full rounded-xl border border-white/20 bg-[#031024] px-3 py-2 text-sm text-text-primary"
+                        />
+                      </label>
 
-                  <label className="text-sm text-text-secondary">
-                    {t("fields.descriptionAr")}
-                    <textarea
-                      required
-                      dir="rtl"
-                      rows={4}
-                      value={form.description_ar}
-                      onChange={(event) => updateField("description_ar", event.target.value)}
-                      className="mt-1.5 w-full rounded-xl border border-white/20 bg-[#031024] px-3 py-2 text-sm text-text-primary"
-                    />
-                  </label>
-                </div>
+                      <label className="text-sm text-text-secondary">
+                        {t("fields.descriptionAr")}
+                        <textarea
+                          required
+                          dir="rtl"
+                          rows={4}
+                          value={form.description_ar}
+                          onChange={(event) => updateField("description_ar", event.target.value)}
+                          className="mt-1.5 w-full rounded-xl border border-white/20 bg-[#031024] px-3 py-2 text-sm text-text-primary"
+                        />
+                      </label>
+                    </div>
+                  </div>
+                ) : null}
 
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <label className="text-sm text-text-secondary">
-                    {t("fields.ctaEn")}
-                    <input
-                      required
-                      value={form.cta_text_en}
-                      onChange={(event) => updateField("cta_text_en", event.target.value)}
-                      className="mt-1.5 w-full rounded-xl border border-white/20 bg-[#031024] px-3 py-2 text-sm text-text-primary"
-                    />
-                  </label>
+                {activeTab === "media" ? (
+                  <div className="rounded-2xl border border-white/10 bg-[#08162b]/60 p-4">
+                    <h3 className="text-sm font-semibold uppercase tracking-[0.16em] text-text-tertiary">{t("sections.media")}</h3>
+                    <div className="mt-4 grid gap-4 sm:grid-cols-2">
+                      <label className="text-sm text-text-secondary">
+                        {t("fields.ctaEn")}
+                        <input
+                          required
+                          value={form.cta_text_en}
+                          onChange={(event) => updateField("cta_text_en", event.target.value)}
+                          className="mt-1.5 w-full rounded-xl border border-white/20 bg-[#031024] px-3 py-2 text-sm text-text-primary"
+                        />
+                      </label>
 
-                  <label className="text-sm text-text-secondary">
-                    {t("fields.ctaAr")}
-                    <input
-                      required
-                      dir="rtl"
-                      value={form.cta_text_ar}
-                      onChange={(event) => updateField("cta_text_ar", event.target.value)}
-                      className="mt-1.5 w-full rounded-xl border border-white/20 bg-[#031024] px-3 py-2 text-sm text-text-primary"
-                    />
-                  </label>
-                </div>
+                      <label className="text-sm text-text-secondary">
+                        {t("fields.ctaAr")}
+                        <input
+                          required
+                          dir="rtl"
+                          value={form.cta_text_ar}
+                          onChange={(event) => updateField("cta_text_ar", event.target.value)}
+                          className="mt-1.5 w-full rounded-xl border border-white/20 bg-[#031024] px-3 py-2 text-sm text-text-primary"
+                        />
+                      </label>
+                    </div>
 
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <label className="text-sm text-text-secondary">
-                    {t("fields.altEn")}
-                    <input
-                      required
-                      value={form.media_alt_en}
-                      onChange={(event) => updateField("media_alt_en", event.target.value)}
-                      className="mt-1.5 w-full rounded-xl border border-white/20 bg-[#031024] px-3 py-2 text-sm text-text-primary"
-                    />
-                  </label>
+                    <div className="mt-4 grid gap-4 sm:grid-cols-2">
+                      <label className="text-sm text-text-secondary">
+                        {t("fields.altEn")}
+                        <input
+                          required
+                          value={form.media_alt_en}
+                          onChange={(event) => updateField("media_alt_en", event.target.value)}
+                          className="mt-1.5 w-full rounded-xl border border-white/20 bg-[#031024] px-3 py-2 text-sm text-text-primary"
+                        />
+                      </label>
 
-                  <label className="text-sm text-text-secondary">
-                    {t("fields.altAr")}
-                    <input
-                      required
-                      dir="rtl"
-                      value={form.media_alt_ar}
-                      onChange={(event) => updateField("media_alt_ar", event.target.value)}
-                      className="mt-1.5 w-full rounded-xl border border-white/20 bg-[#031024] px-3 py-2 text-sm text-text-primary"
-                    />
-                  </label>
-                </div>
+                      <label className="text-sm text-text-secondary">
+                        {t("fields.altAr")}
+                        <input
+                          required
+                          dir="rtl"
+                          value={form.media_alt_ar}
+                          onChange={(event) => updateField("media_alt_ar", event.target.value)}
+                          className="mt-1.5 w-full rounded-xl border border-white/20 bg-[#031024] px-3 py-2 text-sm text-text-primary"
+                        />
+                      </label>
+                    </div>
+                  </div>
+                ) : null}
 
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <label className="text-sm text-text-secondary">
-                    {t("fields.targetUrl")}
-                    <input
-                      required
-                      type="url"
-                      value={form.target_url}
-                      onChange={(event) => updateField("target_url", event.target.value)}
-                      className="mt-1.5 w-full rounded-xl border border-white/20 bg-[#031024] px-3 py-2 text-sm text-text-primary"
-                    />
-                  </label>
+                {activeTab === "schedule" ? (
+                  <div className="rounded-2xl border border-white/10 bg-[#08162b]/60 p-4">
+                    <h3 className="text-sm font-semibold uppercase tracking-[0.16em] text-text-tertiary">{t("sections.schedule")}</h3>
+                    <div className="mt-4 grid gap-4 sm:grid-cols-2">
+                      <label className="text-sm text-text-secondary">
+                        {t("fields.targetUrl")}
+                        <input
+                          required
+                          type="url"
+                          value={form.target_url}
+                          onChange={(event) => updateField("target_url", event.target.value)}
+                          className="mt-1.5 w-full rounded-xl border border-white/20 bg-[#031024] px-3 py-2 text-sm text-text-primary"
+                        />
+                      </label>
 
-                  <label className="text-sm text-text-secondary">
-                    {t("fields.priority")}
-                    <input
-                      required
-                      type="number"
-                      min={1}
-                      max={10000}
-                      value={form.priority}
-                      onChange={(event) => updateField("priority", Number(event.target.value || "0"))}
-                      className="mt-1.5 w-full rounded-xl border border-white/20 bg-[#031024] px-3 py-2 text-sm text-text-primary"
-                    />
-                  </label>
-                </div>
+                      <label className="text-sm text-text-secondary">
+                        {t("fields.priority")}
+                        <input
+                          required
+                          type="number"
+                          min={1}
+                          max={10000}
+                          value={form.priority}
+                          onChange={(event) => updateField("priority", Number(event.target.value || "0"))}
+                          className="mt-1.5 w-full rounded-xl border border-white/20 bg-[#031024] px-3 py-2 text-sm text-text-primary"
+                        />
+                      </label>
+                    </div>
 
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <label className="text-sm text-text-secondary">
-                    {t("fields.startsAt")}
-                    <input
-                      type="datetime-local"
-                      value={form.starts_at}
-                      onChange={(event) => updateField("starts_at", event.target.value)}
-                      className="mt-1.5 w-full rounded-xl border border-white/20 bg-[#031024] px-3 py-2 text-sm text-text-primary"
-                    />
-                  </label>
+                    <div className="mt-4 grid gap-4 sm:grid-cols-2">
+                      <label className="text-sm text-text-secondary">
+                        {t("fields.startsAt")}
+                        <input
+                          type="datetime-local"
+                          value={form.starts_at}
+                          onChange={(event) => updateField("starts_at", event.target.value)}
+                          className="mt-1.5 w-full rounded-xl border border-white/20 bg-[#031024] px-3 py-2 text-sm text-text-primary"
+                        />
+                      </label>
 
-                  <label className="text-sm text-text-secondary">
-                    {t("fields.endsAt")}
-                    <input
-                      type="datetime-local"
-                      value={form.ends_at}
-                      onChange={(event) => updateField("ends_at", event.target.value)}
-                      className="mt-1.5 w-full rounded-xl border border-white/20 bg-[#031024] px-3 py-2 text-sm text-text-primary"
-                    />
-                  </label>
-                </div>
+                      <label className="text-sm text-text-secondary">
+                        {t("fields.endsAt")}
+                        <input
+                          type="datetime-local"
+                          value={form.ends_at}
+                          onChange={(event) => updateField("ends_at", event.target.value)}
+                          className="mt-1.5 w-full rounded-xl border border-white/20 bg-[#031024] px-3 py-2 text-sm text-text-primary"
+                        />
+                      </label>
+                    </div>
+                  </div>
+                ) : null}
 
-                <div className="grid gap-3 rounded-xl border border-white/10 bg-[#08162b]/70 p-4">
-                  <label className="text-sm text-text-secondary">
-                    {t("fields.mediaType")}
-                    <select
-                      value={form.media_type}
-                      onChange={(event) => updateField("media_type", event.target.value as "image" | "video")}
-                      className="mt-1.5 w-full rounded-xl border border-white/20 bg-[#031024] px-3 py-2 text-sm text-text-primary"
-                    >
-                      <option value="image">{t("media.image")}</option>
-                      <option value="video">{t("media.video")}</option>
-                    </select>
-                  </label>
+                {activeTab === "preview" ? (
+                  <div className="rounded-2xl border border-white/10 bg-[#08162b]/60 p-4">
+                    <h3 className="text-sm font-semibold uppercase tracking-[0.16em] text-text-tertiary">{t("sections.preview")}</h3>
+                    <div className="mt-4 grid gap-4 sm:grid-cols-2">
+                      <label className="text-sm text-text-secondary">
+                        {t("fields.mediaType")}
+                        <select
+                          value={form.media_type}
+                          onChange={(event) => updateField("media_type", event.target.value as "image" | "video")}
+                          className="mt-1.5 w-full rounded-xl border border-white/20 bg-[#031024] px-3 py-2 text-sm text-text-primary"
+                        >
+                          <option value="image">{t("media.image")}</option>
+                          <option value="video">{t("media.video")}</option>
+                        </select>
+                      </label>
 
-                  <label className="text-sm text-text-secondary">
-                    {t("fields.mediaPath")}
-                    <input
-                      required
-                      value={form.media_url}
-                      onChange={(event) => updateField("media_url", event.target.value)}
-                      className="mt-1.5 w-full rounded-xl border border-white/20 bg-[#031024] px-3 py-2 text-sm text-text-primary"
-                    />
-                  </label>
+                      <label className="text-sm text-text-secondary">
+                        {t("fields.mediaPath")}
+                        <input
+                          required
+                          value={form.media_url}
+                          onChange={(event) => updateField("media_url", event.target.value)}
+                          className="mt-1.5 w-full rounded-xl border border-white/20 bg-[#031024] px-3 py-2 text-sm text-text-primary"
+                        />
+                      </label>
+                    </div>
 
-                  <label className="text-sm text-text-secondary">
-                    {t("fields.upload")}
-                    <input
-                      type="file"
-                      accept="image/jpeg,image/png,image/webp,video/mp4,video/webm"
-                      onChange={(event) => {
-                        const file = event.target.files?.[0];
-                        if (file) {
-                          void onUpload(file);
-                        }
-                      }}
-                      className="mt-1.5 block w-full text-sm text-text-secondary file:me-3 file:rounded-full file:border-0 file:bg-blue-200/20 file:px-4 file:py-2 file:text-xs file:font-semibold file:text-blue-100"
-                    />
-                  </label>
+                    <label className="mt-4 block text-sm text-text-secondary">
+                      {t("fields.upload")}
+                      <input
+                        type="file"
+                        accept="image/jpeg,image/png,image/webp,video/mp4,video/webm"
+                        onChange={(event) => {
+                          const file = event.target.files?.[0];
+                          if (file) {
+                            void onUpload(file);
+                          }
+                        }}
+                        className="mt-1.5 block w-full text-sm text-text-secondary file:me-3 file:rounded-full file:border-0 file:bg-blue-200/20 file:px-4 file:py-2 file:text-xs file:font-semibold file:text-blue-100"
+                      />
+                    </label>
 
-                  <p className="text-xs text-text-tertiary">{t("uploadHint")}</p>
-                </div>
+                    <p className="mt-3 text-xs text-text-tertiary">{t("uploadHint")}</p>
+                  </div>
+                ) : null}
 
-                <div className="flex flex-wrap items-center gap-2">
-                  <PrimeButton type="submit" disabled={saving || uploading}>
-                    {saving ? t("saving") : selectedId ? t("update") : t("create")}
-                  </PrimeButton>
+                {activeTab === "publishing" ? (
+                  <div className="rounded-2xl border border-white/10 bg-[#08162b]/60 p-4">
+                    <h3 className="text-sm font-semibold uppercase tracking-[0.16em] text-text-tertiary">{t("sections.publishing")}</h3>
+                    <div className="mt-4 flex flex-wrap items-center gap-2">
+                      <PrimeButton type="submit" disabled={saving || uploading}>
+                        {saving ? t("saving") : selectedId ? t("update") : t("create")}
+                      </PrimeButton>
 
-                  <button
-                    type="button"
-                    className={primeButtonClasses("secondary")}
-                    onClick={() => void onAction("submit_review")}
-                    disabled={!selectedId}
-                  >
-                    {t("actions.submitReview")}
-                  </button>
+                      <button
+                        type="button"
+                        className={primeButtonClasses("secondary")}
+                        onClick={() => void onAction("submit_review")}
+                        disabled={!selectedId}
+                      >
+                        {t("actions.submitReview")}
+                      </button>
 
-                  <button
-                    type="button"
-                    className={primeButtonClasses("secondary")}
-                    onClick={() => void onAction("approve")}
-                    disabled={!selectedId}
-                  >
-                    {t("actions.approve")}
-                  </button>
+                      <button
+                        type="button"
+                        className={primeButtonClasses("secondary")}
+                        onClick={() => void onAction("approve")}
+                        disabled={!selectedId}
+                      >
+                        {t("actions.approve")}
+                      </button>
 
-                  <button
-                    type="button"
-                    className={primeButtonClasses("secondary")}
-                    onClick={() => void onAction("request_edits")}
-                    disabled={!selectedId}
-                  >
-                    {t("actions.requestEdits")}
-                  </button>
+                      <button
+                        type="button"
+                        className={primeButtonClasses("secondary")}
+                        onClick={() => void onAction("request_edits")}
+                        disabled={!selectedId}
+                      >
+                        {t("actions.requestEdits")}
+                      </button>
 
-                  <button
-                    type="button"
-                    className={primeButtonClasses("secondary")}
-                    onClick={() => void onAction("reject")}
-                    disabled={!selectedId}
-                  >
-                    {t("actions.reject")}
-                  </button>
+                      <button
+                        type="button"
+                        className={primeButtonClasses("secondary")}
+                        onClick={() => void onAction("reject")}
+                        disabled={!selectedId}
+                      >
+                        {t("actions.reject")}
+                      </button>
 
-                  <button
-                    type="button"
-                    className={primeButtonClasses("secondary")}
-                    onClick={() => void onAction("republish")}
-                    disabled={!selectedId}
-                  >
-                    {t("actions.republish")}
-                  </button>
+                      <button
+                        type="button"
+                        className={primeButtonClasses("secondary")}
+                        onClick={() => void onAction("republish")}
+                        disabled={!selectedId}
+                      >
+                        {t("actions.republish")}
+                      </button>
 
-                  <button
-                    type="button"
-                    className={primeButtonClasses("secondary")}
-                    onClick={() => void onAction("hide")}
-                    disabled={!selectedId}
-                  >
-                    {t("actions.hide")}
-                  </button>
+                      <button
+                        type="button"
+                        className={primeButtonClasses("secondary")}
+                        onClick={() => void onAction("hide")}
+                        disabled={!selectedId}
+                      >
+                        {t("actions.hide")}
+                      </button>
 
-                  <button
-                    type="button"
-                    className={primeButtonClasses("secondary")}
-                    onClick={() => void onDelete()}
-                    disabled={!selectedId}
-                  >
-                    {t("actions.delete")}
-                  </button>
-                </div>
+                      <button
+                        type="button"
+                        className={primeButtonClasses("secondary")}
+                        onClick={() => void onDelete()}
+                        disabled={!selectedId}
+                      >
+                        {t("actions.delete")}
+                      </button>
+                    </div>
+                  </div>
+                ) : null}
               </form>
 
               <div className="mt-6 rounded-xl border border-white/10 bg-[#08162b]/70 p-4">
                 <p className="text-xs uppercase tracking-[0.14em] text-text-tertiary">{t("preview")}</p>
-                <h3 className="mt-2 text-lg font-semibold text-text-primary">{form.title_en || t("previewFallback")}</h3>
-                <p className="mt-2 line-clamp-3 text-sm text-text-secondary">{form.description_en || t("previewDescription")}</p>
+                <h3 className="mt-2 text-lg font-semibold text-text-primary">{(isArabic ? form.title_ar : form.title_en) || t("previewFallback")}</h3>
+                <p className="mt-2 line-clamp-3 text-sm text-text-secondary">{(isArabic ? form.description_ar : form.description_en) || t("previewDescription")}</p>
                 {form.media_url ? (
                   form.media_type === "video" ? (
                     <video src={form.media_url} controls preload="metadata" className="mt-4 max-h-56 w-full rounded-lg object-cover" />
@@ -697,7 +737,7 @@ export function AdvertisementsAdminCenter({ locale }: { locale: string }) {
                     <div className="relative mt-4 h-56 w-full overflow-hidden rounded-lg">
                       <Image
                         src={form.media_url}
-                        alt={form.media_alt_en || "preview"}
+                        alt={(isArabic ? form.media_alt_ar : form.media_alt_en) || t("preview")}
                         fill
                         unoptimized
                         sizes="(max-width: 768px) 100vw, 50vw"

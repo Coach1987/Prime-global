@@ -9,7 +9,7 @@ import { getEmployerByAuthUserId, requireEmployerOperationalStatus } from "@/lib
 import { moderateAdvertisementContent } from "@/lib/server/advertisements/moderation";
 import {
   deleteAdvertisement,
-  getEmployerAdvertisementById,
+  getEmployerAdvertisementByIdForAuthUser,
   logAdvertisementAudit,
   updateAdvertisement,
 } from "@/lib/server/advertisements/repository";
@@ -45,7 +45,7 @@ export async function GET(
     );
   }
 
-  const data = await getEmployerAdvertisementById(advertisementId, auth.userId);
+  const data = await getEmployerAdvertisementByIdForAuthUser(advertisementId, auth.userId);
   if (!data) {
     return NextResponse.json(
       { success: false, error: { code: "NOT_FOUND", message: "Advertisement not found" } },
@@ -91,7 +91,7 @@ export async function PATCH(
     );
   }
 
-  const existing = await getEmployerAdvertisementById(advertisementId, auth.userId);
+  const existing = await getEmployerAdvertisementByIdForAuthUser(advertisementId, auth.userId);
   if (!existing) {
     return NextResponse.json(
       { success: false, error: { code: "NOT_FOUND", message: "Advertisement not found" } },
@@ -185,7 +185,7 @@ export async function DELETE(
     );
   }
 
-  const existing = await getEmployerAdvertisementById(advertisementId, auth.userId);
+  const existing = await getEmployerAdvertisementByIdForAuthUser(advertisementId, auth.userId);
   if (!existing) {
     return NextResponse.json(
       { success: false, error: { code: "NOT_FOUND", message: "Advertisement not found" } },

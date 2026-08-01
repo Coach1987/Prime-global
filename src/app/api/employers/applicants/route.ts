@@ -24,7 +24,9 @@ export async function GET(request: Request) {
   }
 
   const verificationGate = requireVerifiedEmployerStatus(employer.verification_status as string | null | undefined);
-  if (verificationGate) return verificationGate;
+  if (verificationGate) {
+    return NextResponse.json({ success: true, data: [] });
+  }
 
   const url = new URL(request.url);
   const query = (url.searchParams.get("q") ?? "").trim().toLowerCase();

@@ -30,6 +30,14 @@ export const employerRegistrationSchema = z.object({
   acceptEmployerAgreement: z.literal(true),
 });
 
+export const employerProfileCreateSchema = employerRegistrationSchema.omit({
+  email: true,
+  password: true,
+  acceptTermsOfService: true,
+  acceptPrivacyPolicy: true,
+  acceptEmployerAgreement: true,
+});
+
 export const employerLoginSchema = z.object({
   email: z.string().trim().email().max(320),
   password: z.string().min(8).max(128),
@@ -63,3 +71,4 @@ export const employerProfileUpdateSchema = z.object({
 });
 
 export type EmployerRegistrationInput = z.infer<typeof employerRegistrationSchema>;
+export type EmployerProfileCreateInput = z.infer<typeof employerProfileCreateSchema>;

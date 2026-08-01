@@ -6,7 +6,7 @@ import { getEmployerByAuthUserId, requireEmployerOperationalStatus } from "@/lib
 import { advertisementActionSchema } from "@/features/advertisements/schemas";
 import { moderateAdvertisementContent } from "@/lib/server/advertisements/moderation";
 import {
-  getEmployerAdvertisementById,
+  getEmployerAdvertisementByIdForAuthUser,
   logAdvertisementAudit,
   updateAdvertisement,
 } from "@/lib/server/advertisements/repository";
@@ -49,7 +49,7 @@ export async function POST(
     );
   }
 
-  const existing = await getEmployerAdvertisementById(advertisementId, auth.userId);
+  const existing = await getEmployerAdvertisementByIdForAuthUser(advertisementId, auth.userId);
   if (!existing) {
     return NextResponse.json(
       { success: false, error: { code: "NOT_FOUND", message: "Advertisement not found" } },

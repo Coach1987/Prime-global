@@ -23,7 +23,16 @@ export async function GET(request: Request) {
   }
 
   const verificationGate = requireVerifiedEmployerStatus(employer.verification_status as string | null | undefined);
-  if (verificationGate) return verificationGate;
+  if (verificationGate) {
+    return NextResponse.json({
+      success: true,
+      data: {
+        jobs: [],
+        matches: [],
+        candidates: [],
+      },
+    });
+  }
 
   const supabase = createSupabaseAdminClient();
   const { data: jobs, error: jobsError } = await supabase

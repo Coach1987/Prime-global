@@ -5,6 +5,7 @@ import { createAuditLog } from "@/lib/server/security/audit";
 import { enforceCsrf, enforceRateLimit, getRequestContext, parseJsonBody } from "@/lib/server/http";
 import { evaluateAgencyPolicy } from "@/lib/server/employer-policy";
 import { LEGAL_DOCUMENT_VERSION, persistLegalAcceptances } from "@/lib/server/security/legal-acceptance";
+import { buildEmployerProfileCreateRow } from "@/lib/server/employer-portal";
 
 function buildEmployerRegistrationError(input: {
   code: string;
@@ -143,23 +144,7 @@ export async function POST(request: Request) {
     return mapEmployerAuthError(userError);
   }
 
-  const { error: employerError } = await supabase.from("employers").insert({
-    auth_user_id: userData.user.id,
-    company_name: payload.companyName,
-    commercial_registration_number: payload.commercialRegistrationNumber,
-    tax_number: payload.taxNumber,
-    country: payload.country,
-    city: payload.city,
-    address: payload.address,
-    website: payload.website || null,
-    company_email: payload.companyEmail,
-    hr_contact: payload.hrContact,
-    phone_number: payload.phoneNumber,
-    industry: payload.industry,
-    company_size: payload.companySize,
-    company_description: payload.companyDescription,
-    verification_status: "pending",
-  });
+  const { error: employerError } = await supabase.from("employers").insert(buildEmployerProfileCreateRow(userData.user.id, payload));
 
   if (employerError) {
     await supabase.auth.admin.deleteUser(userData.user.id);

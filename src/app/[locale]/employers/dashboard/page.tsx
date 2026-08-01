@@ -70,14 +70,20 @@ export default function EmployerDashboardPage() {
           applicantsRes.json(),
         ]);
 
-        if (!statsRes.ok || !jobsRes.ok || !applicantsRes.ok) {
+        if (!statsRes.ok || !jobsRes.ok) {
           setError("Failed to load dashboard data");
           return;
         }
 
         setStats(statsPayload.data ?? null);
         setJobs(jobsPayload.data ?? []);
-        setApplicants(applicantsPayload.data ?? []);
+
+        if (applicantsRes.ok) {
+          setApplicants(applicantsPayload.data ?? []);
+          return;
+        }
+
+        setApplicants([]);
       })
       .catch(() => setError("Failed to load dashboard data"));
   }, [isReady]);
@@ -254,6 +260,14 @@ export default function EmployerDashboardPage() {
               </article>
             ))}
           </div>
+        ) : null}
+
+        {stats && jobs.length === 0 ? (
+          <p className="mt-6 text-sm text-text-secondary">{locale === "ar" ? "لم يتم إنشاء وظائف بعد." : "No jobs created yet."}</p>
+        ) : null}
+
+        {stats && applicants.length === 0 ? (
+          <p className="mt-2 text-sm text-text-secondary">{locale === "ar" ? "لا يوجد متقدمون حتى الآن." : "No applicants yet."}</p>
         ) : null}
 
         <form className="mt-10 grid gap-4 rounded-2xl border border-gold/20 bg-bg-primary/60 p-5 md:grid-cols-4" onSubmit={createDraftJob}>

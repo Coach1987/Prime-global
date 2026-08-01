@@ -8,7 +8,7 @@ import { getEmployerByAuthUserId, requireEmployerOperationalStatus } from "@/lib
 import { moderateAdvertisementContent } from "@/lib/server/advertisements/moderation";
 import {
   createAdvertisement,
-  listEmployerAdvertisements,
+  listEmployerAdvertisementsByAuthUserId,
   logAdvertisementAudit,
 } from "@/lib/server/advertisements/repository";
 
@@ -33,7 +33,7 @@ export async function GET(request: Request) {
   const statusGate = requireEmployerOperationalStatus(employer.verification_status);
   if (statusGate) return statusGate;
 
-  const data = await listEmployerAdvertisements(auth.userId);
+  const data = await listEmployerAdvertisementsByAuthUserId(auth.userId);
   return NextResponse.json({ success: true, data });
 }
 

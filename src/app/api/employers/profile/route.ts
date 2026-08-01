@@ -1,9 +1,10 @@
 import { NextResponse } from "next/server";
-import { employerProfileUpdateSchema } from "@/features/employers/schemas/portal";
+import { employerProfileCreateSchema, employerProfileUpdateSchema } from "@/features/employers/schemas/portal";
 import { createAuditLog } from "@/lib/server/security/audit";
 import { requireAuth, requireRole } from "@/lib/server/security/auth";
 import { enforceCsrf, enforceRateLimit, getRequestContext, parseJsonBody } from "@/lib/server/http";
 import { evaluateAgencyPolicy } from "@/lib/server/employer-policy";
+import { buildEmployerProfileCreateRow } from "@/lib/server/employer-portal";
 import { createSupabaseAdminClient } from "@/lib/server/supabase";
 
 export async function GET(request: Request) {
@@ -24,14 +25,118 @@ export async function GET(request: Request) {
 
   const { data, error } = await query.maybeSingle();
 
-  if (error || !data) {
+  if (error) {
     return NextResponse.json(
-      { success: false, error: { code: "EMPLOYER_NOT_FOUND", message: error?.message ?? "Not found" } },
-      { status: 404 }
+      { success: false, error: { code: "EMPLOYER_LOAD_FAILED", message: error.message } },
+      { status: 500 }
     );
   }
 
+  if (!data) {
+    return NextResponse.json({ success: true, data: null, meta: { requiresOnboarding: auth.role === "employer" } });
+  }
+
   return NextResponse.json({ success: true, data });
+}
+
+export async function POST(request: Request) {
+  const rateLimitResult = enforceRateLimit(request, "employer-profile-post", 20);
+  if (rateLimitResult) return rateLimitResult;
+
+  const csrfResult = enforceCsrf(request);
+  if (csrfResult) return csrfResult;
+
+  const auth = await requireAuth(request);
+  if (auth instanceof NextResponse) return auth;
+
+  const roleCheck = requireRole(auth, ["employer", "admin", "super_admin"]);
+  if (roleCheck) return roleCheck;
+
+  const parsed = await parseJsonBody(request, employerProfileCreateSchema);
+  if (parsed.error) return parsed.error;
+
+  const payload = parsed.data;
+  const { ipAddress, userAgent } = getRequestContext(request);
+
+  const agencyViolation = evaluateAgencyPolicy({
+    companyName: payload.companyName,
+    industry: payload.industry,
+    companyDescription: payload.companyDescription,
+  });
+
+  if (agencyViolation) {
+    return NextResponse.json(
+      {
+        success: false,
+        error: { code: agencyViolation.code, message: agencyViolation.message },
+        details: {
+          messageAr: agencyViolation.messageAr,
+          fieldErrors: agencyViolation.fieldErrors,
+          localizedFieldErrors: agencyViolation.localizedFieldErrors,
+        },
+      },
+      { status: 400 }
+    );
+  }
+
+  const supabase = createSupabaseAdminClient();
+  const { data: existingEmployer, error: existingEmployerError } = await supabase
+    .from("employers")
+    .select("id")
+    .eq("auth_user_id", auth.userId)
+    .maybeSingle();
+
+  if (existingEmployerError) {
+    return NextResponse.json(
+      { success: false, error: { code: "EMPLOYER_LOOKUP_FAILED", message: existingEmployerError.message } },
+      { status: 500 }
+    );
+  }
+
+  if (existingEmployer) {
+    return NextResponse.json(
+      { success: false, error: { code: "EMPLOYER_ALREADY_EXISTS", message: "Employer profile already exists" } },
+      { status: 409 }
+    );
+  }
+
+  const { data, error } = await supabase
+    .from("employers")
+    .insert(buildEmployerProfileCreateRow(auth.userId, payload))
+    .select("*")
+    .single();
+
+  if (error) {
+    return NextResponse.json(
+      { success: false, error: { code: "EMPLOYER_CREATE_FAILED", message: error.message } },
+      { status: 400 }
+    );
+  }
+
+  await supabase.auth.admin.updateUserById(auth.userId, {
+    app_metadata: {
+      app_role: "employer",
+      account_status: "pending_review",
+      verification_status: "pending",
+    },
+    user_metadata: {
+      account_status: "pending_review",
+      verification_status: "pending",
+    },
+  });
+
+  await createAuditLog({
+    actorAuthUserId: auth.userId,
+    actorRole: auth.role,
+    action: "employer.profile.create",
+    targetType: "employer",
+    targetId: data.id,
+    metadata: { createdVia: "portal_onboarding" },
+    ipAddress,
+    userAgent,
+  });
+
+  return NextResponse.json({ success: true, data }, { status: 201 });
 }
 
 export async function PATCH(request: Request) {

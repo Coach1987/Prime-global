@@ -223,6 +223,11 @@ export default function EmployerJobsPage() {
         ) : null}
 
         <div className="mt-8 space-y-4">
+          {jobs.length === 0 ? (
+            <article className="rounded-2xl border border-gold/20 bg-bg-primary/60 p-5 text-sm text-text-secondary">
+              {isArabic ? "لم يتم إنشاء وظائف بعد." : "No jobs created yet."}
+            </article>
+          ) : null}
           {jobs.map((job) => {
             const insight = insights.find((item) => item.id === job.id);
             return (

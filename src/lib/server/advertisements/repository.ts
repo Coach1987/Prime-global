@@ -71,12 +71,12 @@ export async function getAdminAdvertisementById(id: string) {
   return (data as AdvertisementRecord | null) ?? null;
 }
 
-export async function listEmployerAdvertisements(employerId: string) {
+export async function listEmployerAdvertisementsByAuthUserId(authUserId: string) {
   const supabase = createSupabaseAdminClient();
   const { data, error } = await supabase
     .from("advertisements")
     .select("*")
-    .eq("created_by", employerId)
+    .eq("created_by", authUserId)
     .order("updated_at", { ascending: false });
 
   if (error) {
@@ -86,13 +86,13 @@ export async function listEmployerAdvertisements(employerId: string) {
   return (data ?? []) as AdvertisementRecord[];
 }
 
-export async function getEmployerAdvertisementById(id: string, employerId: string) {
+export async function getEmployerAdvertisementByIdForAuthUser(id: string, authUserId: string) {
   const supabase = createSupabaseAdminClient();
   const { data, error } = await supabase
     .from("advertisements")
     .select("*")
     .eq("id", id)
-    .eq("created_by", employerId)
+    .eq("created_by", authUserId)
     .maybeSingle();
 
   if (error) {

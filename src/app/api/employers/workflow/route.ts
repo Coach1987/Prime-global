@@ -23,7 +23,9 @@ export async function GET(request: Request) {
   }
 
   const verificationGate = requireVerifiedEmployerStatus(employer.verification_status as string | null | undefined);
-  if (verificationGate) return verificationGate;
+  if (verificationGate) {
+    return NextResponse.json({ success: true, data: [] });
+  }
 
   const supabase = createSupabaseAdminClient();
   const { data: applications, error: applicationsError } = await supabase

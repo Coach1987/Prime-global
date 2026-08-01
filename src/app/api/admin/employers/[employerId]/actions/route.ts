@@ -39,7 +39,7 @@ export async function POST(
   const parsed = await parseJsonBody(request, actionSchema);
   if (parsed.error) return parsed.error;
 
-  if ((parsed.data.action === "reject" || parsed.data.action === "suspend") && !parsed.data.reason) {
+  if ((parsed.data.action === "reject" || parsed.data.action === "suspend" || parsed.data.action === "delete") && !parsed.data.reason) {
     return NextResponse.json(
       {
         success: false,

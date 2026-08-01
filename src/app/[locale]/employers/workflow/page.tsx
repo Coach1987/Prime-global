@@ -40,6 +40,11 @@ export default function EmployerWorkflowPage() {
         <p className="mt-3 text-sm text-text-secondary">Track every application stage, transition history, and current workflow state.</p>
 
         <div className="mt-6 space-y-4">
+          {data.length === 0 ? (
+            <article className="rounded-2xl border border-gold/20 bg-bg-primary/60 p-5 text-sm text-text-secondary">
+              No applicants yet.
+            </article>
+          ) : null}
           {data.map((item) => (
             <article key={item.applicationId} className="rounded-2xl border border-gold/20 bg-bg-primary/60 p-5">
               <div className="flex flex-wrap items-center justify-between gap-3">
