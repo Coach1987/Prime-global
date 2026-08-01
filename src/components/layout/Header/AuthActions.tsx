@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { Link, useRouter } from "@/i18n/routing";
 import { useTranslations } from "next-intl";
 import { AuthRole, getAccountHref, getDashboardHref, normalizeAuthRole } from "@/lib/auth/routing";
@@ -22,9 +22,61 @@ type AuthActionsProps = {
 export function AuthActions({ mobile = false, onNavigate }: AuthActionsProps) {
   const t = useTranslations("nav");
   const router = useRouter();
+  const menuId = useId();
   const [authState, setAuthState] = useState<AuthState | null>(null);
   const [resolved, setResolved] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
   const refreshInFlight = useRef(false);
+  const menuRootRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const closeTimerRef = useRef<number | null>(null);
+  const menuItemRefs = useRef<Array<HTMLAnchorElement | HTMLButtonElement | null>>([]);
+
+  function clearPendingClose() {
+    if (closeTimerRef.current !== null) {
+      window.clearTimeout(closeTimerRef.current);
+      closeTimerRef.current = null;
+    }
+  }
+
+  function closeMenu(options?: { focusTrigger?: boolean }) {
+    clearPendingClose();
+    setMenuOpen(false);
+    if (options?.focusTrigger) {
+      window.requestAnimationFrame(() => {
+        triggerRef.current?.focus();
+      });
+    }
+  }
+
+  function scheduleClose() {
+    clearPendingClose();
+    closeTimerRef.current = window.setTimeout(() => {
+      setMenuOpen(false);
+      closeTimerRef.current = null;
+    }, 350);
+  }
+
+  function focusMenuItem(index: number) {
+    const items = menuItemRefs.current.filter(Boolean) as Array<HTMLAnchorElement | HTMLButtonElement>;
+    if (!items.length) return;
+
+    const boundedIndex = Math.min(Math.max(index, 0), items.length - 1);
+    items[boundedIndex]?.focus();
+  }
+
+  function openMenu(options?: { focusIndex?: number }) {
+    clearPendingClose();
+    setMenuOpen(true);
+    if (typeof options?.focusIndex === "number") {
+      window.requestAnimationFrame(() => focusMenuItem(options.focusIndex!));
+    }
+  }
+
+  function getFocusableElements() {
+    const items = menuItemRefs.current.filter(Boolean) as Array<HTMLAnchorElement | HTMLButtonElement>;
+    return [triggerRef.current, ...items].filter(Boolean) as Array<HTMLElement>;
+  }
 
   async function refreshAuthState() {
     if (refreshInFlight.current) return;
@@ -81,6 +133,42 @@ export function AuthActions({ mobile = false, onNavigate }: AuthActionsProps) {
     return unsubscribe;
   }, []);
 
+  useEffect(() => {
+    return () => clearPendingClose();
+  }, []);
+
+  useEffect(() => {
+    if (!menuOpen) return;
+
+    const handlePointerDown = (event: PointerEvent) => {
+      const target = event.target as Node | null;
+      if (!target) return;
+      if (!menuRootRef.current?.contains(target)) {
+        clearPendingClose();
+        setMenuOpen(false);
+      }
+    };
+
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        clearPendingClose();
+        setMenuOpen(false);
+        window.requestAnimationFrame(() => {
+          triggerRef.current?.focus();
+        });
+      }
+    };
+
+    document.addEventListener("pointerdown", handlePointerDown);
+    document.addEventListener("keydown", handleEscape);
+
+    return () => {
+      document.removeEventListener("pointerdown", handlePointerDown);
+      document.removeEventListener("keydown", handleEscape);
+    };
+  }, [menuOpen]);
+
   async function handleSignOut() {
     let csrfToken = "";
     try {
@@ -99,9 +187,88 @@ export function AuthActions({ mobile = false, onNavigate }: AuthActionsProps) {
 
     emitAuthSessionChanged({ role: null, displayName: null });
     setAuthState(null);
+    closeMenu();
     onNavigate?.();
     router.push("/");
     router.refresh();
+  }
+
+  function handleTriggerClick() {
+    if (menuOpen) {
+      closeMenu();
+      return;
+    }
+    openMenu();
+  }
+
+  function handleTriggerKeyDown(event: React.KeyboardEvent<HTMLButtonElement>) {
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      handleTriggerClick();
+      return;
+    }
+
+    if (event.key === "ArrowDown") {
+      event.preventDefault();
+      openMenu({ focusIndex: 0 });
+      return;
+    }
+
+    if (event.key === "ArrowUp") {
+      event.preventDefault();
+      const targetIndex = links.length ? links.length : 0;
+      openMenu({ focusIndex: targetIndex });
+    }
+  }
+
+  function handleMenuKeyDown(event: React.KeyboardEvent<HTMLDivElement>) {
+    if (!menuOpen) return;
+
+    const focusable = getFocusableElements();
+    if (!focusable.length) return;
+
+    const activeElement = document.activeElement as HTMLElement | null;
+    const activeIndex = activeElement ? focusable.indexOf(activeElement) : -1;
+
+    if (event.key === "Tab") {
+      event.preventDefault();
+      const nextIndex = event.shiftKey
+        ? (activeIndex <= 0 ? focusable.length - 1 : activeIndex - 1)
+        : (activeIndex === -1 || activeIndex >= focusable.length - 1 ? 0 : activeIndex + 1);
+      focusable[nextIndex]?.focus();
+      return;
+    }
+
+    if (event.key === "ArrowDown") {
+      event.preventDefault();
+      const nextIndex = activeIndex <= 0 ? 1 : activeIndex + 1;
+      const bounded = Math.min(nextIndex, focusable.length - 1);
+      focusable[bounded]?.focus();
+      return;
+    }
+
+    if (event.key === "ArrowUp") {
+      event.preventDefault();
+      const nextIndex = activeIndex <= 0 ? focusable.length - 1 : activeIndex - 1;
+      focusable[nextIndex]?.focus();
+      return;
+    }
+
+    if (event.key === "Home") {
+      event.preventDefault();
+      focusable[1]?.focus();
+      return;
+    }
+
+    if (event.key === "End") {
+      event.preventDefault();
+      focusable[focusable.length - 1]?.focus();
+    }
+  }
+
+  function handleMenuNavigate() {
+    closeMenu();
+    onNavigate?.();
   }
 
   const actionClassName = mobile
@@ -150,11 +317,23 @@ export function AuthActions({ mobile = false, onNavigate }: AuthActionsProps) {
 
   return (
     <div className={mobile ? "mt-10 flex w-full flex-col gap-3" : "hidden items-center gap-2 md:flex"}>
-      <div className={mobile ? "rounded-2xl border border-blue-200/20 p-4" : "group relative"}>
+      <div
+        ref={menuRootRef}
+        className={mobile ? "rounded-2xl border border-blue-200/20 p-4" : "relative"}
+        onPointerEnter={clearPendingClose}
+        onPointerLeave={scheduleClose}
+        onKeyDown={handleMenuKeyDown}
+      >
         <button
+          ref={triggerRef}
           type="button"
           className={mobile ? `${actionClassName} justify-start gap-2` : `${primeButtonClasses("secondary")} min-h-11 px-4 py-2.5 gap-2`}
           aria-label={accountTitle}
+          aria-haspopup="menu"
+          aria-controls={menuId}
+          aria-expanded={menuOpen}
+          onClick={handleTriggerClick}
+          onKeyDown={handleTriggerKeyDown}
         >
           {authState.role === "candidate" && authState.hasPhoto ? (
             <img
@@ -171,16 +350,33 @@ export function AuthActions({ mobile = false, onNavigate }: AuthActionsProps) {
         </button>
 
         <div
-          className={mobile ? "mt-3 flex flex-col gap-2" : "pointer-events-none absolute right-0 top-full z-40 mt-2 hidden w-64 flex-col gap-2 rounded-2xl border border-blue-200/20 bg-[#081326]/95 p-3 opacity-0 shadow-[0_24px_48px_rgba(2,12,25,0.55)] transition group-hover:pointer-events-auto group-hover:flex group-hover:opacity-100"}
+          id={menuId}
+          role="menu"
+          className={mobile
+            ? `${menuOpen ? "mt-3 flex" : "hidden"} flex-col gap-2`
+            : `absolute right-0 top-full z-40 w-64 flex-col gap-2 rounded-2xl border border-blue-200/20 bg-[#081326]/95 p-3 shadow-[0_24px_48px_rgba(2,12,25,0.55)] transition-opacity duration-150 ${menuOpen ? "flex opacity-100" : "pointer-events-none hidden opacity-0"}`}
         >
           {links.map((item) => (
-            <Link key={item.href} href={item.href} onClick={onNavigate} className={`${primeButtonClasses("secondary")} justify-start`}>
+            <Link
+              key={item.href}
+              href={item.href}
+              onClick={handleMenuNavigate}
+              className={`${primeButtonClasses("secondary")} justify-start`}
+              role="menuitem"
+              ref={(el) => {
+                menuItemRefs.current[links.findIndex((link) => link.href === item.href)] = el;
+              }}
+            >
               {item.label}
             </Link>
           ))}
           <button
             type="button"
             onClick={handleSignOut}
+            role="menuitem"
+            ref={(el) => {
+              menuItemRefs.current[links.length] = el;
+            }}
             className={mobile ? `${actionClassName} border-red-400/30 text-red-100 hover:bg-red-500/10` : "inline-flex min-h-11 items-center justify-start rounded-xl border border-red-400/30 px-4 py-2.5 text-sm font-semibold text-red-100 transition hover:bg-red-500/10"}
           >
             {t("logout")}
