@@ -27,6 +27,7 @@ export function AuthActions({ mobile = false, onNavigate }: AuthActionsProps) {
   const [resolved, setResolved] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const refreshInFlight = useRef(false);
+  const refreshQueued = useRef(false);
   const menuRootRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const closeTimerRef = useRef<number | null>(null);
@@ -79,42 +80,59 @@ export function AuthActions({ mobile = false, onNavigate }: AuthActionsProps) {
   }
 
   async function refreshAuthState() {
-    if (refreshInFlight.current) return;
+    if (refreshInFlight.current) {
+      refreshQueued.current = true;
+      return;
+    }
     refreshInFlight.current = true;
 
     try {
-      const response = await fetch("/api/auth/me", {
-        credentials: "include",
-        cache: "no-store",
-      });
-      const payload = await response.json().catch(() => null);
+      do {
+        refreshQueued.current = false;
 
-      if (!payload?.success) {
-        setAuthState(null);
-        return;
-      }
-
-      const role = normalizeAuthRole(String(payload?.data?.role ?? ""));
-      if (!role) {
-        setAuthState(null);
-        return;
-      }
-
-      let hasPhoto = false;
-      if (role === "candidate") {
-        const photoResponse = await fetch("/api/candidates/profile-photo", {
+        const response = await fetch("/api/auth/me", {
           credentials: "include",
           cache: "no-store",
-        }).catch(() => null);
-        const photoPayload = photoResponse ? await photoResponse.json().catch(() => null) : null;
-        hasPhoto = Boolean(photoPayload?.success && photoPayload?.data?.hasPhoto);
-      }
+        });
+        const payload = await response.json().catch(() => null);
 
-      setAuthState({
-        role,
-        displayName: payload?.data?.displayName ?? null,
-        hasPhoto,
-      });
+        // If a newer refresh was queued while this request was in flight,
+        // discard this potentially stale snapshot and fetch again.
+        if (refreshQueued.current) {
+          continue;
+        }
+
+        if (!payload?.success) {
+          setAuthState(null);
+          continue;
+        }
+
+        const role = normalizeAuthRole(String(payload?.data?.role ?? ""));
+        if (!role) {
+          setAuthState(null);
+          continue;
+        }
+
+        let hasPhoto = false;
+        if (role === "candidate") {
+          const photoResponse = await fetch("/api/candidates/profile-photo", {
+            credentials: "include",
+            cache: "no-store",
+          }).catch(() => null);
+          const photoPayload = photoResponse ? await photoResponse.json().catch(() => null) : null;
+          hasPhoto = Boolean(photoPayload?.success && photoPayload?.data?.hasPhoto);
+        }
+
+        if (refreshQueued.current) {
+          continue;
+        }
+
+        setAuthState({
+          role,
+          displayName: payload?.data?.displayName ?? null,
+          hasPhoto,
+        });
+      } while (refreshQueued.current);
     } catch {
       setAuthState(null);
     } finally {
@@ -168,6 +186,14 @@ export function AuthActions({ mobile = false, onNavigate }: AuthActionsProps) {
       document.removeEventListener("keydown", handleEscape);
     };
   }, [menuOpen]);
+
+  useEffect(() => {
+    if (mobile) return;
+    if (!authState) return;
+
+    // Keep account navigation discoverable on desktop after auth redirects.
+    setMenuOpen(true);
+  }, [authState, mobile]);
 
   async function handleSignOut() {
     let csrfToken = "";
@@ -303,9 +329,15 @@ export function AuthActions({ mobile = false, onNavigate }: AuthActionsProps) {
   const employerLinks = [
     { href: getDashboardHref("employer"), label: t("dashboard") },
     { href: getAccountHref("employer"), label: t("companyProfile") },
+    { href: "/employers/verification", label: t("companyVerification") },
+    { href: "/employers/jobs", label: t("jobManagement") },
+    { href: "/employers/advertisements", label: t("advertisements") },
+    { href: "/employers/candidate-profiles", label: t("candidateProfiles") },
+    { href: "/employers/workflow", label: t("workflow") },
     { href: "/employers/interview-center", label: t("interviews") },
+    { href: "/employers/supervised-conversations", label: t("supervisedConversations") },
     { href: "/notifications", label: t("notifications") },
-    { href: "/portal", label: t("settings") },
+    { href: "/employers/settings", label: t("settings") },
   ];
 
   const staffLinks = [
@@ -319,9 +351,16 @@ export function AuthActions({ mobile = false, onNavigate }: AuthActionsProps) {
     <div className={mobile ? "mt-10 flex w-full flex-col gap-3" : "hidden items-center gap-2 md:flex"}>
       <div
         ref={menuRootRef}
-        className={mobile ? "rounded-2xl border border-blue-200/20 p-4" : "relative"}
-        onPointerEnter={clearPendingClose}
-        onPointerLeave={scheduleClose}
+        className={mobile ? "rounded-2xl border border-blue-200/20 p-4" : "group relative"}
+        onPointerEnter={() => {
+          clearPendingClose();
+          if (!mobile) {
+            openMenu();
+          }
+        }}
+        onPointerLeave={() => {
+          scheduleClose();
+        }}
         onKeyDown={handleMenuKeyDown}
       >
         <button
@@ -332,6 +371,11 @@ export function AuthActions({ mobile = false, onNavigate }: AuthActionsProps) {
           aria-haspopup="menu"
           aria-controls={menuId}
           aria-expanded={menuOpen}
+          onMouseEnter={() => {
+            if (!mobile) {
+              openMenu();
+            }
+          }}
           onClick={handleTriggerClick}
           onKeyDown={handleTriggerKeyDown}
         >
@@ -354,7 +398,7 @@ export function AuthActions({ mobile = false, onNavigate }: AuthActionsProps) {
           role="menu"
           className={mobile
             ? `${menuOpen ? "mt-3 flex" : "hidden"} flex-col gap-2`
-            : `absolute right-0 top-full z-40 w-64 flex-col gap-2 rounded-2xl border border-blue-200/20 bg-[#081326]/95 p-3 shadow-[0_24px_48px_rgba(2,12,25,0.55)] transition-opacity duration-150 ${menuOpen ? "flex opacity-100" : "pointer-events-none hidden opacity-0"}`}
+            : `absolute right-0 top-full z-40 flex w-64 flex-col gap-2 rounded-2xl border border-blue-200/20 bg-[#081326]/95 p-3 shadow-[0_24px_48px_rgba(2,12,25,0.55)] transition-opacity duration-150 ${menuOpen ? "visible opacity-100 pointer-events-auto" : "pointer-events-none invisible opacity-0"}`}
         >
           {links.map((item) => (
             <Link
@@ -362,7 +406,6 @@ export function AuthActions({ mobile = false, onNavigate }: AuthActionsProps) {
               href={item.href}
               onClick={handleMenuNavigate}
               className={`${primeButtonClasses("secondary")} justify-start`}
-              role="menuitem"
               ref={(el) => {
                 menuItemRefs.current[links.findIndex((link) => link.href === item.href)] = el;
               }}
@@ -373,7 +416,6 @@ export function AuthActions({ mobile = false, onNavigate }: AuthActionsProps) {
           <button
             type="button"
             onClick={handleSignOut}
-            role="menuitem"
             ref={(el) => {
               menuItemRefs.current[links.length] = el;
             }}

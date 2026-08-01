@@ -18,6 +18,8 @@ type SeedState = {
   candidateB: SeedUser;
   employerA: SeedUser;
   employerB: SeedUser;
+  ownerA: SeedUser;
+  staffA: SeedUser;
   employerAJobId: string;
   employerAJobTitle: string;
   employerBJobId: string;
@@ -40,6 +42,8 @@ const seed: SeedState = {
   candidateB: { email: "", password: "", fullName: "", userId: "" },
   employerA: { email: "", password: "", fullName: "", userId: "" },
   employerB: { email: "", password: "", fullName: "", userId: "" },
+  ownerA: { email: "", password: "", fullName: "", userId: "" },
+  staffA: { email: "", password: "", fullName: "", userId: "" },
   employerAJobId: "",
   employerAJobTitle: "",
   employerBJobId: "",
@@ -113,6 +117,22 @@ async function apiLogout(page: Page) {
   expect(response.ok()).toBeTruthy();
 }
 
+async function apiLogin(page: Page, email: string, password: string, role: "candidate" | "employer" | "staff") {
+  const csrfToken = await getCsrfTokenViaPage(page);
+  const response = await page.request.post("/api/auth/login", {
+    headers: {
+      "Content-Type": "application/json",
+      ...csrfHeaders(csrfToken),
+    },
+    data: {
+      email,
+      password,
+      role,
+    },
+  });
+  expect(response.ok()).toBeTruthy();
+}
+
 function makeIdentity(prefix: string) {
   const safe = `${prefix}-${seed.tag}`;
   return {
@@ -122,6 +142,18 @@ function makeIdentity(prefix: string) {
   };
 }
 
+async function assertUniqueRoleMenuLinks(header: ReturnType<Page["locator"]>) {
+  const hrefs = await header.locator('[role="menu"] a').evaluateAll((nodes) => {
+    return nodes.map((node) => node.getAttribute("href") ?? "").filter(Boolean);
+  });
+
+  expect(hrefs.length).toBeGreaterThan(0);
+  expect(new Set(hrefs).size).toBe(hrefs.length);
+  for (const href of hrefs) {
+    expect(href.includes("/en/en/") || href.includes("/ar/ar/")).toBeFalsy();
+  }
+}
+
 test.describe.configure({ mode: "serial" });
 
 test.beforeAll(async () => {
@@ -129,11 +161,15 @@ test.beforeAll(async () => {
   const candidateBIdentity = makeIdentity("candidate-b");
   const employerAIdentity = makeIdentity("employer-a");
   const employerBIdentity = makeIdentity("employer-b");
+  const ownerAIdentity = makeIdentity("owner-a");
+  const staffAIdentity = makeIdentity("staff-a");
 
   seed.candidateA = { ...candidateAIdentity, userId: "" };
   seed.candidateB = { ...candidateBIdentity, userId: "" };
   seed.employerA = { ...employerAIdentity, userId: "" };
   seed.employerB = { ...employerBIdentity, userId: "" };
+  seed.ownerA = { ...ownerAIdentity, userId: "" };
+  seed.staffA = { ...staffAIdentity, userId: "" };
 
   const createdCandidateA = await admin.auth.admin.createUser({
     email: seed.candidateA.email,
@@ -163,8 +199,22 @@ test.beforeAll(async () => {
     app_metadata: { app_role: "employer" },
     user_metadata: { app_role: "employer", full_name: seed.employerB.fullName },
   });
+  const createdOwnerA = await admin.auth.admin.createUser({
+    email: seed.ownerA.email,
+    password: seed.ownerA.password,
+    email_confirm: true,
+    app_metadata: { app_role: "super_admin" },
+    user_metadata: { app_role: "super_admin", full_name: seed.ownerA.fullName },
+  });
+  const createdStaffA = await admin.auth.admin.createUser({
+    email: seed.staffA.email,
+    password: seed.staffA.password,
+    email_confirm: true,
+    app_metadata: { app_role: "prime_global_recruiter" },
+    user_metadata: { app_role: "prime_global_recruiter", full_name: seed.staffA.fullName },
+  });
 
-  if (createdCandidateA.error || createdCandidateB.error || createdEmployerA.error || createdEmployerB.error) {
+  if (createdCandidateA.error || createdCandidateB.error || createdEmployerA.error || createdEmployerB.error || createdOwnerA.error || createdStaffA.error) {
     throw new Error("Unable to create seed users for regression suite");
   }
 
@@ -172,6 +222,8 @@ test.beforeAll(async () => {
   seed.candidateB.userId = String(createdCandidateB.data.user?.id ?? "");
   seed.employerA.userId = String(createdEmployerA.data.user?.id ?? "");
   seed.employerB.userId = String(createdEmployerB.data.user?.id ?? "");
+  seed.ownerA.userId = String(createdOwnerA.data.user?.id ?? "");
+  seed.staffA.userId = String(createdStaffA.data.user?.id ?? "");
 
   const candidateProfileUpsert = await admin
     .from("candidate_profiles")
@@ -464,7 +516,14 @@ test.beforeAll(async () => {
 test.afterAll(async () => {
   const candidateIds = [seed.candidateA.candidateId, seed.candidateB.candidateId].filter(Boolean) as string[];
   const employerIds = [seed.employerA.employerId, seed.employerB.employerId].filter(Boolean) as string[];
-  const userIds = [seed.candidateA.userId, seed.candidateB.userId, seed.employerA.userId, seed.employerB.userId].filter(Boolean);
+  const userIds = [
+    seed.candidateA.userId,
+    seed.candidateB.userId,
+    seed.employerA.userId,
+    seed.employerB.userId,
+    seed.ownerA.userId,
+    seed.staffA.userId,
+  ].filter(Boolean);
 
   if (seed.candidateAApplicationId || seed.candidateBApplicationId) {
     await admin.from("job_application_status_events").delete().in("application_id", [seed.candidateAApplicationId, seed.candidateBApplicationId].filter(Boolean));
@@ -537,6 +596,45 @@ test("targeted auth/application/privacy regression sweep", async ({ browser, pag
     await expect(header.getByRole("link", { name: "Notifications" })).toBeVisible();
     await expect(header.getByRole("link", { name: "Settings" })).toBeVisible();
     await expect(header.getByRole("button", { name: "Logout" })).toBeVisible();
+
+    await expect(header.getByRole("link", { name: "Dashboard" })).toHaveCount(1);
+    await expect(header.getByRole("link", { name: "Career Profile" })).toHaveCount(1);
+    await expect(header.getByRole("link", { name: "Applications" })).toHaveCount(1);
+    await expect(header.getByRole("link", { name: "Interviews" })).toHaveCount(1);
+    await expect(header.getByRole("link", { name: "Notifications" })).toHaveCount(1);
+    await expect(header.getByRole("link", { name: "Settings" })).toHaveCount(1);
+    await assertUniqueRoleMenuLinks(header);
+
+    await accountButton.click();
+    await expect(header.getByRole("link", { name: "Dashboard" })).toBeHidden();
+    await accountButton.click();
+    await expect(header.getByRole("link", { name: "Dashboard" })).toBeVisible();
+
+    await accountButton.focus();
+    await flowPage.keyboard.press("Escape");
+    await expect(header.getByRole("link", { name: "Dashboard" })).toBeHidden();
+    await flowPage.keyboard.press("Enter");
+    await expect(header.getByRole("link", { name: "Dashboard" })).toBeVisible();
+    await flowPage.mouse.click(4, 4);
+    await expect(header.getByRole("link", { name: "Dashboard" })).toBeHidden();
+
+    await flowPage.setViewportSize({ width: 390, height: 844 });
+    const mobileMenuToggle = header.getByRole("button", { name: /Open menu|Close menu/i });
+    await mobileMenuToggle.click();
+
+    const mobileAccountButton = flowPage.getByRole("button", { name: seed.candidateA.fullName });
+    await expect(mobileAccountButton).toBeVisible();
+    await mobileAccountButton.click();
+    const mobileDashboardLink = flowPage.getByRole("link", { name: "Dashboard" });
+    await expect(mobileDashboardLink).toBeVisible();
+    await expect(mobileDashboardLink).toHaveCount(1);
+
+    const mobileMenu = flowPage.locator('[role="dialog"]');
+    await assertUniqueRoleMenuLinks(mobileMenu);
+
+    await flowPage.keyboard.press("Escape");
+    await expect(flowPage.locator('[role="dialog"]')).toHaveCount(0);
+    await flowPage.setViewportSize({ width: 1280, height: 720 });
 
     const recoveredPage = await flowPage.context().newPage();
     await recoveredPage.goto("/en");
@@ -636,6 +734,22 @@ test("targeted auth/application/privacy regression sweep", async ({ browser, pag
     await signInForm.getByRole("button", { name: "Sign In" }).click();
     await flowPage.waitForURL((url) => !url.pathname.endsWith("/auth"), { timeout: 30_000 });
 
+    const header = flowPage.locator("header").first();
+    const employerAccountButton = header.getByRole("button", { name: seed.employerA.fullName });
+    await expect(employerAccountButton).toBeVisible();
+    await employerAccountButton.hover();
+    await expect(header.getByRole("link", { name: "Dashboard" })).toBeVisible();
+    await expect(header.getByRole("link", { name: "Company Profile" })).toBeVisible();
+    await expect(header.getByRole("link", { name: "Company Verification" })).toBeVisible();
+    await expect(header.getByRole("link", { name: "Job Management" })).toBeVisible();
+    await expect(header.getByRole("link", { name: "Advertisements" })).toBeVisible();
+    await expect(header.getByRole("link", { name: "Candidate Profiles" })).toBeVisible();
+    await expect(header.getByRole("link", { name: "Workflow" })).toBeVisible();
+    await expect(header.getByRole("link", { name: "Supervised Conversations" })).toBeVisible();
+    await expect(header.getByRole("link", { name: "Career Profile" })).toHaveCount(0);
+    await expect(header.getByRole("link", { name: "Applications" })).toHaveCount(0);
+    await assertUniqueRoleMenuLinks(header);
+
     const applicantsResponse = await flowPage.request.get("/api/employers/applicants");
     const applicantsPayload = await applicantsResponse.json();
     expect(applicantsResponse.ok(), JSON.stringify(applicantsPayload)).toBeTruthy();
@@ -698,6 +812,34 @@ test("targeted auth/application/privacy regression sweep", async ({ browser, pag
     expect(crossEmployerResponse.status(), JSON.stringify(crossEmployerPayload)).toBe(404);
 
     expect(Boolean(interviewBeforeShortlistPayload)).toBeTruthy();
+  });
+
+  await test.step("Owner and staff role menus sync without stale previous role", async () => {
+    await apiLogout(flowPage);
+
+    await apiLogin(flowPage, seed.ownerA.email, seed.ownerA.password, "staff");
+    await flowPage.goto("/en/admin/control-center");
+    const ownerHeader = flowPage.locator("header").first();
+    const ownerAccountButton = ownerHeader.getByRole("button", { name: seed.ownerA.fullName });
+    await expect(ownerAccountButton).toBeVisible();
+    await expect(ownerHeader.getByRole("link", { name: "Dashboard" })).toBeVisible();
+    await expect(ownerHeader.getByRole("link", { name: "Account" })).toBeVisible();
+    await expect(ownerHeader.getByRole("link", { name: "Company Profile" })).toHaveCount(0);
+    await expect(ownerHeader.getByRole("link", { name: "Career Profile" })).toHaveCount(0);
+    await assertUniqueRoleMenuLinks(ownerHeader);
+
+    await apiLogout(flowPage);
+
+    await apiLogin(flowPage, seed.staffA.email, seed.staffA.password, "staff");
+    await flowPage.goto("/en/admin/control-center");
+    const staffHeader = flowPage.locator("header").first();
+    const staffAccountButton = staffHeader.getByRole("button", { name: seed.staffA.fullName });
+    await expect(staffAccountButton).toBeVisible();
+    await expect(staffHeader.getByRole("link", { name: "Dashboard" })).toBeVisible();
+    await expect(staffHeader.getByRole("link", { name: "Account" })).toBeVisible();
+    await expect(staffHeader.getByRole("link", { name: "Company Profile" })).toHaveCount(0);
+    await expect(staffHeader.getByRole("link", { name: "Career Profile" })).toHaveCount(0);
+    await assertUniqueRoleMenuLinks(staffHeader);
   });
 
   await test.step("Candidate notification, shortlist timeline, and security boundaries", async () => {
