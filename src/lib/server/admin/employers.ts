@@ -37,6 +37,25 @@ type EmployerDocumentRow = {
   uploaded_at: string;
 };
 
+type EmployerJobRow = {
+  id: string;
+  title: string;
+  status: string;
+  publish_date: string | null;
+  created_at: string;
+};
+
+type EmployerAuditRow = {
+  id: string;
+  actor_auth_user_id: string | null;
+  actor_role: string | null;
+  action: string;
+  target_type: string | null;
+  target_id: string | null;
+  metadata: unknown;
+  created_at: string;
+};
+
 export type AdminEmployerListItem = {
   id: string;
   companyName: string;
@@ -55,11 +74,37 @@ export type AdminEmployerListItem = {
 export type AdminEmployerDocument = {
   id: string;
   documentType: string;
+  storagePath: string;
   originalFilename: string;
   mimeType: string;
   sizeBytes: number;
   uploadedAt: string;
   signedUrl: string | null;
+};
+
+export type AdminEmployerTimelineEntry = {
+  id: string;
+  eventType: "approved" | "rejected" | "suspended" | "reactivated" | "other";
+  action: string;
+  actorAuthUserId: string | null;
+  actorRole: string | null;
+  reason: string | null;
+  timestamp: string;
+};
+
+export type AdminEmployerJobSummary = {
+  id: string;
+  title: string;
+  status: string;
+  publishDate: string | null;
+  createdAt: string;
+};
+
+export type AdminEmployerAdvertisementSummary = {
+  id: string;
+  title: string;
+  status: string;
+  updatedAt: string;
 };
 
 export type EmployerDeletionPolicy = {
@@ -85,9 +130,18 @@ export type AdminEmployerDetail = AdminEmployerListItem & {
     companySize: string;
     companyDescription: string;
     logoStoragePath: string | null;
+    logoSignedUrl: string | null;
   };
   documents: AdminEmployerDocument[];
+  registrationDocuments: AdminEmployerDocument[];
+  taxDocuments: AdminEmployerDocument[];
   deletionPolicy: EmployerDeletionPolicy;
+  jobs: AdminEmployerJobSummary[];
+  advertisements: AdminEmployerAdvertisementSummary[];
+  verificationHistory: AdminEmployerTimelineEntry[];
+  activityTimeline: AdminEmployerTimelineEntry[];
+  lastLoginAt: string | null;
+  isSystemCompany: boolean;
 };
 
 function mapListItem(row: EmployerRow): AdminEmployerListItem {
@@ -111,6 +165,21 @@ async function getSignedDocumentUrl(storagePath: string) {
   const supabase = createSupabaseAdminClient();
   const { data } = await supabase.storage.from(COMPANY_DOCUMENT_BUCKET).createSignedUrl(storagePath, 60 * 60);
   return data?.signedUrl ?? null;
+}
+
+function toMetadataRecord(input: unknown) {
+  if (!input || typeof input !== "object" || Array.isArray(input)) {
+    return {} as Record<string, unknown>;
+  }
+  return input as Record<string, unknown>;
+}
+
+function toTimelineEventType(action: string): AdminEmployerTimelineEntry["eventType"] {
+  if (action.endsWith(".approve")) return "approved";
+  if (action.endsWith(".reject")) return "rejected";
+  if (action.endsWith(".suspend")) return "suspended";
+  if (action.endsWith(".reactivate")) return "reactivated";
+  return "other";
 }
 
 export async function listAdminEmployers(input: { query?: string; status?: string }) {
@@ -181,7 +250,7 @@ export async function getAdminEmployerById(employerId: string) {
     return null;
   }
 
-  const [{ data: documents }, authUserResult, deletionPolicy] = await Promise.all([
+  const [{ data: documents }, authUserResult, deletionPolicy, jobsResult, employerAuditsResult, advertisementsResult] = await Promise.all([
     supabase
       .from("employer_verification_documents")
       .select("id, document_type, storage_path, original_filename, mime_type, size_bytes, uploaded_at")
@@ -189,6 +258,25 @@ export async function getAdminEmployerById(employerId: string) {
       .order("uploaded_at", { ascending: false }),
     supabase.auth.admin.getUserById(employer.auth_user_id),
     getEmployerDeletionPolicy(employer),
+    supabase
+      .from("jobs")
+      .select("id, title, status, publish_date, created_at")
+      .eq("employer_id", employer.id)
+      .order("created_at", { ascending: false })
+      .limit(100),
+    supabase
+      .from("audit_logs")
+      .select("id, actor_auth_user_id, actor_role, action, target_type, target_id, metadata, created_at")
+      .eq("target_type", "employer")
+      .eq("target_id", employer.id)
+      .order("created_at", { ascending: false })
+      .limit(200),
+    supabase
+      .from("advertisements")
+      .select("id, title_en, status, updated_at")
+      .eq("created_by", employer.auth_user_id)
+      .order("updated_at", { ascending: false })
+      .limit(50),
   ]);
 
   const documentRows = (documents ?? []) as EmployerDocumentRow[];
@@ -196,6 +284,7 @@ export async function getAdminEmployerById(employerId: string) {
     documentRows.map(async (document) => ({
       id: document.id,
       documentType: document.document_type,
+      storagePath: document.storage_path,
       originalFilename: document.original_filename,
       mimeType: document.mime_type,
       sizeBytes: document.size_bytes,
@@ -205,6 +294,40 @@ export async function getAdminEmployerById(employerId: string) {
   );
 
   const accountEmail = authUserResult.data.user?.email ?? null;
+  const lastLoginAt = authUserResult.data.user?.last_sign_in_at ?? null;
+  const logoSignedUrl = employer.logo_storage_path ? await getSignedDocumentUrl(employer.logo_storage_path) : null;
+  const auditRows = (employerAuditsResult.data ?? []) as EmployerAuditRow[];
+  const timeline = auditRows.map((row) => {
+    const metadata = toMetadataRecord(row.metadata);
+    const reasonRaw = metadata.reason;
+    return {
+      id: row.id,
+      eventType: toTimelineEventType(row.action),
+      action: row.action,
+      actorAuthUserId: row.actor_auth_user_id,
+      actorRole: row.actor_role,
+      reason: typeof reasonRaw === "string" ? reasonRaw : null,
+      timestamp: row.created_at,
+    } satisfies AdminEmployerTimelineEntry;
+  });
+  const jobs = ((jobsResult.data ?? []) as EmployerJobRow[]).map((job) => ({
+    id: job.id,
+    title: job.title,
+    status: job.status,
+    publishDate: job.publish_date,
+    createdAt: job.created_at,
+  } satisfies AdminEmployerJobSummary));
+  const advertisements = (advertisementsResult.data ?? []).map((entry) => ({
+    id: String(entry.id ?? ""),
+    title: String(entry.title_en ?? ""),
+    status: String(entry.status ?? ""),
+    updatedAt: String(entry.updated_at ?? ""),
+  } satisfies AdminEmployerAdvertisementSummary));
+  const registrationDocuments = signedDocuments.filter((item) => item.documentType === "commercial_registration");
+  const taxDocuments = signedDocuments.filter((item) => item.documentType === "tax_certificate");
+  const normalizedName = employer.company_name.trim().toLowerCase();
+  const normalizedEmail = employer.company_email.trim().toLowerCase();
+  const isSystemCompany = normalizedName.includes("prime global") || normalizedEmail.endsWith("@primeglobal.tn") || normalizedEmail.endsWith("@prime-global.tn");
   const base = mapListItem(employer);
 
   return {
@@ -224,9 +347,18 @@ export async function getAdminEmployerById(employerId: string) {
       companySize: employer.company_size,
       companyDescription: employer.company_description,
       logoStoragePath: employer.logo_storage_path,
+      logoSignedUrl,
     },
     documents: signedDocuments,
+    registrationDocuments,
+    taxDocuments,
     deletionPolicy,
+    jobs,
+    advertisements,
+    verificationHistory: timeline,
+    activityTimeline: timeline,
+    lastLoginAt,
+    isSystemCompany,
   } satisfies AdminEmployerDetail;
 }
 
