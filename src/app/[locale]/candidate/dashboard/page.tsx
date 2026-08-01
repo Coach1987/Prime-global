@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useLocale } from "next-intl";
+import { asCandidateLocale, localizeCandidateStatus } from "@/lib/candidates/localization";
 
 type DashboardVerificationCase = {
   status?: string | null;
@@ -33,6 +34,8 @@ export default function CandidateDashboardPage() {
   const [verificationStatus, setVerificationStatus] = useState<string>("pending_ai_analysis");
   const [verificationMessage, setVerificationMessage] = useState<string>("Your documents are waiting for AI verification.");
   const locale = useLocale();
+  const isArabic = locale === "ar";
+  const uiLocale = asCandidateLocale(locale);
 
   useEffect(() => {
     fetch("/api/auth/me", { credentials: "include" })
@@ -68,7 +71,12 @@ export default function CandidateDashboardPage() {
             const latestCase = verificationPayload.payload?.data?.cases?.[0] ?? null;
             setVerificationStatus(String(latestCase?.status ?? "pending_ai_analysis"));
             setVerificationMessage(
-              String(latestCase?.candidate_message ?? "Your documents are waiting for AI verification.")
+              String(
+                latestCase?.candidate_message ??
+                  (isArabic
+                    ? "مستنداتك قيد تحليل الذكاء الاصطناعي."
+                    : "Your documents are waiting for AI verification.")
+              )
             );
           })
           .catch(() => undefined);
@@ -79,34 +87,38 @@ export default function CandidateDashboardPage() {
   return (
     <main className="mx-auto w-full max-w-[1260px] px-4 pb-20 pt-[124px] sm:px-6 md:px-8">
       <section className="rounded-3xl border border-gold/20 bg-bg-secondary/80 p-7 backdrop-blur-xl md:p-10">
-        <h1 className="font-heading text-4xl text-text-primary">My Interviews</h1>
-        <p className="mt-3 text-sm text-text-secondary">Your protected interview invitations, waiting room readiness, and supervised meeting activity.</p>
+        <h1 className="font-heading text-4xl text-text-primary">{isArabic ? "مقابلاتي" : "My Interviews"}</h1>
+        <p className="mt-3 text-sm text-text-secondary">
+          {isArabic
+            ? "دعوات المقابلات المحمية، وجاهزية غرفة الانتظار، وتفاصيل المقابلات الخاضعة للإشراف."
+            : "Your protected interview invitations, waiting room readiness, and supervised meeting activity."}
+        </p>
 
         <div className="mt-6 rounded-2xl border border-gold/20 bg-bg-primary/60 p-5">
-          <p className="text-xs uppercase tracking-[0.18em] text-text-tertiary">Verification</p>
-          <p className="mt-2 text-lg font-semibold text-gold">{verificationStatus.replace(/_/g, " ")}</p>
+          <p className="text-xs uppercase tracking-[0.18em] text-text-tertiary">{isArabic ? "حالة التحقق" : "Verification"}</p>
+          <p className="mt-2 text-lg font-semibold text-gold">{localizeCandidateStatus(verificationStatus, uiLocale)}</p>
           <p className="mt-2 max-w-3xl text-sm text-text-secondary">{verificationMessage}</p>
         </div>
 
         <a href={`/${locale}/matching/v2`} className="mt-6 inline-flex rounded-full border border-gold/30 px-5 py-2 text-sm font-semibold text-gold transition hover:bg-gold/10">
-          Open AI Matching V2
+          {isArabic ? "فتح المطابقة الذكية V2" : "Open AI Matching V2"}
         </a>
         <a href={`/${locale}/candidate/my-interviews`} className="ml-3 mt-6 inline-flex rounded-full border border-gold/30 px-5 py-2 text-sm font-semibold text-gold transition hover:bg-gold/10">
-          Open My Interviews
+          {isArabic ? "فتح مقابلاتي" : "Open My Interviews"}
         </a>
         <a href={`/${locale}/candidate/supervised-conversations`} className="ml-3 mt-6 inline-flex rounded-full border border-gold/30 px-5 py-2 text-sm font-semibold text-gold transition hover:bg-gold/10">
-          Supervised Conversations
+          {isArabic ? "المحادثات الخاضعة للإشراف" : "Supervised Conversations"}
         </a>
         <a href={`/${locale}/candidate/job-alert-settings`} className="ml-3 mt-6 inline-flex rounded-full border border-gold/30 px-5 py-2 text-sm font-semibold text-gold transition hover:bg-gold/10">
-          Job Alert Settings
+          {isArabic ? "إعدادات تنبيهات الوظائف" : "Job Alert Settings"}
         </a>
 
         <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {[
-            ["Profile", profile ? "Complete" : hasSession ? "Pending" : "No Session"],
-            ["Applied Jobs", String(applications.length)],
-            ["Saved Jobs", String(savedJobs.length)],
-            ["Notifications", String(notifications.length)],
+            [isArabic ? "الملف" : "Profile", profile ? (isArabic ? "مكتمل" : "Complete") : hasSession ? (isArabic ? "قيد الإكمال" : "Pending") : (isArabic ? "بدون جلسة" : "No Session")],
+            [isArabic ? "الوظائف المقدَّم عليها" : "Applied Jobs", String(applications.length)],
+            [isArabic ? "الوظائف المحفوظة" : "Saved Jobs", String(savedJobs.length)],
+            [isArabic ? "الإشعارات" : "Notifications", String(notifications.length)],
           ].map(([label, value], index) => (
             <article key={`${label}-${index}`} className="rounded-2xl border border-gold/20 bg-bg-primary/70 p-4">
               <p className="text-xs uppercase tracking-[0.18em] text-text-tertiary">{label}</p>

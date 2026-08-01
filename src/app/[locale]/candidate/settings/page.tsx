@@ -9,6 +9,8 @@ import { PrimeCheckbox, PrimeInput, PrimeLabel, PrimeTextarea } from "@/componen
 import { PrimePageTitle } from "@/components/ui/prime/PrimePageTitle";
 import { CountrySelector } from "@/components/ui/CountrySelector";
 import { InternationalPhoneInput } from "@/components/ui/InternationalPhoneInput";
+import { LocalizedFileInput } from "@/components/ui/LocalizedFileInput";
+import { asCandidateLocale, localizeCandidateStatus } from "@/lib/candidates/localization";
 
 type CandidateProfile = {
   full_name?: string | null;
@@ -133,6 +135,7 @@ function baseName(pathValue: string) {
 export default function CandidateSettingsPage() {
   const locale = useLocale();
   const isArabic = locale === "ar";
+  const uiLocale = asCandidateLocale(locale);
   const router = useRouter();
 
   const [loading, setLoading] = useState(true);
@@ -484,7 +487,7 @@ export default function CandidateSettingsPage() {
           biography: form.summary.trim(),
           experiences: [
             {
-              company: "Provided by candidate",
+              company: isArabic ? "مقدم من المرشح" : "Provided by candidate",
               role: form.professionalTitle.trim(),
               startDate: "2020",
               summary: form.workExperience.trim(),
@@ -492,7 +495,7 @@ export default function CandidateSettingsPage() {
           ],
           educationEntries: [
             {
-              institution: "Provided by candidate",
+              institution: isArabic ? "مقدم من المرشح" : "Provided by candidate",
               degree: form.education.trim(),
               year: "2020",
             },
@@ -776,19 +779,19 @@ export default function CandidateSettingsPage() {
               <div className="flex-1 space-y-4">
                 <PrimeLabel>
                   <span className="mb-2 block">{isArabic ? "رفع أو استبدال الصورة" : "Upload or Replace Photo"}</span>
-                  <PrimeInput
-                    type="file"
+                  <LocalizedFileInput
+                    isArabic={isArabic}
                     accept="image/png,image/jpeg,image/webp"
-                    className={fieldErrors.profilePhoto ? "border-red-400/80" : undefined}
-                    aria-invalid={Boolean(fieldErrors.profilePhoto)}
-                    aria-describedby={fieldErrors.profilePhoto ? "settings-profile-photo-error" : undefined}
-                    onChange={(event) => {
-                      setProfilePhotoFile(event.target.files?.[0] ?? null);
+                    selectedFiles={profilePhotoFile ? [profilePhotoFile] : []}
+                    singleLabel={{ en: "Choose profile photo", ar: "اختيار صورة الملف" }}
+                    ariaInvalid={Boolean(fieldErrors.profilePhoto)}
+                    ariaDescribedBy={fieldErrors.profilePhoto ? "settings-profile-photo-error" : undefined}
+                    onChange={(files) => {
+                      setProfilePhotoFile(files[0] ?? null);
                       setPhotoRemoveRequested(false);
                       clearFieldError("profilePhoto");
                     }}
                   />
-                  {profilePhotoFile ? <p className="mt-2 text-xs text-text-secondary">{profilePhotoFile.name}</p> : null}
                   {fieldErrors.profilePhoto ? (
                     <p id="settings-profile-photo-error" className="mt-2 text-xs text-red-300">{fieldErrors.profilePhoto}</p>
                   ) : null}
@@ -1064,9 +1067,9 @@ export default function CandidateSettingsPage() {
 
             <div className="mt-4 rounded-xl border border-blue-200/20 bg-[#061123]/80 p-4">
               <p className="text-sm text-text-secondary">{isArabic ? "السيرة الذاتية الحالية" : "Current CV"}</p>
-              <p className="mt-1 text-sm text-text-primary">{currentCv?.filename ?? (isArabic ? "لا توجد سيرة ذاتية مرفوعة" : "No CV uploaded yet")}</p>
+              <p className="mt-1 text-sm text-text-primary" dir="ltr">{currentCv?.filename ?? (isArabic ? "لا توجد سيرة ذاتية مرفوعة" : "No CV uploaded yet")}</p>
               <p className="mt-1 text-xs text-text-tertiary">
-                {isArabic ? "الحالة" : "Status"}: {currentCvVersion?.verification_status ?? (isArabic ? "غير متوفر" : "not available")}
+                {isArabic ? "الحالة" : "Status"}: {localizeCandidateStatus(currentCvVersion?.verification_status ?? "pending", uiLocale)}
               </p>
               <p className="mt-2 text-xs text-text-tertiary">
                 {isArabic
@@ -1077,18 +1080,18 @@ export default function CandidateSettingsPage() {
 
             <PrimeLabel className="mt-4">
               <span className="mb-2 block">{isArabic ? "استبدال السيرة الذاتية" : "Replace CV"}</span>
-              <PrimeInput
-                type="file"
+              <LocalizedFileInput
+                isArabic={isArabic}
                 accept=".pdf,.doc,.docx"
-                className={fieldErrors.cv ? "border-red-400/80" : undefined}
-                aria-invalid={Boolean(fieldErrors.cv)}
-                aria-describedby={fieldErrors.cv ? "settings-cv-error" : undefined}
-                onChange={(event) => {
-                  setCvFile(event.target.files?.[0] ?? null);
+                selectedFiles={cvFile ? [cvFile] : []}
+                singleLabel={{ en: "Choose CV file", ar: "اختيار ملف السيرة الذاتية" }}
+                ariaInvalid={Boolean(fieldErrors.cv)}
+                ariaDescribedBy={fieldErrors.cv ? "settings-cv-error" : undefined}
+                onChange={(files) => {
+                  setCvFile(files[0] ?? null);
                   clearFieldError("cv");
                 }}
               />
-              {cvFile ? <p className="mt-2 text-xs text-text-secondary">{cvFile.name}</p> : null}
               {fieldErrors.cv ? <p id="settings-cv-error" className="mt-2 text-xs text-red-300">{fieldErrors.cv}</p> : null}
             </PrimeLabel>
 
@@ -1098,7 +1101,7 @@ export default function CandidateSettingsPage() {
                 {shownCertificateItems.length > 0 ? (
                   shownCertificateItems.map((item) => (
                     <li key={item.id}>
-                      {item.name} <span className="text-xs text-text-tertiary">({item.status})</span>
+                      <span dir="ltr">{item.name}</span> <span className="text-xs text-text-tertiary">({localizeCandidateStatus(item.status, uiLocale)})</span>
                     </li>
                   ))
                 ) : (
@@ -1117,27 +1120,19 @@ export default function CandidateSettingsPage() {
 
             <PrimeLabel className="mt-4">
               <span className="mb-2 block">{isArabic ? "إضافة شهادات جديدة" : "Add new certificates"}</span>
-              <PrimeInput
-                type="file"
+              <LocalizedFileInput
+                isArabic={isArabic}
                 multiple
                 accept=".pdf,.doc,.docx,.png,.jpg,.jpeg,.webp"
-                className={fieldErrors.certificates ? "border-red-400/80" : undefined}
-                aria-invalid={Boolean(fieldErrors.certificates)}
-                aria-describedby={fieldErrors.certificates ? "settings-certificates-error" : undefined}
-                onChange={(event) => {
-                  setCertificateFiles(Array.from(event.target.files ?? []));
+                selectedFiles={certificateFiles}
+                multiLabel={{ en: "Choose certificate files", ar: "اختيار ملفات الشهادات" }}
+                ariaInvalid={Boolean(fieldErrors.certificates)}
+                ariaDescribedBy={fieldErrors.certificates ? "settings-certificates-error" : undefined}
+                onChange={(files) => {
+                  setCertificateFiles(files);
                   clearFieldError("certificates");
                 }}
               />
-              {certificateFiles.length > 0 ? (
-                <p className="mt-2 text-xs text-text-secondary">
-                  {certificateFiles.length === 1
-                    ? certificateFiles[0].name
-                    : isArabic
-                      ? `${certificateFiles.length} ملفات محددة`
-                      : `${certificateFiles.length} files selected`}
-                </p>
-              ) : null}
               {fieldErrors.certificates ? (
                 <p id="settings-certificates-error" className="mt-2 text-xs text-red-300">{fieldErrors.certificates}</p>
               ) : null}

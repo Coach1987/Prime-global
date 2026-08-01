@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useParams } from "next/navigation";
 import { Link } from "@/i18n/routing";
 import { useLocale } from "next-intl";
+import { asCandidateLocale, localizeCandidateStatus } from "@/lib/candidates/localization";
 
 type StatusEvent = {
   id: string;
@@ -42,29 +43,11 @@ type ApplicationDetail = {
   notifications: NotificationEvent[];
 };
 
-function toLabel(status: string, isArabic: boolean) {
-  const normalized = status.toLowerCase();
-  const labels: Record<string, { en: string; ar: string }> = {
-    new: { en: "Submitted", ar: "تم التقديم" },
-    submitted: { en: "Submitted", ar: "تم التقديم" },
-    under_review: { en: "Under Review", ar: "قيد المراجعة" },
-    shortlisted: { en: "Shortlisted", ar: "في القائمة المختصرة" },
-    interview_requested: { en: "Interview Requested", ar: "تم طلب مقابلة" },
-    interview_scheduled: { en: "Interview Scheduled", ar: "تمت جدولة مقابلة" },
-    offer: { en: "Offer", ar: "عرض" },
-    rejected: { en: "Rejected", ar: "مرفوض" },
-    withdrawn: { en: "Withdrawn", ar: "تم السحب" },
-  };
-
-  const matched = labels[normalized];
-  if (matched) return isArabic ? matched.ar : matched.en;
-  return normalized.replace(/_/g, " ");
-}
-
 export default function CandidateApplicationDetailsPage() {
   const params = useParams<{ applicationId: string }>();
   const locale = useLocale();
   const isArabic = locale === "ar";
+  const uiLocale = asCandidateLocale(locale);
   const applicationId = String(params.applicationId ?? "");
 
   const [loading, setLoading] = useState(true);
@@ -145,19 +128,19 @@ export default function CandidateApplicationDetailsPage() {
         <div className="mt-6 grid gap-4 md:grid-cols-2">
           <article className="rounded-2xl border border-gold/20 bg-bg-primary/65 p-4">
             <p className="text-xs uppercase tracking-[0.14em] text-text-tertiary">{isArabic ? "الحالة الحالية" : "Current Status"}</p>
-            <p className="mt-2 text-lg font-semibold text-gold">{toLabel(application.status, isArabic)}</p>
+            <p className="mt-2 text-lg font-semibold text-gold">{localizeCandidateStatus(application.status, uiLocale)}</p>
           </article>
           <article className="rounded-2xl border border-gold/20 bg-bg-primary/65 p-4">
             <p className="text-xs uppercase tracking-[0.14em] text-text-tertiary">{isArabic ? "تاريخ التقديم" : "Submission Date"}</p>
-            <p className="mt-2 text-sm text-text-primary">{new Date(application.applied_at).toLocaleString(locale)}</p>
+            <p className="mt-2 text-sm text-text-primary" dir={isArabic ? "rtl" : "ltr"}>{new Date(application.applied_at).toLocaleString(locale)}</p>
           </article>
           <article className="rounded-2xl border border-gold/20 bg-bg-primary/65 p-4">
             <p className="text-xs uppercase tracking-[0.14em] text-text-tertiary">{isArabic ? "حالة القائمة المختصرة" : "Shortlist Status"}</p>
-            <p className="mt-2 text-sm text-text-primary">{application.statusHistory.some((item) => item.next_status === "shortlisted") ? toLabel("shortlisted", isArabic) : (isArabic ? "غير مدرج" : "Not shortlisted")}</p>
+            <p className="mt-2 text-sm text-text-primary">{application.statusHistory.some((item) => item.next_status === "shortlisted") ? localizeCandidateStatus("shortlisted", uiLocale) : (isArabic ? "غير مدرج" : "Not shortlisted")}</p>
           </article>
           <article className="rounded-2xl border border-gold/20 bg-bg-primary/65 p-4">
             <p className="text-xs uppercase tracking-[0.14em] text-text-tertiary">{isArabic ? "حالة المقابلة" : "Interview Status"}</p>
-            <p className="mt-2 text-sm text-text-primary">{application.statusHistory.some((item) => item.next_status.includes("interview")) ? toLabel("interview_requested", isArabic) : (isArabic ? "لا يوجد" : "Not requested")}</p>
+            <p className="mt-2 text-sm text-text-primary">{application.statusHistory.some((item) => item.next_status.includes("interview")) ? localizeCandidateStatus("interview_requested", uiLocale) : (isArabic ? "لا يوجد" : "Not requested")}</p>
           </article>
         </div>
 
@@ -171,7 +154,7 @@ export default function CandidateApplicationDetailsPage() {
           <ul className="mt-3 space-y-2 text-sm text-text-secondary">
             {application.statusHistory.map((item) => (
               <li key={item.id}>
-                {toLabel(item.previous_status ?? "new", isArabic)} {"->"} {toLabel(item.next_status, isArabic)} ({new Date(item.created_at).toLocaleString(locale)})
+                {localizeCandidateStatus(item.previous_status ?? "new", uiLocale)} {"->"} {localizeCandidateStatus(item.next_status, uiLocale)} ({new Date(item.created_at).toLocaleString(locale)})
                 {item.note ? ` - ${item.note}` : ""}
               </li>
             ))}

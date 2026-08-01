@@ -36,6 +36,24 @@ export default function CandidateJobAlertSettingsPage() {
         ? {
             title: "إعدادات تنبيهات الوظائف",
             subtitle: "اختر تفضيلاتك لإرسال تنبيهات مطابقة عبر الإشعارات والبريد الإلكتروني.",
+            desiredJobTitles: "المسميات الوظيفية المطلوبة",
+            relatedJobTitles: "المسميات ذات الصلة",
+            skills: "المهارات",
+            languages: "اللغات",
+            country: "الدولة",
+            city: "المدينة",
+            availability: "التوفر",
+            workMode: "نمط العمل",
+            frequency: "تكرار الإشعارات",
+            threshold: "حد المطابقة",
+            anyWorkMode: "أي نمط عمل",
+            remote: "عن بُعد",
+            hybrid: "هجين",
+            onsite: "حضوري",
+            instant: "فوري",
+            daily: "ملخص يومي",
+            weekly: "ملخص أسبوعي",
+            disabled: "موقّف",
             save: "حفظ الإعدادات",
             saved: "تم حفظ الإعدادات بنجاح.",
             failed: "تعذر حفظ الإعدادات.",
@@ -43,6 +61,24 @@ export default function CandidateJobAlertSettingsPage() {
         : {
             title: "Job Alert Settings",
             subtitle: "Choose your preferences to receive matching job alerts in-app and by email.",
+            desiredJobTitles: "Desired job titles",
+            relatedJobTitles: "Related titles",
+            skills: "Skills",
+            languages: "Languages",
+            country: "Country",
+            city: "City",
+            availability: "Availability",
+            workMode: "Work mode",
+            frequency: "Notification frequency",
+            threshold: "Notification threshold",
+            anyWorkMode: "Any work mode",
+            remote: "Remote",
+            hybrid: "Hybrid",
+            onsite: "Onsite",
+            instant: "Instant alerts",
+            daily: "Daily digest",
+            weekly: "Weekly digest",
+            disabled: "Disabled",
             save: "Save Settings",
             saved: "Settings saved successfully.",
             failed: "Unable to save settings.",
@@ -126,26 +162,26 @@ export default function CandidateJobAlertSettingsPage() {
         <p className="mt-3 text-sm text-text-secondary">{copy.subtitle}</p>
 
         <div className="mt-8 grid gap-4 md:grid-cols-2">
-          <input value={desiredJobTitles} onChange={(event) => setDesiredJobTitles(event.target.value)} placeholder="Desired job titles" className="rounded-xl border border-gold/15 bg-bg-primary px-4 py-3 text-sm text-text-primary" />
-          <input value={relatedJobTitles} onChange={(event) => setRelatedJobTitles(event.target.value)} placeholder="Related titles" className="rounded-xl border border-gold/15 bg-bg-primary px-4 py-3 text-sm text-text-primary" />
-          <input value={skills} onChange={(event) => setSkills(event.target.value)} placeholder="Skills" className="rounded-xl border border-gold/15 bg-bg-primary px-4 py-3 text-sm text-text-primary" />
-          <input value={languages} onChange={(event) => setLanguages(event.target.value)} placeholder="Languages" className="rounded-xl border border-gold/15 bg-bg-primary px-4 py-3 text-sm text-text-primary" />
-          <input value={country} onChange={(event) => setCountry(event.target.value)} placeholder="Country" className="rounded-xl border border-gold/15 bg-bg-primary px-4 py-3 text-sm text-text-primary" />
-          <input value={city} onChange={(event) => setCity(event.target.value)} placeholder="City" className="rounded-xl border border-gold/15 bg-bg-primary px-4 py-3 text-sm text-text-primary" />
-          <input value={availability} onChange={(event) => setAvailability(event.target.value)} placeholder="Availability" className="rounded-xl border border-gold/15 bg-bg-primary px-4 py-3 text-sm text-text-primary" />
+          <input value={desiredJobTitles} onChange={(event) => setDesiredJobTitles(event.target.value)} placeholder={copy.desiredJobTitles} className="rounded-xl border border-gold/15 bg-bg-primary px-4 py-3 text-sm text-text-primary" />
+          <input value={relatedJobTitles} onChange={(event) => setRelatedJobTitles(event.target.value)} placeholder={copy.relatedJobTitles} className="rounded-xl border border-gold/15 bg-bg-primary px-4 py-3 text-sm text-text-primary" />
+          <input value={skills} onChange={(event) => setSkills(event.target.value)} placeholder={copy.skills} className="rounded-xl border border-gold/15 bg-bg-primary px-4 py-3 text-sm text-text-primary" />
+          <input value={languages} onChange={(event) => setLanguages(event.target.value)} placeholder={copy.languages} className="rounded-xl border border-gold/15 bg-bg-primary px-4 py-3 text-sm text-text-primary" />
+          <input value={country} onChange={(event) => setCountry(event.target.value)} placeholder={copy.country} className="rounded-xl border border-gold/15 bg-bg-primary px-4 py-3 text-sm text-text-primary" />
+          <input value={city} onChange={(event) => setCity(event.target.value)} placeholder={copy.city} className="rounded-xl border border-gold/15 bg-bg-primary px-4 py-3 text-sm text-text-primary" />
+          <input value={availability} onChange={(event) => setAvailability(event.target.value)} placeholder={copy.availability} className="rounded-xl border border-gold/15 bg-bg-primary px-4 py-3 text-sm text-text-primary" />
 
           <select value={workModePreference} onChange={(event) => setWorkModePreference(event.target.value)} className="rounded-xl border border-gold/15 bg-bg-primary px-4 py-3 text-sm text-text-primary">
-            <option value="any">Any work mode</option>
-            <option value="remote">Remote</option>
-            <option value="hybrid">Hybrid</option>
-            <option value="onsite">Onsite</option>
+            <option value="any">{copy.anyWorkMode}</option>
+            <option value="remote">{copy.remote}</option>
+            <option value="hybrid">{copy.hybrid}</option>
+            <option value="onsite">{copy.onsite}</option>
           </select>
 
           <select value={frequency} onChange={(event) => setFrequency(event.target.value)} className="rounded-xl border border-gold/15 bg-bg-primary px-4 py-3 text-sm text-text-primary">
-            <option value="instant">Instant alerts</option>
-            <option value="daily">Daily digest</option>
-            <option value="weekly">Weekly digest</option>
-            <option value="disabled">Disabled</option>
+            <option value="instant">{copy.instant}</option>
+            <option value="daily">{copy.daily}</option>
+            <option value="weekly">{copy.weekly}</option>
+            <option value="disabled">{copy.disabled}</option>
           </select>
 
           <input
@@ -155,7 +191,7 @@ export default function CandidateJobAlertSettingsPage() {
             min={0}
             max={100}
             className="rounded-xl border border-gold/15 bg-bg-primary px-4 py-3 text-sm text-text-primary"
-            placeholder="Notification threshold"
+            placeholder={copy.threshold}
           />
         </div>
 

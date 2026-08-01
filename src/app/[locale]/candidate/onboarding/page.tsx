@@ -9,6 +9,8 @@ import { PrimeCheckbox, PrimeInput, PrimeLabel, PrimeTextarea } from "@/componen
 import { PrimePageTitle } from "@/components/ui/prime/PrimePageTitle";
 import { CountrySelector } from "@/components/ui/CountrySelector";
 import { InternationalPhoneInput } from "@/components/ui/InternationalPhoneInput";
+import { LocalizedFileInput } from "@/components/ui/LocalizedFileInput";
+import { asCandidateLocale, localizeDocumentType } from "@/lib/candidates/localization";
 
 type CandidateProfile = {
   full_name?: string | null;
@@ -172,6 +174,7 @@ export default function CandidateOnboardingPage() {
   const locale = useLocale();
   const tDoc = useTranslations("candidateDocumentVerification");
   const isArabic = locale === "ar";
+  const uiLocale = asCandidateLocale(locale);
   const router = useRouter();
   const [csrfToken, setCsrfToken] = useState("");
   const [loading, setLoading] = useState(true);
@@ -651,8 +654,12 @@ export default function CandidateOnboardingPage() {
         body: JSON.stringify({
           headline: form.desiredPosition,
           biography: form.shortBio,
-          experiences: form.experienceLevel ? [{ company: "Prime Global", role: form.desiredPosition || "Candidate", startDate: "2020", summary: form.experienceLevel }] : [],
-          educationEntries: form.education ? [{ institution: "Provided by candidate", degree: "Qualification", year: form.education }] : [],
+          experiences: form.experienceLevel
+            ? [{ company: isArabic ? "مقدم من المرشح" : "Provided by candidate", role: form.desiredPosition || (isArabic ? "مرشح" : "Candidate"), startDate: "2020", summary: form.experienceLevel }]
+            : [],
+          educationEntries: form.education
+            ? [{ institution: isArabic ? "مقدم من المرشح" : "Provided by candidate", degree: isArabic ? "مؤهل" : "Qualification", year: form.education }]
+            : [],
           certificates: [],
           skills,
           languages,
@@ -854,7 +861,7 @@ export default function CandidateOnboardingPage() {
               {verificationTimeline.versions.slice(0, 5).map((version) => (
                 <div key={version.id} className="rounded-xl border border-blue-200/20 bg-[#081223]/70 px-4 py-3 text-sm text-text-secondary">
                   <p className="font-medium text-text-primary">
-                    {version.document_type.toUpperCase()} v{version.version_number}
+                    {localizeDocumentType(version.document_type, uiLocale)} v{version.version_number}
                   </p>
                   <p>{statusLabel(version.verification_status)}</p>
                   {version.is_active ? <p className="text-emerald-200">{tDoc("status.verified")}</p> : null}
@@ -1115,20 +1122,21 @@ export default function CandidateOnboardingPage() {
           <div className="grid gap-5 sm:grid-cols-2">
             <PrimeLabel>
               <span className="mb-2 block">{isArabic ? "تحميل السيرة الذاتية" : "Upload CV"}</span>
-              <PrimeInput
+              <LocalizedFileInput
+                isArabic={isArabic}
                 id="onboarding-cv"
-                ref={setFieldRef("cv") as Ref<HTMLInputElement>}
-                type="file"
-                className={getInputErrorClass("cv")}
-                aria-invalid={Boolean(fieldErrors.cv)}
-                aria-describedby={fieldErrors.cv ? "onboarding-cv-error" : undefined}
                 accept=".pdf,.doc,.docx"
-                onChange={(event) => {
-                  setCvFile(event.target.files?.[0] ?? null);
+                selectedFiles={cvFile ? [cvFile] : []}
+                inputRef={setFieldRef("cv") as (element: HTMLInputElement | null) => void}
+                className={getInputErrorClass("cv")}
+                ariaInvalid={Boolean(fieldErrors.cv)}
+                ariaDescribedBy={fieldErrors.cv ? "onboarding-cv-error" : undefined}
+                singleLabel={{ en: "Choose CV file", ar: "اختيار ملف السيرة الذاتية" }}
+                onChange={(files) => {
+                  setCvFile(files[0] ?? null);
                   clearFieldError("cv");
                 }}
               />
-              {cvFile ? <p className="mt-2 text-xs text-text-secondary">{cvFile.name}</p> : null}
               {fieldErrors.cv ? (
                 <p id="onboarding-cv-error" className="mt-2 text-xs text-red-300">
                   {fieldErrors.cv}
@@ -1138,29 +1146,22 @@ export default function CandidateOnboardingPage() {
 
             <PrimeLabel>
               <span className="mb-2 block">{isArabic ? "تحميل الشهادات/الدبلومات" : "Upload diplomas/certificates"}</span>
-              <PrimeInput
+              <LocalizedFileInput
+                isArabic={isArabic}
                 id="onboarding-certificates"
-                ref={setFieldRef("supportingFiles") as Ref<HTMLInputElement>}
-                type="file"
                 multiple
-                className={getInputErrorClass("supportingFiles")}
-                aria-invalid={Boolean(fieldErrors.supportingFiles)}
-                aria-describedby={fieldErrors.supportingFiles ? "onboarding-certificates-error" : undefined}
                 accept=".pdf,.doc,.docx,.png,.jpg,.jpeg,.webp"
-                onChange={(event) => {
-                  setSupportingFiles(Array.from(event.target.files ?? []));
+                selectedFiles={supportingFiles}
+                inputRef={setFieldRef("supportingFiles") as (element: HTMLInputElement | null) => void}
+                className={getInputErrorClass("supportingFiles")}
+                ariaInvalid={Boolean(fieldErrors.supportingFiles)}
+                ariaDescribedBy={fieldErrors.supportingFiles ? "onboarding-certificates-error" : undefined}
+                multiLabel={{ en: "Choose certificate files", ar: "اختيار ملفات الشهادات" }}
+                onChange={(files) => {
+                  setSupportingFiles(files);
                   clearFieldError("supportingFiles");
                 }}
               />
-              {supportingFiles.length > 0 ? (
-                <p className="mt-2 text-xs text-text-secondary">
-                  {supportingFiles.length === 1
-                    ? supportingFiles[0].name
-                    : isArabic
-                      ? `${supportingFiles.length} ملفات محددة`
-                      : `${supportingFiles.length} files selected`}
-                </p>
-              ) : null}
               {fieldErrors.supportingFiles ? (
                 <p id="onboarding-certificates-error" className="mt-2 text-xs text-red-300">
                   {fieldErrors.supportingFiles}

@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { primeButtonClasses } from "@/components/ui/prime/PrimeButton";
 import { PrimeCard } from "@/components/ui/prime/PrimeCard";
 import { PrimePageTitle } from "@/components/ui/prime/PrimePageTitle";
+import { asCandidateLocale, localizeCandidateStatus } from "@/lib/candidates/localization";
 
 type ConversationRow = Record<string, unknown>;
 
@@ -58,6 +59,7 @@ export function ConversationCenter({
   role: "employer" | "candidate";
   detailBasePath: string;
 }) {
+  const uiLocale = asCandidateLocale(locale);
   const [loading, setLoading] = useState(true);
   const [hasSession, setHasSession] = useState(false);
   const [isAuthorized, setIsAuthorized] = useState(false);
@@ -101,7 +103,11 @@ export function ConversationCenter({
         const [requestsPayload, conversationsPayload] = await Promise.all([requestsResponse.json(), conversationsResponse.json()]);
 
         if (!requestsResponse.ok || !conversationsResponse.ok) {
-          setError(requestsPayload?.error?.message ?? conversationsPayload?.error?.message ?? "Failed to load");
+          setError(
+            requestsPayload?.error?.message ??
+            conversationsPayload?.error?.message ??
+            (locale === "ar" ? "تعذر تحميل البيانات." : "Failed to load")
+          );
           return;
         }
 
@@ -141,7 +147,7 @@ export function ConversationCenter({
               {requests.map((request) => (
                 <PrimeCard key={String(request.id)} className="p-4">
                   <p className="text-xs uppercase tracking-[0.18em] text-text-tertiary">{copy.status}</p>
-                  <p className="mt-1 text-sm font-medium text-text-primary">{String(request.status ?? "-")}</p>
+                  <p className="mt-1 text-sm font-medium text-text-primary">{localizeCandidateStatus(String(request.status ?? "pending"), uiLocale)}</p>
                   <p className="mt-3 text-sm text-text-secondary">
                     {copy.candidate}: {String((request.candidateProfile as Record<string, unknown> | undefined)?.candidate_reference ?? "PG Candidate")}
                   </p>
@@ -163,27 +169,27 @@ export function ConversationCenter({
                       : String((conversation.employer as Record<string, unknown> | undefined)?.company_name ?? "Prime Global Employer")}
                   </p>
                   <div className="mt-3 grid gap-2 text-sm text-text-secondary sm:grid-cols-2">
-                    <p>{copy.status}: {String(conversation.status ?? "-")}</p>
-                    <p>{copy.stage}: {String(conversation.recruitment_stage ?? "-")}</p>
+                    <p>{copy.status}: {localizeCandidateStatus(String(conversation.status ?? "pending"), uiLocale)}</p>
+                    <p>{copy.stage}: {localizeCandidateStatus(String(conversation.recruitment_stage ?? "pending"), uiLocale)}</p>
                     <p>{copy.assignedStaff}: {String((conversation.assignedStaff as Record<string, unknown> | undefined)?.label ?? "Prime Global")}</p>
                     <p>{copy.employer}: {String((conversation.employer as Record<string, unknown> | undefined)?.company_name ?? "-")}</p>
                     <p>
                       {copy.interviewInvites}: {String((conversation.interviewSummary as Record<string, unknown> | undefined)?.pendingInvitations ?? 0)}
                     </p>
                     <p>
-                      {copy.nextInterview}: {String((conversation.interviewSummary as Record<string, unknown> | undefined)?.nextInterviewAt ?? "-")}
+                      {copy.nextInterview}: <span dir={locale === "ar" ? "rtl" : "ltr"}>{String((conversation.interviewSummary as Record<string, unknown> | undefined)?.nextInterviewAt ?? "-")}</span>
                     </p>
                     <p>
                       {copy.unread}: {String(((conversation.unread as Record<string, unknown> | undefined)?.unreadCount ?? 0))}
                     </p>
                     <p>
-                      {copy.recruiterPresence}: {String(conversation.recruiterPresence ?? "offline")}
+                      {copy.recruiterPresence}: {localizeCandidateStatus(String(conversation.recruiterPresence ?? "offline"), uiLocale)}
                     </p>
                     <p>
-                      {copy.roles}: {Array.isArray(conversation.participantRoles) ? conversation.participantRoles.join(", ") : "-"}
+                      {copy.roles}: {Array.isArray(conversation.participantRoles) ? conversation.participantRoles.map((roleValue) => localizeCandidateStatus(String(roleValue), uiLocale)).join(", ") : "-"}
                     </p>
                     <p>
-                      {copy.lastMessage}: {String(conversation.lastMessageAt ?? "-")}
+                      {copy.lastMessage}: <span dir={locale === "ar" ? "rtl" : "ltr"}>{String(conversation.lastMessageAt ?? "-")}</span>
                     </p>
                   </div>
                   <a href={`${detailBasePath}/${String(conversation.id)}`} className={`${primeButtonClasses("secondary", "sm")} mt-4`}>

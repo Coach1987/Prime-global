@@ -6,6 +6,7 @@ import { Link, useRouter } from "@/i18n/routing";
 import { PrimeCard } from "@/components/ui/prime/PrimeCard";
 import { PrimePageTitle } from "@/components/ui/prime/PrimePageTitle";
 import { primeButtonClasses } from "@/components/ui/prime/PrimeButton";
+import { asCandidateLocale, localizeCandidateStatus } from "@/lib/candidates/localization";
 
 type CandidateProfile = {
   full_name?: string | null;
@@ -125,6 +126,7 @@ function EmptyState({ text }: { text: string }) {
 export default function CandidateProfilePage() {
   const locale = useLocale();
   const isArabic = locale === "ar";
+  const uiLocale = asCandidateLocale(locale);
   const router = useRouter();
 
   const [loading, setLoading] = useState(true);
@@ -351,15 +353,15 @@ export default function CandidateProfilePage() {
           </article>
           <article className="rounded-2xl border border-blue-200/20 bg-[#061123]/80 p-4">
             <p className="text-xs uppercase tracking-[0.14em] text-text-tertiary">{isArabic ? "حالة التحقق" : "Verification"}</p>
-            <p className="mt-2 text-sm font-semibold text-text-primary">{verificationCase?.status ?? "pending_ai_analysis"}</p>
+            <p className="mt-2 text-sm font-semibold text-text-primary">{localizeCandidateStatus(verificationCase?.status ?? "pending_ai_analysis", uiLocale)}</p>
           </article>
           <article className="rounded-2xl border border-blue-200/20 bg-[#061123]/80 p-4">
             <p className="text-xs uppercase tracking-[0.14em] text-text-tertiary">{isArabic ? "حالة السيرة الذاتية" : "Current CV status"}</p>
-            <p className="mt-2 text-sm font-semibold text-text-primary">{cvStatus}</p>
+            <p className="mt-2 text-sm font-semibold text-text-primary">{localizeCandidateStatus(cvStatus, uiLocale)}</p>
           </article>
           <article className="rounded-2xl border border-blue-200/20 bg-[#061123]/80 p-4">
             <p className="text-xs uppercase tracking-[0.14em] text-text-tertiary">{isArabic ? "آخر تحديث" : "Last update"}</p>
-            <p className="mt-2 text-sm font-semibold text-text-primary">{lastUpdatedAt}</p>
+            <p className="mt-2 text-sm font-semibold text-text-primary" dir={isArabic ? "rtl" : "ltr"}>{lastUpdatedAt}</p>
           </article>
           <article className="rounded-2xl border border-blue-200/20 bg-[#061123]/80 p-4">
             <p className="text-xs uppercase tracking-[0.14em] text-text-tertiary">{isArabic ? "الطلبات" : "Applications"}</p>
@@ -460,7 +462,7 @@ export default function CandidateProfilePage() {
                   <li key={`education-${index}`} className="border-l border-blue-200/20 pl-4">
                     <p className="font-semibold text-text-primary">{entry.degree || (isArabic ? "مؤهل غير مضاف" : "Degree not provided")}</p>
                     <p>{entry.institution || (isArabic ? "المؤسسة غير مضافة" : "Institution not provided")}</p>
-                    <p className="text-xs text-text-tertiary">{entry.year || "-"}</p>
+                    <p className="text-xs text-text-tertiary" dir={isArabic ? "rtl" : "ltr"}>{entry.year || "-"}</p>
                   </li>
                 ))}
               </ol>
@@ -485,8 +487,8 @@ export default function CandidateProfilePage() {
               ))}
               {certificateVersions.map((item, index) => (
                 <li key={`certificate-version-${index}`}>
-                  <span className="font-semibold text-text-primary">{item.original_filename || (isArabic ? "وثيقة" : "Document")}</span>
-                  <span className="text-xs text-text-tertiary"> {`(${item.verification_status ?? "pending_verification"})`}</span>
+                  <span className="font-semibold text-text-primary" dir="ltr">{item.original_filename || (isArabic ? "وثيقة" : "Document")}</span>
+                  <span className="text-xs text-text-tertiary"> {`(${localizeCandidateStatus(item.verification_status ?? "pending_verification", uiLocale)})`}</span>
                 </li>
               ))}
             </ul>
