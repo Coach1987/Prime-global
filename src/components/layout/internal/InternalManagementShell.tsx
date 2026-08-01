@@ -73,7 +73,7 @@ export function InternalManagementShell({ locale, children }: InternalManagement
     }).catch(() => undefined);
 
     emitAuthSessionChanged({ role: null, displayName: null });
-    router.push(`/${locale}/admin/login`);
+    router.push("/admin/login");
     router.refresh();
   }
 
@@ -83,6 +83,7 @@ export function InternalManagementShell({ locale, children }: InternalManagement
       dashboardControlCenter: t("dashboardControlCenter"),
       companyManagement: t("companyManagement"),
       staffDashboard: t("staffDashboard"),
+      account: t("account"),
       logout: t("logout"),
       recruitment: t("recruitment"),
       candidateProfiles: t("candidateProfiles"),
@@ -120,11 +121,14 @@ export function InternalManagementShell({ locale, children }: InternalManagement
           <nav className="hidden items-center gap-2 md:flex">
             {showPrimaryLinks ? (
               primaryLinks.map((item) => (
-                <Link key={item.href} href={item.href} className={primeButtonClasses("secondary", "sm")}>
+                <Link key={item.href} href={item.href} prefetch={false} className={primeButtonClasses("secondary", "sm")}>
                   {item.label}
                 </Link>
               ))
             ) : null}
+            <Link href="/admin/account" prefetch={false} className={primeButtonClasses("secondary", "sm")}>
+              {copy.account}
+            </Link>
             <button
               type="button"
               onClick={handleLogout}
@@ -138,11 +142,14 @@ export function InternalManagementShell({ locale, children }: InternalManagement
         <div className="mx-auto flex w-full max-w-[1380px] flex-wrap gap-2 px-4 pb-3 sm:px-6 md:hidden">
           {showPrimaryLinks
             ? primaryLinks.map((item) => (
-                <Link key={item.href} href={item.href} className={primeButtonClasses("secondary", "sm")}>
+                  <Link key={item.href} href={item.href} prefetch={false} className={primeButtonClasses("secondary", "sm")}>
                   {item.label}
                 </Link>
               ))
             : null}
+          <Link href="/admin/account" prefetch={false} className={primeButtonClasses("secondary", "sm")}>
+            {copy.account}
+          </Link>
           <button
             type="button"
             onClick={handleLogout}
