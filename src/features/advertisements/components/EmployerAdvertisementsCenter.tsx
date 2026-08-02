@@ -91,6 +91,8 @@ export function EmployerAdvertisementsCenter({ locale }: { locale: string }) {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [hasEmployerProfile, setHasEmployerProfile] = useState(true);
+  const [showCreateForm, setShowCreateForm] = useState(false);
   const [items, setItems] = useState<EmployerAdvertisementItem[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [form, setForm] = useState<AdvertisementFormState>(INITIAL_FORM);
@@ -112,8 +114,15 @@ export function EmployerAdvertisementsCenter({ locale }: { locale: string }) {
     });
 
     if (!response.ok) {
+      if (response.status === 404) {
+        setHasEmployerProfile(false);
+        setItems([]);
+        return;
+      }
       throw new Error(await readErrorMessage(response, "Failed to load advertisements."));
     }
+
+    setHasEmployerProfile(true);
 
     const payload = (await response.json()) as { data?: EmployerAdvertisementItem[] };
     const nextItems = payload.data ?? [];
@@ -132,6 +141,17 @@ export function EmployerAdvertisementsCenter({ locale }: { locale: string }) {
         const csrfResponse = await fetch("/api/security/csrf", { credentials: "include" });
         const csrfPayload = await csrfResponse.json();
         setCsrfToken(String(csrfPayload?.data?.csrfToken ?? ""));
+
+        const profileResponse = await fetch("/api/employers/profile", { credentials: "include" });
+        const profilePayload = await profileResponse.json().catch(() => null);
+        const profileExists = Boolean(profileResponse.ok && profilePayload?.success && profilePayload?.data);
+        setHasEmployerProfile(profileExists);
+
+        if (!profileExists) {
+          setItems([]);
+          return;
+        }
+
         await loadAds();
       } catch (bootstrapError) {
         setError(bootstrapError instanceof Error ? bootstrapError.message : "Failed to load employer advertisements.");
@@ -280,62 +300,83 @@ export function EmployerAdvertisementsCenter({ locale }: { locale: string }) {
       <PrimeCard className="p-7 md:p-10">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div>
-            <h1 className="font-heading text-3xl text-text-primary md:text-4xl">Promotional Advertisements</h1>
+            <h1 className="font-heading text-3xl text-text-primary md:text-4xl">{locale === "ar" ? "الإعلانات" : "Advertisements"}</h1>
             <p className="mt-2 text-sm text-text-secondary">
-              Prepare homepage promotional placements, upload approved media, and send them to Prime Global moderation.
+              {locale === "ar"
+                ? "أنشئ إعلانات الشركة وأرسلها للمراجعة عند الحاجة."
+                : "Create company advertisements and submit them for review when needed."}
             </p>
           </div>
-          <button
-            type="button"
-            className={primeButtonClasses("secondary")}
-            onClick={() => {
-              setSelectedId(null);
-              setForm(INITIAL_FORM);
-              setMessage("Draft form reset.");
-            }}
-          >
-            New Draft
-          </button>
+          {hasEmployerProfile ? (
+            <button
+              type="button"
+              className={primeButtonClasses("secondary")}
+              onClick={() => {
+                setSelectedId(null);
+                setForm(INITIAL_FORM);
+                setShowCreateForm((current) => !current);
+                setMessage(null);
+              }}
+            >
+              {showCreateForm
+                ? (locale === "ar" ? "إغلاق" : "Close")
+                : (locale === "ar" ? "إعلان جديد" : "New Advertisement")}
+            </button>
+          ) : null}
         </div>
 
         {loading ? <p className="mt-6 text-sm text-text-secondary">Loading advertisements...</p> : null}
         {error ? <p className="mt-4 text-sm text-red-300">{error}</p> : null}
         {message ? <p className="mt-4 text-sm text-emerald-300">{message}</p> : null}
 
-        <div className="mt-8 grid gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(0,1.45fr)]">
-          <section className="rounded-2xl border border-gold/15 bg-bg-primary/60 p-4">
-            <div className="space-y-3">
-              {items.map((item) => {
-                const selectedItem = item.id === selectedId;
-                return (
-                  <button
-                    key={item.id}
-                    type="button"
-                    onClick={() => {
-                      setSelectedId(item.id);
-                      setForm(mapRecordToForm(item));
-                    }}
-                    className={`w-full rounded-xl border p-4 text-left transition ${selectedItem ? "border-gold/40 bg-bg-primary" : "border-gold/15 bg-bg-primary/70 hover:border-gold/30"}`}
-                  >
-                    <div className="flex items-center justify-between gap-3">
-                      <h2 className="line-clamp-1 font-semibold text-text-primary">{item.title_en}</h2>
-                      <span className="rounded-full border border-gold/30 px-2.5 py-1 text-[10px] uppercase tracking-[0.16em] text-gold">
-                        {item.status === "draft" && item.moderation_reason ? "Changes Requested" : statusLabel(item.status)}
-                      </span>
-                    </div>
-                    <p className="mt-2 line-clamp-2 text-xs text-text-secondary">{item.description_en}</p>
-                    {item.moderation_reason ? <p className="mt-2 text-xs text-amber-200">Note: {item.moderation_reason}</p> : null}
-                  </button>
-                );
-              })}
+        {!loading && !hasEmployerProfile ? (
+          <div className="mt-8 rounded-2xl border border-gold/20 bg-bg-primary/60 p-5">
+            <p className="text-sm text-text-secondary">
+              {locale === "ar"
+                ? "أكمل ملف الشركة قبل إنشاء إعلان."
+                : "Complete your company profile before creating an advertisement."}
+            </p>
+            <a
+              href={`/${locale}/employers/company-profile`}
+              className="mt-4 inline-flex rounded-full border border-gold/30 px-4 py-2 text-sm font-semibold text-gold transition hover:bg-gold/10"
+            >
+              {locale === "ar" ? "الانتقال إلى ملف الشركة" : "Go to Company Profile"}
+            </a>
+          </div>
+        ) : null}
 
-              {!loading && items.length === 0 ? (
-                <p className="rounded-xl border border-gold/10 bg-bg-primary/50 p-4 text-sm text-text-secondary">No advertisements yet.</p>
-              ) : null}
-            </div>
-          </section>
+        {!loading && hasEmployerProfile ? (
+          <div className="mt-8 space-y-4">
+            {items.length === 0 ? (
+              <p className="rounded-xl border border-gold/10 bg-bg-primary/50 p-4 text-sm text-text-secondary">
+                {locale === "ar" ? "لا توجد إعلانات حتى الآن." : "No advertisements yet."}
+              </p>
+            ) : null}
+            {items.map((item) => (
+              <button
+                key={item.id}
+                type="button"
+                onClick={() => {
+                  setSelectedId(item.id);
+                  setForm(mapRecordToForm(item));
+                  setShowCreateForm(true);
+                }}
+                className={`w-full rounded-xl border p-4 text-left transition ${item.id === selectedId ? "border-gold/40 bg-bg-primary" : "border-gold/15 bg-bg-primary/70 hover:border-gold/30"}`}
+              >
+                <div className="flex items-center justify-between gap-3">
+                  <h2 className="line-clamp-1 font-semibold text-text-primary">{item.title_en}</h2>
+                  <span className="rounded-full border border-gold/30 px-2.5 py-1 text-[10px] uppercase tracking-[0.16em] text-gold">
+                    {item.status === "draft" && item.moderation_reason ? "Changes Requested" : statusLabel(item.status)}
+                  </span>
+                </div>
+                <p className="mt-2 line-clamp-2 text-xs text-text-secondary">{item.description_en}</p>
+              </button>
+            ))}
+          </div>
+        ) : null}
 
-          <section className="rounded-2xl border border-gold/15 bg-bg-primary/60 p-5">
+        {hasEmployerProfile && showCreateForm ? (
+          <section className="mt-6 rounded-2xl border border-gold/15 bg-bg-primary/60 p-5">
             <form className="space-y-4" onSubmit={onSubmit}>
               <div className="grid gap-4 sm:grid-cols-2">
                 <label className="text-sm text-text-secondary">
@@ -452,7 +493,7 @@ export function EmployerAdvertisementsCenter({ locale }: { locale: string }) {
               ) : null}
             </div>
           </section>
-        </div>
+        ) : null}
       </PrimeCard>
     </main>
   );

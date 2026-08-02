@@ -27,8 +27,8 @@ export default function EmployerCandidateProfilesPage() {
   const copy = useMemo(
     () =>
       locale === "ar"
-        ? { title: "الملفات المهنية المجهولة", subtitle: "تعرض فقط النسخة المسموح بها لأصحاب العمل." }
-        : { title: "Anonymized Candidate Profiles", subtitle: "Only approved employer-facing profiles are shown." },
+        ? { title: "المترشحون", subtitle: "راجع المتقدمين والملفات المعتمدة في مكان واحد.", empty: "لا يوجد مترشحون متاحون حالياً." }
+        : { title: "Candidates", subtitle: "Review applicants and approved profiles in one place.", empty: "No candidates available yet." },
     [locale]
   );
 
@@ -62,9 +62,15 @@ export default function EmployerCandidateProfilesPage() {
         <input
           value={query}
           onChange={(event) => setQuery(event.target.value)}
-          placeholder="Search by reference, title, or location"
+          placeholder={locale === "ar" ? "ابحث بالمرجع أو المسمى أو الموقع" : "Search by reference, title, or location"}
           className="mt-6 w-full rounded-xl border border-gold/15 bg-bg-primary px-4 py-3 text-sm text-text-primary"
         />
+
+        {profiles.length === 0 ? (
+          <article className="mt-8 rounded-2xl border border-gold/20 bg-bg-primary/60 p-5 text-sm text-text-secondary">
+            {copy.empty}
+          </article>
+        ) : null}
 
         <div className="mt-8 grid gap-4 lg:grid-cols-2">
           {profiles.map((profile) => (
@@ -75,10 +81,10 @@ export default function EmployerCandidateProfilesPage() {
             >
               <div className="flex items-center justify-between gap-3">
                 <h2 className="font-heading text-2xl text-text-primary">{profile.candidate_reference}</h2>
-                <span className="text-xs uppercase tracking-[0.16em] text-gold">Approved</span>
+                <span className="text-xs uppercase tracking-[0.16em] text-gold">{locale === "ar" ? "معتمد" : "Approved"}</span>
               </div>
-              <p className="mt-3 text-sm text-text-secondary">{profile.professional_title ?? profile.desired_role ?? "Professional profile"}</p>
-              <p className="mt-2 text-sm text-text-tertiary">{profile.general_location ?? "Location protected"}</p>
+              <p className="mt-3 text-sm text-text-secondary">{profile.professional_title ?? profile.desired_role ?? (locale === "ar" ? "ملف مهني" : "Professional profile")}</p>
+              <p className="mt-2 text-sm text-text-tertiary">{profile.general_location ?? (locale === "ar" ? "الموقع محمي" : "Location protected")}</p>
             </Link>
           ))}
         </div>

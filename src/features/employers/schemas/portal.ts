@@ -57,6 +57,8 @@ export const employerVerificationDocumentTypeSchema = z.enum([
 
 export const employerProfileUpdateSchema = z.object({
   companyName: z.string().trim().min(2).max(180).optional(),
+  commercialRegistrationNumber: z.string().trim().min(2).max(80).optional(),
+  taxNumber: z.string().trim().min(2).max(80).optional(),
   country: z.string().trim().min(2).max(120).optional(),
   city: z.string().trim().min(2).max(120).optional(),
   address: z.string().trim().min(5).max(300).optional(),

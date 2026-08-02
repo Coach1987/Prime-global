@@ -16,10 +16,14 @@ export async function GET(request: Request) {
 
   const employer = await getEmployerByAuthUserId(auth.userId);
   if (!employer) {
-    return NextResponse.json(
-      { success: false, error: { code: "EMPLOYER_NOT_FOUND", message: "Employer profile missing" } },
-      { status: 404 }
-    );
+    return NextResponse.json({
+      success: true,
+      data: {
+        jobs: [],
+        matches: [],
+        candidates: [],
+      },
+    });
   }
 
   const verificationGate = requireVerifiedEmployerStatus(employer.verification_status as string | null | undefined);

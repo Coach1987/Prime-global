@@ -63,7 +63,7 @@ export default function EmployerCandidateProfileDetailPage() {
     () =>
       locale === "ar"
         ? {
-            title: "ملف مرشح مجهول",
+            title: "ملف المترشح",
             requestConversation: "طلب محادثة خاضعة للإشراف",
             openConversations: "فتح مركز المحادثات",
             requestInterview: "طلب مقابلة عبر برايم جلوبال",
@@ -72,7 +72,7 @@ export default function EmployerCandidateProfileDetailPage() {
             contactNote: "معلومات الاتصال محمية، وجميع الخطوات تتم عبر برايم جلوبال.",
           }
         : {
-            title: "Anonymized Candidate Profile",
+            title: "Candidate Profile",
             requestConversation: "Request Supervised Conversation",
             openConversations: "Open Conversation Center",
             requestInterview: "Request Interview Through Prime Global",

@@ -327,16 +327,11 @@ export function AuthActions({ mobile = false, onNavigate }: AuthActionsProps) {
   ];
 
   const employerLinks = [
-    { href: getDashboardHref("employer"), label: t("dashboard") },
+    { href: getDashboardHref("employer"), label: t("employerDashboard") },
     { href: getAccountHref("employer"), label: t("companyProfile") },
-    { href: "/employers/verification", label: t("companyVerification") },
-    { href: "/employers/jobs", label: t("jobManagement") },
+    { href: "/employers/jobs", label: t("employerJobs") },
+    { href: "/employers/candidate-profiles", label: t("candidates") },
     { href: "/employers/advertisements", label: t("advertisements") },
-    { href: "/employers/candidate-profiles", label: t("candidateProfiles") },
-    { href: "/employers/workflow", label: t("workflow") },
-    { href: "/employers/interview-center", label: t("interviews") },
-    { href: "/employers/supervised-conversations", label: t("supervisedConversations") },
-    { href: "/notifications", label: t("notifications") },
     { href: "/employers/settings", label: t("settings") },
   ];
 

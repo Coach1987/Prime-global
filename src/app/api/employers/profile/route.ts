@@ -196,6 +196,8 @@ export async function PATCH(request: Request) {
 
   const dbPayload = {
     company_name: payload.companyName,
+    commercial_registration_number: payload.commercialRegistrationNumber,
+    tax_number: payload.taxNumber,
     country: payload.country,
     city: payload.city,
     address: payload.address,
