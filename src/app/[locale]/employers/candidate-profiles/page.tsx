@@ -3,6 +3,12 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useParams } from "next/navigation";
+import {
+  employerInput,
+  employerPageShell,
+  employerSectionCard,
+  employerSurfaceCard,
+} from "@/features/employers/ui/portal-theme";
 
 type CandidateRow = {
   candidate_id: string;
@@ -54,8 +60,8 @@ export default function EmployerCandidateProfilesPage() {
   }, []);
 
   return (
-    <main className="mx-auto w-full max-w-[1280px] px-4 pb-20 pt-[124px] sm:px-6 md:px-8">
-      <section className="rounded-3xl border border-gold/20 bg-bg-secondary/80 p-7 backdrop-blur-xl md:p-10">
+    <main className={employerPageShell}>
+      <section className={employerSurfaceCard}>
         <h1 className="font-heading text-4xl text-text-primary">{copy.title}</h1>
         <p className="mt-3 text-sm text-text-secondary">{copy.subtitle}</p>
 
@@ -63,11 +69,11 @@ export default function EmployerCandidateProfilesPage() {
           value={query}
           onChange={(event) => setQuery(event.target.value)}
           placeholder={locale === "ar" ? "ابحث بالمرجع أو المسمى أو الموقع" : "Search by reference, title, or location"}
-          className="mt-6 w-full rounded-xl border border-gold/15 bg-bg-primary px-4 py-3 text-sm text-text-primary"
+          className={`mt-6 ${employerInput}`}
         />
 
         {profiles.length === 0 ? (
-          <article className="mt-8 rounded-2xl border border-gold/20 bg-bg-primary/60 p-5 text-sm text-text-secondary">
+          <article className={`mt-8 ${employerSectionCard} text-sm text-text-secondary`}>
             {copy.empty}
           </article>
         ) : null}
@@ -77,7 +83,7 @@ export default function EmployerCandidateProfilesPage() {
             <Link
               key={profile.candidate_id}
               href={`/${locale}/employers/candidate-profiles/${profile.candidate_id}`}
-              className="rounded-2xl border border-gold/15 bg-bg-primary/70 p-5 transition hover:border-gold/40 hover:bg-bg-primary"
+              className={`${employerSectionCard} hover:border-gold/40 hover:bg-bg-primary`}
             >
               <div className="flex items-center justify-between gap-3">
                 <h2 className="font-heading text-2xl text-text-primary">{profile.candidate_reference}</h2>

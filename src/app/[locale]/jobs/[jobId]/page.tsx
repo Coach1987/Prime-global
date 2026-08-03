@@ -6,6 +6,7 @@ import { buildCandidateAuthHref } from "@/lib/auth/return-to";
 import { useRouter } from "@/i18n/routing";
 import { SITE_URL } from "@/lib/constants/site";
 import { buildBreadcrumbListJsonLd } from "@/lib/seo/public";
+import { getEmployerBlockedFromCandidateActionsMessage } from "@/lib/auth/role-guard-messages";
 
 type JobDetail = {
   id: string;
@@ -154,7 +155,9 @@ export default function JobDetailPage() {
         ? {
             pageTitle: "تفاصيل الوظيفة",
             apply: "قدّم الآن",
-            requiresCandidate: "التقديم على الوظائف يتطلب حساب مرشح.",
+            requiresCandidate: getEmployerBlockedFromCandidateActionsMessage("ar"),
+            returnToEmployerPortal: "العودة إلى بوابة صاحب العمل",
+            signOut: "تسجيل الخروج",
             oneStepAway: "أنت على بُعد خطوة واحدة من التقديم.",
             benefitsIntro: "لإكمال التقديم بسهولة وأمان عبر Prime Global:",
             createProfile: "أنشئ ملفك المهني على Prime Global",
@@ -191,7 +194,9 @@ export default function JobDetailPage() {
         : {
             pageTitle: "Job Details",
             apply: "Apply Now",
-            requiresCandidate: "Applications require a Candidate account.",
+            requiresCandidate: getEmployerBlockedFromCandidateActionsMessage("en"),
+            returnToEmployerPortal: "Return to Employer Portal",
+            signOut: "Sign Out",
             oneStepAway: "You're one step away from applying.",
             benefitsIntro: "To complete your application professionally and securely on Prime Global:",
             createProfile: "Create your professional Prime Global profile",
@@ -231,6 +236,26 @@ export default function JobDetailPage() {
   const applyIntentPath = `/${locale}/jobs/${jobId}?applyIntent=1`;
   const createAccountHref = buildCandidateAuthHref({ locale, mode: "register", returnTo: applyIntentPath });
   const signInHref = buildCandidateAuthHref({ locale, mode: "signin", returnTo: applyIntentPath });
+
+  const handleBlockedEmployerSignOut = useCallback(async () => {
+    let token = "";
+    try {
+      const csrfResponse = await fetch("/api/security/csrf", { credentials: "include" });
+      const csrfPayload = await csrfResponse.json().catch(() => null);
+      token = typeof csrfPayload?.data?.csrfToken === "string" ? csrfPayload.data.csrfToken : "";
+    } catch {
+      token = "";
+    }
+
+    await fetch("/api/auth/logout", {
+      method: "POST",
+      headers: token ? { "x-csrf-token": token } : undefined,
+      credentials: "include",
+    }).catch(() => undefined);
+
+    router.push(`/${locale}` as never);
+    router.refresh();
+  }, [locale, router]);
 
   useEffect(() => {
     if (!jobId) return;
@@ -508,9 +533,25 @@ export default function JobDetailPage() {
             </section>
 
             {authRole && authRole !== "candidate" ? (
-              <p className="mt-6 rounded-xl border border-amber-300/40 bg-amber-600/10 px-4 py-3 text-sm text-amber-100">
-                {copy.requiresCandidate}
-              </p>
+              <div className="mt-6 rounded-xl border border-amber-300/40 bg-amber-600/10 px-4 py-3 text-sm text-amber-100">
+                <p>{copy.requiresCandidate}</p>
+                <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+                  <button
+                    type="button"
+                    onClick={() => router.push("/employer" as never)}
+                    className="inline-flex items-center justify-center rounded-lg border border-amber-200/50 px-4 py-2 text-sm font-semibold text-amber-100"
+                  >
+                    {copy.returnToEmployerPortal}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleBlockedEmployerSignOut().catch(() => undefined)}
+                    className="inline-flex items-center justify-center rounded-lg border border-white/30 px-4 py-2 text-sm font-semibold text-text-primary"
+                  >
+                    {copy.signOut}
+                  </button>
+                </div>
+              </div>
             ) : null}
 
             {(!authRole || authRole === "candidate") && (

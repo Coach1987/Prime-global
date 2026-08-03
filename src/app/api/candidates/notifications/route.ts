@@ -15,7 +15,7 @@ export async function GET(request: Request) {
   const auth = await requireAuth(request);
   if (auth instanceof NextResponse) return auth;
 
-  const roleCheck = requireRole(auth, ["candidate", "employer", "admin", "super_admin"]);
+  const roleCheck = requireRole(auth, ["candidate", "admin", "super_admin"]);
   if (roleCheck) return roleCheck;
 
   const supabase = createSupabaseAdminClient();
@@ -46,7 +46,7 @@ export async function PATCH(request: Request) {
   const auth = await requireAuth(request);
   if (auth instanceof NextResponse) return auth;
 
-  const roleCheck = requireRole(auth, ["candidate", "employer", "admin", "super_admin"]);
+  const roleCheck = requireRole(auth, ["candidate", "admin", "super_admin"]);
   if (roleCheck) return roleCheck;
 
   const parsed = await parseJsonBody(request, markNotificationReadSchema);

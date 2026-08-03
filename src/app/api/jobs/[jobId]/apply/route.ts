@@ -7,6 +7,7 @@ import { createAuditLog } from "@/lib/server/security/audit";
 import { requireAuth } from "@/lib/server/security/auth";
 import { enforceCsrf, enforceRateLimit, getRequestContext, parseJsonBody } from "@/lib/server/http";
 import { createSupabaseAdminClient } from "@/lib/server/supabase";
+import { getEmployerBlockedFromCandidateActionsMessage } from "@/lib/auth/role-guard-messages";
 
 async function loadApplicationContext({
   userId,
@@ -66,10 +67,7 @@ async function loadApplicationContext({
 }
 
 function toLocalizedRoleMessage(locale: string) {
-  if (locale === "ar") {
-    return "التقديم على الوظائف متاح فقط عبر حساب مرشح.";
-  }
-  return "Job applications require a Candidate account.";
+  return getEmployerBlockedFromCandidateActionsMessage(locale);
 }
 
 function resolveLocaleFromRequest(request: Request) {

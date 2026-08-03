@@ -10,6 +10,7 @@ import { displaySerif, inter, tajawal } from "@/lib/fonts";
 import { AppFrame } from "@/components/layout/AppFrame";
 import { SmoothScrollProvider } from "@/components/shared/SmoothScrollProvider";
 import { cn } from "@/lib/utils/cn";
+import { readServerSessionRole } from "@/lib/server/security/page-access";
 import "../globals.css";
 
 export function generateStaticParams() {
@@ -107,6 +108,7 @@ export default async function LocaleLayout({
   // useTranslations (Header, Hero, Services, WhyUs, Testimonials, FAQ,
   // Footer — all of them) will silently fail to resolve translations.
   const messages = await getMessages();
+  const sessionRole = await readServerSessionRole();
 
   const dir = locale === "ar" ? "rtl" : "ltr";
 
@@ -148,7 +150,7 @@ export default async function LocaleLayout({
           />
 
           <SmoothScrollProvider>
-            <AppFrame>{children}</AppFrame>
+            <AppFrame initialRole={sessionRole}>{children}</AppFrame>
           </SmoothScrollProvider>
         </NextIntlClientProvider>
         <GoogleAnalytics gaId="G-T0NWSPSHXX" />

@@ -3,6 +3,12 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useRouter } from "@/i18n/routing";
 import { useLocale } from "next-intl";
+import {
+  employerPageShell,
+  employerPrimaryButton,
+  employerSectionCard,
+  employerSurfaceCard,
+} from "@/features/employers/ui/portal-theme";
 
 type EmployerStats = {
   totalJobs: number;
@@ -29,6 +35,7 @@ export default function EmployerDashboardPage() {
   const [loading, setLoading] = useState(true);
   const [hasSession, setHasSession] = useState(false);
   const [stats, setStats] = useState<EmployerStats>(EMPTY_STATS);
+  const [companyName, setCompanyName] = useState<string | null>(null);
 
   useEffect(() => {
     async function loadDashboard() {
@@ -45,6 +52,10 @@ export default function EmployerDashboardPage() {
 
         const statsRes = await fetch("/api/employers/stats", { credentials: "include", cache: "no-store" });
         const statsPayload = await statsRes.json();
+
+        const profileRes = await fetch("/api/employers/profile", { credentials: "include", cache: "no-store" });
+        const profilePayload = await profileRes.json().catch(() => null);
+        setCompanyName(typeof profilePayload?.data?.company_name === "string" ? profilePayload.data.company_name : null);
 
         if (statsRes.ok && statsPayload?.success && statsPayload?.data) {
           setStats({ ...EMPTY_STATS, ...statsPayload.data });
@@ -81,9 +92,25 @@ export default function EmployerDashboardPage() {
     return isArabic ? "قيد المراجعة" : "Pending Review";
   }, [isArabic, stats.accountStatus, stats.verificationStatus]);
 
+  const workflowStepLabel = useMemo(() => {
+    if (!companyName || stats.verificationStatus === "not_submitted") {
+      return isArabic ? "أكمل ملف الشركة" : "Complete company profile";
+    }
+    if (stats.accountStatus === "approved" || stats.verificationStatus === "verified") {
+      return isArabic ? "إدارة التوظيف النشط" : "Manage active hiring";
+    }
+    if (stats.accountStatus === "rejected" || stats.verificationStatus === "rejected") {
+      return isArabic ? "تحديث البيانات وإعادة الإرسال" : "Update profile and resubmit verification";
+    }
+    if (stats.accountStatus === "suspended" || stats.verificationStatus === "suspended") {
+      return isArabic ? "مراجعة الحساب مطلوبة" : "Account review required";
+    }
+    return isArabic ? "بانتظار مراجعة التحقق" : "Awaiting verification review";
+  }, [companyName, isArabic, stats.accountStatus, stats.verificationStatus]);
+
   if (loading) {
     return (
-      <main className="mx-auto w-full max-w-[1160px] px-4 pb-16 pt-[124px] sm:px-6 md:px-8">
+      <main className={employerPageShell}>
         <p className="text-sm text-text-secondary">{isArabic ? "جارٍ تحميل لوحة الشركة..." : "Loading employer dashboard..."}</p>
       </main>
     );
@@ -96,60 +123,84 @@ export default function EmployerDashboardPage() {
   const needsProfile = stats.verificationStatus === "not_submitted";
 
   return (
-    <main className="mx-auto w-full max-w-[1160px] px-4 pb-16 pt-[124px] sm:px-6 md:px-8">
-      <section className="rounded-3xl border border-gold/20 bg-bg-secondary/80 p-7 backdrop-blur-xl md:p-10">
-        <h1 className="font-heading text-4xl text-text-primary">{isArabic ? "لوحة الشركة" : "Dashboard"}</h1>
-
-        {needsProfile ? (
-          <p className="mt-3 text-sm text-text-secondary">
-            {isArabic ? "أكمل ملف الشركة للبدء." : "Complete your company profile to begin."}
-          </p>
-        ) : null}
+    <main className={employerPageShell}>
+      <section className={employerSurfaceCard}>
+        <div className="rounded-2xl border border-gold/20 bg-bg-primary/65 p-6">
+          <p className="text-xs uppercase tracking-[0.2em] text-text-tertiary">{isArabic ? "مركز القيادة" : "Command Center"}</p>
+          <h1 className="mt-3 font-heading text-4xl text-text-primary">
+            {isArabic
+              ? `مرحباً${companyName ? `، ${companyName}` : ""}`
+              : `Welcome${companyName ? `, ${companyName}` : ""}`}
+          </h1>
+          <div className="mt-5 grid gap-3 sm:grid-cols-2">
+            <div className={employerSectionCard}>
+              <p className="text-xs uppercase tracking-[0.16em] text-text-tertiary">{isArabic ? "حالة التحقق" : "Verification Status"}</p>
+              <p className="mt-2 text-lg font-semibold text-gold">{verificationLabel}</p>
+            </div>
+            <div className={employerSectionCard}>
+              <p className="text-xs uppercase tracking-[0.16em] text-text-tertiary">{isArabic ? "الخطوة الحالية" : "Current Workflow Step"}</p>
+              <p className="mt-2 text-lg font-semibold text-text-primary">{workflowStepLabel}</p>
+            </div>
+          </div>
+          {needsProfile ? (
+            <p className="mt-4 text-sm text-text-secondary">
+              {isArabic ? "أكمل ملف الشركة للبدء." : "Complete your company profile to begin."}
+            </p>
+          ) : null}
+        </div>
 
         <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
-          <article className="rounded-2xl border border-gold/20 bg-bg-primary/70 p-4">
+          <article className={employerSectionCard}>
             <p className="text-xs uppercase tracking-[0.16em] text-text-tertiary">{isArabic ? "حالة التحقق" : "Verification"}</p>
             <p className="mt-2 text-2xl font-semibold text-gold">{verificationLabel}</p>
           </article>
-          <article className="rounded-2xl border border-gold/20 bg-bg-primary/70 p-4">
+          <article className={employerSectionCard}>
             <p className="text-xs uppercase tracking-[0.16em] text-text-tertiary">{isArabic ? "إجمالي الوظائف" : "Total Jobs"}</p>
             <p className="mt-2 text-2xl font-semibold text-gold">{stats.totalJobs}</p>
           </article>
-          <article className="rounded-2xl border border-gold/20 bg-bg-primary/70 p-4">
+          <article className={employerSectionCard}>
             <p className="text-xs uppercase tracking-[0.16em] text-text-tertiary">{isArabic ? "الوظائف المنشورة" : "Published Jobs"}</p>
             <p className="mt-2 text-2xl font-semibold text-gold">{stats.publishedJobs}</p>
           </article>
-          <article className="rounded-2xl border border-gold/20 bg-bg-primary/70 p-4">
+          <article className={employerSectionCard}>
             <p className="text-xs uppercase tracking-[0.16em] text-text-tertiary">{isArabic ? "المتقدمون" : "Applicants"}</p>
             <p className="mt-2 text-2xl font-semibold text-gold">{stats.totalApplicants}</p>
           </article>
-          <article className="rounded-2xl border border-gold/20 bg-bg-primary/70 p-4">
+          <article className={employerSectionCard}>
             <p className="text-xs uppercase tracking-[0.16em] text-text-tertiary">{isArabic ? "الإعلانات" : "Advertisements"}</p>
             <p className="mt-2 text-2xl font-semibold text-gold">{stats.totalAdvertisements}</p>
           </article>
         </div>
 
-        <section className="mt-8 rounded-2xl border border-gold/20 bg-bg-primary/60 p-5">
-          <h2 className="font-heading text-2xl text-text-primary">{isArabic ? "الإجراءات الأساسية" : "Primary Actions"}</h2>
-          <div className="mt-4 grid gap-3 sm:grid-cols-2">
-            <Link href="/employers/company-profile" className="rounded-xl border border-gold/30 px-4 py-3 text-sm font-semibold text-gold transition hover:bg-gold/10">
-              {isArabic ? "أكمل ملف الشركة" : "Complete company profile"}
-            </Link>
-            <Link href="/employers/jobs" className="rounded-xl border border-gold/30 px-4 py-3 text-sm font-semibold text-gold transition hover:bg-gold/10">
-              {isArabic ? "إنشاء وظيفة" : "Create job"}
-            </Link>
-            <Link href="/employers/candidate-profiles" className="rounded-xl border border-gold/30 px-4 py-3 text-sm font-semibold text-gold transition hover:bg-gold/10">
-              {isArabic ? "مراجعة المترشحين" : "Review candidates"}
-            </Link>
-            <Link href="/employers/advertisements" className="rounded-xl border border-gold/30 px-4 py-3 text-sm font-semibold text-gold transition hover:bg-gold/10">
-              {isArabic ? "إنشاء إعلان" : "Create advertisement"}
-            </Link>
-          </div>
+        <section className="mt-8 grid gap-4 lg:grid-cols-2">
+          <article className={employerSectionCard}>
+            <h2 className="font-heading text-2xl text-text-primary">{isArabic ? "النشاط الأخير" : "Recent Activity"}</h2>
+            <p className="mt-3 text-sm text-text-secondary">{isArabic ? "لا يوجد نشاط بعد" : "No activity yet"}</p>
+          </article>
+          <article className={employerSectionCard}>
+            <h2 className="font-heading text-2xl text-text-primary">{isArabic ? "الإجراءات السريعة" : "Quick Actions"}</h2>
+            <div className="mt-4 grid gap-3 sm:grid-cols-2">
+              <Link href="/employers/company-profile" className={employerPrimaryButton}>
+                {isArabic ? "أكمل ملف الشركة" : "Complete Company Profile"}
+              </Link>
+              <Link href="/employers/jobs" className={employerPrimaryButton}>
+                {isArabic ? "إنشاء وظيفة" : "Create Job"}
+              </Link>
+              <Link href="/employers/advertisements" className={employerPrimaryButton}>
+                {isArabic ? "إنشاء إعلان" : "Create Advertisement"}
+              </Link>
+              <Link href="/employers/candidate-profiles" className={employerPrimaryButton}>
+                {isArabic ? "مراجعة المترشحين" : "Review Candidates"}
+              </Link>
+            </div>
+          </article>
         </section>
 
-        <p className="mt-5 text-xs text-text-tertiary">
-          {isArabic ? "تنبيه: سيتم عرض التحديثات المهمة ضمن هذه اللوحة." : "Notice: Important updates appear in this dashboard."}
-        </p>
+        <section className="mt-6">
+          <div className={employerSectionCard}>
+            <p className="text-xs text-text-tertiary">{isArabic ? "سيتم عرض التحديثات المهمة هنا." : "Important updates will appear here."}</p>
+          </div>
+        </section>
       </section>
     </main>
   );

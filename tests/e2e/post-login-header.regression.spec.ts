@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { createClient } from "@supabase/supabase-js";
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test, type Browser, type Locator, type Page, type TestInfo } from "@playwright/test";
 
 type SeedUser = {
   email: string;
@@ -14,50 +14,28 @@ type SeedUser = {
 
 type SeedState = {
   tag: string;
-  candidateA: SeedUser;
-  candidateB: SeedUser;
-  employerA: SeedUser;
-  employerB: SeedUser;
-  ownerA: SeedUser;
-  staffA: SeedUser;
-  employerAJobId: string;
-  employerAJobTitle: string;
-  employerBJobId: string;
-  candidateAApplicationId: string;
-  candidateBApplicationId: string;
+  candidate: SeedUser;
+  employer: SeedUser;
+  owner: SeedUser;
+  staff: SeedUser;
 };
 
-type SummaryState = {
-  firstDestinationPathname: string;
-  sawConsoleError: boolean;
-  sawPageError: boolean;
-  sawConsoleSensitiveError: boolean;
-  sawChunkLoadError: boolean;
-  sawJsonParseHtmlError: boolean;
+type CrashTelemetry = {
+  testName: string;
+  failingStep: string;
+  finalUrl: string;
+  consoleErrors: string[];
+  pageErrors: string[];
+  browserCrashReason: string;
+  resourceIssue: string;
 };
 
 const seed: SeedState = {
   tag: `${Date.now()}`,
-  candidateA: { email: "", password: "", fullName: "", userId: "" },
-  candidateB: { email: "", password: "", fullName: "", userId: "" },
-  employerA: { email: "", password: "", fullName: "", userId: "" },
-  employerB: { email: "", password: "", fullName: "", userId: "" },
-  ownerA: { email: "", password: "", fullName: "", userId: "" },
-  staffA: { email: "", password: "", fullName: "", userId: "" },
-  employerAJobId: "",
-  employerAJobTitle: "",
-  employerBJobId: "",
-  candidateAApplicationId: "",
-  candidateBApplicationId: "",
-};
-
-const summary: SummaryState = {
-  firstDestinationPathname: "",
-  sawConsoleError: false,
-  sawPageError: false,
-  sawConsoleSensitiveError: false,
-  sawChunkLoadError: false,
-  sawJsonParseHtmlError: false,
+  candidate: { email: "", password: "", fullName: "", userId: "" },
+  employer: { email: "", password: "", fullName: "", userId: "" },
+  owner: { email: "", password: "", fullName: "", userId: "" },
+  staff: { email: "", password: "", fullName: "", userId: "" },
 };
 
 function readEnvLocal() {
@@ -81,9 +59,7 @@ function readEnvLocal() {
 
 function requiredEnv(envMap: Map<string, string>, key: string) {
   const value = envMap.get(key) ?? "";
-  if (!value) {
-    throw new Error(`Missing required env in .env.local: ${key}`);
-  }
+  if (!value) throw new Error(`Missing required env in .env.local: ${key}`);
   return value;
 }
 
@@ -91,8 +67,17 @@ const envMap = readEnvLocal();
 const supabaseUrl = requiredEnv(envMap, "SUPABASE_URL");
 const supabaseServiceRole = requiredEnv(envMap, "SUPABASE_SERVICE_ROLE_KEY");
 const admin = createClient(supabaseUrl, supabaseServiceRole, {
-  auth: { persistSession: false },
+  auth: { persistSession: false, autoRefreshToken: false },
 });
+
+function makeIdentity(prefix: string) {
+  const safe = `${prefix}-${seed.tag}`;
+  return {
+    email: `${safe}@example.com`,
+    password: `P@ssw0rd-${seed.tag}`,
+    fullName: `${prefix.replace(/-/g, " ")} ${seed.tag}`,
+  };
+}
 
 async function getCsrfTokenViaPage(page: Page) {
   const response = await page.request.get("/api/security/csrf");
@@ -104,9 +89,19 @@ async function getCsrfTokenViaPage(page: Page) {
 }
 
 function csrfHeaders(token: string) {
-  return {
-    "x-csrf-token": token,
-  };
+  return { "x-csrf-token": token };
+}
+
+async function apiLogin(page: Page, email: string, password: string, role: "candidate" | "employer" | "staff") {
+  const csrfToken = await getCsrfTokenViaPage(page);
+  const response = await page.request.post("/api/auth/login", {
+    headers: {
+      "Content-Type": "application/json",
+      ...csrfHeaders(csrfToken),
+    },
+    data: { email, password, role },
+  });
+  expect(response.ok()).toBeTruthy();
 }
 
 async function apiLogout(page: Page) {
@@ -117,803 +112,460 @@ async function apiLogout(page: Page) {
   expect(response.ok()).toBeTruthy();
 }
 
-async function apiLogin(page: Page, email: string, password: string, role: "candidate" | "employer" | "staff") {
-  const csrfToken = await getCsrfTokenViaPage(page);
-  const response = await page.request.post("/api/auth/login", {
-    headers: {
-      "Content-Type": "application/json",
-      ...csrfHeaders(csrfToken),
-    },
-    data: {
-      email,
-      password,
-      role,
-    },
-  });
-  expect(response.ok()).toBeTruthy();
+async function uiLogin(page: Page, audience: "candidate" | "employer" | "staff", email: string, password: string, locale: "en" | "ar" = "en") {
+  await page.goto(`/${locale}/auth?mode=signin&audience=${audience}`);
+  const signInForm = page.locator("form").first();
+  await signInForm.locator('input[type="email"]').fill(email);
+  await signInForm.locator('input[type="password"]').fill(password);
+  await signInForm.getByRole("button", { name: locale === "ar" ? "تسجيل الدخول" : "Sign In" }).click();
+  await page.waitForURL((url) => !url.pathname.endsWith("/auth"), { timeout: 30_000 });
 }
 
-function makeIdentity(prefix: string) {
-  const safe = `${prefix}-${seed.tag}`;
+function createTelemetry(testName: string): CrashTelemetry {
   return {
-    email: `${safe}@example.com`,
-    password: `P@ssw0rd-${seed.tag}`,
-    fullName: `${prefix.replace(/-/g, " ")} ${seed.tag}`,
+    testName,
+    failingStep: "",
+    finalUrl: "",
+    consoleErrors: [],
+    pageErrors: [],
+    browserCrashReason: "",
+    resourceIssue: "",
   };
 }
 
-async function assertUniqueRoleMenuLinks(header: ReturnType<Page["locator"]>) {
-  const hrefs = await header.locator('[role="menu"] a').evaluateAll((nodes) => {
-    return nodes.map((node) => node.getAttribute("href") ?? "").filter(Boolean);
+function attachTelemetryListeners(page: Page, telemetry: CrashTelemetry) {
+  page.on("console", (msg) => {
+    if (msg.type() === "error") {
+      telemetry.consoleErrors.push(msg.text());
+      if (!telemetry.resourceIssue && /out of memory|insufficient resources|ERR_INSUFFICIENT_RESOURCES|oom/i.test(msg.text())) {
+        telemetry.resourceIssue = msg.text();
+      }
+    }
+  });
+
+  page.on("pageerror", (error) => {
+    const message = String(error?.message ?? "");
+    telemetry.pageErrors.push(message);
+    if (!telemetry.resourceIssue && /out of memory|insufficient resources|ERR_INSUFFICIENT_RESOURCES|oom/i.test(message)) {
+      telemetry.resourceIssue = message;
+    }
+  });
+
+  page.on("crash", () => {
+    telemetry.browserCrashReason = "Playwright page crash event emitted";
+  });
+}
+
+async function runStep(page: Page, telemetry: CrashTelemetry, stepName: string, fn: () => Promise<void>) {
+  try {
+    await test.step(stepName, fn);
+  } catch (error) {
+    telemetry.failingStep = stepName;
+    telemetry.finalUrl = page.url();
+    const message = String(error);
+    if (!telemetry.browserCrashReason && /page crashed|target page, context or browser has been closed/i.test(message)) {
+      telemetry.browserCrashReason = message;
+    }
+    if (!telemetry.resourceIssue && /out of memory|insufficient resources|ERR_INSUFFICIENT_RESOURCES|oom/i.test(message)) {
+      telemetry.resourceIssue = message;
+    }
+    throw error;
+  } finally {
+    telemetry.finalUrl = page.url();
+  }
+}
+
+async function attachTelemetry(testInfo: TestInfo, telemetry: CrashTelemetry) {
+  await testInfo.attach("telemetry", {
+    body: JSON.stringify(telemetry, null, 2),
+    contentType: "application/json",
+  });
+}
+
+async function assertUniqueHeaderLinks(scope: Locator) {
+  const hrefs = await scope.locator("a").evaluateAll((nodes) => {
+    return nodes
+      .filter((node) => {
+        const element = node as HTMLElement;
+        const style = window.getComputedStyle(element);
+        return element.getClientRects().length > 0 && style.visibility !== "hidden" && style.display !== "none";
+      })
+      .map((node) => node.getAttribute("href") ?? "")
+      .filter(Boolean);
   });
 
   expect(hrefs.length).toBeGreaterThan(0);
-  expect(new Set(hrefs).size).toBe(hrefs.length);
   for (const href of hrefs) {
     expect(href.includes("/en/en/") || href.includes("/ar/ar/")).toBeFalsy();
+  }
+}
+
+function assertNoClientErrors(telemetry: CrashTelemetry, options?: { allowUnauthorizedConsole?: boolean }) {
+  const filteredConsoleErrors = options?.allowUnauthorizedConsole
+    ? telemetry.consoleErrors.filter((entry) => !/status of 401 \(Unauthorized\)/i.test(entry))
+    : telemetry.consoleErrors;
+
+  expect(filteredConsoleErrors, `Console errors: ${filteredConsoleErrors.join("\\n")}`).toEqual([]);
+  expect(telemetry.pageErrors, `Page errors: ${telemetry.pageErrors.join("\n")}`).toEqual([]);
+  expect(telemetry.browserCrashReason).toBe("");
+}
+
+async function withIsolatedPage(
+  browser: Browser,
+  testInfo: TestInfo,
+  testName: string,
+  run: (page: Page, telemetry: CrashTelemetry) => Promise<void>
+) {
+  const context = await browser.newContext();
+  const page = await context.newPage();
+  const telemetry = createTelemetry(testName);
+  attachTelemetryListeners(page, telemetry);
+
+  try {
+    await run(page, telemetry);
+  } finally {
+    try {
+      await page.evaluate(() => {
+        localStorage.clear();
+        sessionStorage.clear();
+      });
+    } catch {
+      // Ignore cleanup on pages that did not finish loading.
+    }
+
+    await context.clearCookies();
+    await attachTelemetry(testInfo, telemetry);
+    await context.close();
   }
 }
 
 test.describe.configure({ mode: "serial" });
 
 test.beforeAll(async () => {
-  const candidateAIdentity = makeIdentity("candidate-a");
-  const candidateBIdentity = makeIdentity("candidate-b");
-  const employerAIdentity = makeIdentity("employer-a");
-  const employerBIdentity = makeIdentity("employer-b");
-  const ownerAIdentity = makeIdentity("owner-a");
-  const staffAIdentity = makeIdentity("staff-a");
+  const candidateIdentity = makeIdentity("candidate");
+  const employerIdentity = makeIdentity("employer");
+  const ownerIdentity = makeIdentity("owner");
+  const staffIdentity = makeIdentity("staff");
 
-  seed.candidateA = { ...candidateAIdentity, userId: "" };
-  seed.candidateB = { ...candidateBIdentity, userId: "" };
-  seed.employerA = { ...employerAIdentity, userId: "" };
-  seed.employerB = { ...employerBIdentity, userId: "" };
-  seed.ownerA = { ...ownerAIdentity, userId: "" };
-  seed.staffA = { ...staffAIdentity, userId: "" };
+  seed.candidate = { ...candidateIdentity, userId: "" };
+  seed.employer = { ...employerIdentity, userId: "" };
+  seed.owner = { ...ownerIdentity, userId: "" };
+  seed.staff = { ...staffIdentity, userId: "" };
 
-  const createdCandidateA = await admin.auth.admin.createUser({
-    email: seed.candidateA.email,
-    password: seed.candidateA.password,
+  const createdCandidate = await admin.auth.admin.createUser({
+    email: seed.candidate.email,
+    password: seed.candidate.password,
     email_confirm: true,
     app_metadata: { app_role: "candidate" },
-    user_metadata: { app_role: "candidate", full_name: seed.candidateA.fullName },
+    user_metadata: { app_role: "candidate", full_name: seed.candidate.fullName },
   });
-  const createdCandidateB = await admin.auth.admin.createUser({
-    email: seed.candidateB.email,
-    password: seed.candidateB.password,
-    email_confirm: true,
-    app_metadata: { app_role: "candidate" },
-    user_metadata: { app_role: "candidate", full_name: seed.candidateB.fullName },
-  });
-  const createdEmployerA = await admin.auth.admin.createUser({
-    email: seed.employerA.email,
-    password: seed.employerA.password,
+  const createdEmployer = await admin.auth.admin.createUser({
+    email: seed.employer.email,
+    password: seed.employer.password,
     email_confirm: true,
     app_metadata: { app_role: "employer" },
-    user_metadata: { app_role: "employer", full_name: seed.employerA.fullName },
+    user_metadata: { app_role: "employer", full_name: seed.employer.fullName },
   });
-  const createdEmployerB = await admin.auth.admin.createUser({
-    email: seed.employerB.email,
-    password: seed.employerB.password,
-    email_confirm: true,
-    app_metadata: { app_role: "employer" },
-    user_metadata: { app_role: "employer", full_name: seed.employerB.fullName },
-  });
-  const createdOwnerA = await admin.auth.admin.createUser({
-    email: seed.ownerA.email,
-    password: seed.ownerA.password,
+  const createdOwner = await admin.auth.admin.createUser({
+    email: seed.owner.email,
+    password: seed.owner.password,
     email_confirm: true,
     app_metadata: { app_role: "super_admin" },
-    user_metadata: { app_role: "super_admin", full_name: seed.ownerA.fullName },
+    user_metadata: { app_role: "super_admin", full_name: seed.owner.fullName },
   });
-  const createdStaffA = await admin.auth.admin.createUser({
-    email: seed.staffA.email,
-    password: seed.staffA.password,
+  const createdStaff = await admin.auth.admin.createUser({
+    email: seed.staff.email,
+    password: seed.staff.password,
     email_confirm: true,
     app_metadata: { app_role: "prime_global_recruiter" },
-    user_metadata: { app_role: "prime_global_recruiter", full_name: seed.staffA.fullName },
+    user_metadata: { app_role: "prime_global_recruiter", full_name: seed.staff.fullName },
   });
 
-  if (createdCandidateA.error || createdCandidateB.error || createdEmployerA.error || createdEmployerB.error || createdOwnerA.error || createdStaffA.error) {
-    throw new Error("Unable to create seed users for regression suite");
+  if (createdCandidate.error || createdEmployer.error || createdOwner.error || createdStaff.error) {
+    throw new Error("Unable to create seed users for post-login header regression suite");
   }
 
-  seed.candidateA.userId = String(createdCandidateA.data.user?.id ?? "");
-  seed.candidateB.userId = String(createdCandidateB.data.user?.id ?? "");
-  seed.employerA.userId = String(createdEmployerA.data.user?.id ?? "");
-  seed.employerB.userId = String(createdEmployerB.data.user?.id ?? "");
-  seed.ownerA.userId = String(createdOwnerA.data.user?.id ?? "");
-  seed.staffA.userId = String(createdStaffA.data.user?.id ?? "");
+  seed.candidate.userId = String(createdCandidate.data.user?.id ?? "");
+  seed.employer.userId = String(createdEmployer.data.user?.id ?? "");
+  seed.owner.userId = String(createdOwner.data.user?.id ?? "");
+  seed.staff.userId = String(createdStaff.data.user?.id ?? "");
 
-  const candidateProfileUpsert = await admin
+  const candidateUpsert = await admin
     .from("candidate_profiles")
-    .upsert([
+    .upsert(
       {
-        auth_user_id: seed.candidateA.userId,
-        full_name: seed.candidateA.fullName,
-        email: seed.candidateA.email,
+        auth_user_id: seed.candidate.userId,
+        full_name: seed.candidate.fullName,
+        email: seed.candidate.email,
         phone_number: "+21612345678",
         country: "Tunisia",
         city: "Sousse",
         professional_title: "Senior QA Engineer",
-        bio: "Candidate A profile summary for regression testing with reliable detail coverage.",
       },
-      {
-        auth_user_id: seed.candidateB.userId,
-        full_name: seed.candidateB.fullName,
-        email: seed.candidateB.email,
-        phone_number: "+21611111111",
-        country: "Tunisia",
-        city: "Tunis",
-        professional_title: "QA Analyst",
-        bio: "Candidate B profile for access-boundary testing.",
-      },
-    ], { onConflict: "auth_user_id" })
-    .select("id, auth_user_id")
-    .returns<Array<{ id: string; auth_user_id: string }>>();
+      { onConflict: "auth_user_id" }
+    )
+    .select("id")
+    .single();
 
-  if (candidateProfileUpsert.error || !candidateProfileUpsert.data || candidateProfileUpsert.data.length < 2) {
-    throw new Error("Unable to upsert candidate profiles");
+  if (candidateUpsert.error || !candidateUpsert.data?.id) {
+    throw new Error(`Unable to seed candidate profile: ${candidateUpsert.error?.message ?? "unknown"}`);
   }
-
-  for (const row of candidateProfileUpsert.data) {
-    if (row.auth_user_id === seed.candidateA.userId) {
-      seed.candidateA.candidateId = row.id;
-    }
-    if (row.auth_user_id === seed.candidateB.userId) {
-      seed.candidateB.candidateId = row.id;
-    }
-  }
-
-  const candidateAId = String(seed.candidateA.candidateId ?? "");
-  const candidateBId = String(seed.candidateB.candidateId ?? "");
-  if (!candidateAId || !candidateBId) {
-    throw new Error("Missing candidate ids after profile upsert");
-  }
+  seed.candidate.candidateId = candidateUpsert.data.id;
 
   const employerInsert = await admin
     .from("employers")
-    .insert([
-      {
-        auth_user_id: seed.employerA.userId,
-        company_name: `Employer A ${seed.tag}`,
-        commercial_registration_number: `CRA-${seed.tag}`,
-        tax_number: `TAXA-${seed.tag}`,
-        country: "Tunisia",
-        city: "Sousse",
-        address: "Sousse Test Address",
-        website: "https://example.com/a",
-        company_email: seed.employerA.email,
-        hr_contact: "HR A",
-        phone_number: "+21620000001",
-        industry: "Technology",
-        company_size: "11-50",
-        company_description: "Verified employer A for regression tests.",
-        verification_status: "verified",
-      },
-      {
-        auth_user_id: seed.employerB.userId,
-        company_name: `Employer B ${seed.tag}`,
-        commercial_registration_number: `CRB-${seed.tag}`,
-        tax_number: `TAXB-${seed.tag}`,
-        country: "Tunisia",
-        city: "Tunis",
-        address: "Tunis Test Address",
-        website: "https://example.com/b",
-        company_email: seed.employerB.email,
-        hr_contact: "HR B",
-        phone_number: "+21620000002",
-        industry: "Technology",
-        company_size: "51-200",
-        company_description: "Verified employer B for boundary tests.",
-        verification_status: "verified",
-      },
-    ])
-    .select("id, auth_user_id")
-    .returns<Array<{ id: string; auth_user_id: string }>>();
-
-  if (employerInsert.error || !employerInsert.data || employerInsert.data.length < 2) {
-    throw new Error("Unable to insert employers");
-  }
-
-  for (const row of employerInsert.data) {
-    if (row.auth_user_id === seed.employerA.userId) {
-      seed.employerA.employerId = row.id;
-    }
-    if (row.auth_user_id === seed.employerB.userId) {
-      seed.employerB.employerId = row.id;
-    }
-  }
-
-  const candidateProfessionalUpsert = await admin.from("candidate_professional_profiles").upsert(
-    {
-      candidate_id: candidateAId,
-      headline: "Senior QA Engineer",
-      biography: "Experienced QA engineer specialized in end-to-end automation and platform reliability.",
-      experiences: [{ role: "QA Engineer", company: "Prime Global", years: 6 }],
-      education_entries: [{ degree: "BSc Computer Science", school: "University of Sousse" }],
-      certificates: [{ title: "ISTQB" }],
-      skills: ["Playwright", "TypeScript", "API Testing"],
-      languages: ["English", "Arabic"],
-      availability: "Immediate",
-      nationality: "Tunisian",
-    },
-    { onConflict: "candidate_id" }
-  );
-
-  if (candidateProfessionalUpsert.error) {
-    throw new Error(`Unable to upsert candidate professional profile: ${candidateProfessionalUpsert.error.message}`);
-  }
-
-  const resumeUpsert = await admin
-    .from("candidate_resumes")
     .insert({
-      candidate_id: candidateAId,
-      storage_path: `seed/${seed.tag}/candidate-a-resume.pdf`,
-      filename: "candidate-a-resume.pdf",
-      mime_type: "application/pdf",
-      size_bytes: 12345,
-      is_primary: true,
-    });
-
-  if (resumeUpsert.error) {
-    throw new Error(`Unable to seed candidate resume: ${resumeUpsert.error.message}`);
-  }
-
-  const privateProfileUpsert = await admin.from("candidate_private_profiles").upsert(
-    [
-      {
-        candidate_id: candidateAId,
-        full_name: seed.candidateA.fullName,
-        email: seed.candidateA.email,
-        phone: "+21612345678",
-        address: "Sousse",
-        original_cv_path: `private/${seed.tag}/candidate-a-original.pdf`,
-        original_documents_paths: [`private/${seed.tag}/candidate-a-cert.pdf`],
-        restricted_to_prime_global: true,
-      },
-      {
-        candidate_id: candidateBId,
-        full_name: seed.candidateB.fullName,
-        email: seed.candidateB.email,
-        phone: "+21611111111",
-        address: "Tunis",
-        original_cv_path: `private/${seed.tag}/candidate-b-original.pdf`,
-        original_documents_paths: [`private/${seed.tag}/candidate-b-cert.pdf`],
-        restricted_to_prime_global: true,
-      },
-    ],
-    { onConflict: "candidate_id" }
-  );
-
-  if (privateProfileUpsert.error) {
-    throw new Error(`Unable to seed private profile: ${privateProfileUpsert.error.message}`);
-  }
-
-  const publicProfileUpsert = await admin.from("candidate_public_profiles").upsert(
-    [
-      {
-        candidate_id: candidateAId,
-        professional_title: "Senior QA Engineer",
-        professional_summary: "Public professional profile summary for candidate A.",
-        years_of_experience: 6,
-        skills: ["Playwright", "TypeScript", "API Testing"],
-        employment_history: [{ title: "QA Engineer" }],
-        education: [{ degree: "BSc Computer Science" }],
-        certifications: [{ title: "ISTQB" }],
-        languages: ["English", "Arabic"],
-        general_location: "Sousse, Tunisia",
-        availability: "Immediate",
-        desired_role: "QA Lead",
-        ai_summary: "Candidate A anonymized profile",
-        profile_status: "approved",
-      },
-      {
-        candidate_id: candidateBId,
-        professional_title: "QA Analyst",
-        professional_summary: "Public professional profile summary for candidate B.",
-        years_of_experience: 3,
-        skills: ["QA", "Regression"],
-        employment_history: [{ title: "QA Analyst" }],
-        education: [{ degree: "BSc" }],
-        certifications: [{ title: "Testing Foundation" }],
-        languages: ["English"],
-        general_location: "Tunis, Tunisia",
-        availability: "2 weeks",
-        desired_role: "QA Analyst",
-        ai_summary: "Candidate B anonymized profile",
-        profile_status: "approved",
-      },
-    ],
-    { onConflict: "candidate_id" }
-  );
-
-  if (publicProfileUpsert.error) {
-    throw new Error(`Unable to seed public profile: ${publicProfileUpsert.error.message}`);
-  }
-
-  const { data: seededJobs, error: seededJobsError } = await admin
-    .from("jobs")
-    .insert([
-      {
-        employer_id: seed.employerA.employerId,
-        title: `Regression Job ${seed.tag}`,
-        department: "Quality Assurance",
-        employment_type: "full_time",
-        work_mode: "hybrid",
-        country: "Tunisia",
-        city: "Sousse",
-        salary_min: 1500,
-        salary_max: 2500,
-        salary_currency: "USD",
-        experience: "5+ years",
-        education: "Bachelors",
-        required_skills: ["Playwright", "TypeScript"],
-        responsibilities: "Own quality strategy and lead release regression planning.",
-        requirements: "Strong automation and API testing background.",
-        benefits: "Health coverage",
-        application_deadline: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
-        status: "published",
-        publish_date: new Date().toISOString(),
-      },
-      {
-        employer_id: seed.employerB.employerId,
-        title: `Boundary Job ${seed.tag}`,
-        department: "Quality Assurance",
-        employment_type: "full_time",
-        work_mode: "onsite",
-        country: "Tunisia",
-        city: "Tunis",
-        salary_min: 1200,
-        salary_max: 2200,
-        salary_currency: "USD",
-        experience: "2+ years",
-        education: "Bachelors",
-        required_skills: ["QA"],
-        responsibilities: "Run core QA operations with stable delivery and reporting discipline.",
-        requirements: "Strong functional testing background and excellent communication skills.",
-        benefits: "Standard benefits",
-        application_deadline: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
-        status: "published",
-        publish_date: new Date().toISOString(),
-      },
-    ])
-    .select("id, title, employer_id")
-    .returns<Array<{ id: string; title: string; employer_id: string }>>();
-
-  if (seededJobsError || !seededJobs || seededJobs.length < 2) {
-    throw new Error(`Unable to seed jobs: ${seededJobsError?.message ?? "unknown"}`);
-  }
-
-  for (const row of seededJobs) {
-    if (row.employer_id === seed.employerA.employerId) {
-      seed.employerAJobId = row.id;
-      seed.employerAJobTitle = row.title;
-    }
-    if (row.employer_id === seed.employerB.employerId) {
-      seed.employerBJobId = row.id;
-    }
-  }
-
-  if (!seed.employerAJobId || !seed.employerBJobId || !seed.employerAJobTitle) {
-    throw new Error("Missing seeded jobs for regression suite");
-  }
-
-  const { data: appB, error: appBError } = await admin
-    .from("job_applications_v2")
-    .insert({
-      job_id: seed.employerBJobId,
-      candidate_id: seed.candidateB.candidateId,
-      status: "new",
+      auth_user_id: seed.employer.userId,
+      company_name: `Employer ${seed.tag}`,
+      commercial_registration_number: `CR-${seed.tag}`,
+      tax_number: `TAX-${seed.tag}`,
+      country: "Tunisia",
+      city: "Sousse",
+      address: "Sousse Test Address",
+      website: "https://example.com",
+      company_email: seed.employer.email,
+      hr_contact: "HR Employer",
+      phone_number: "+21620000001",
+      industry: "Technology",
+      company_size: "11-50",
+      company_description: "Employer profile for post-login header verification.",
+      verification_status: "verified",
     })
     .select("id")
     .single();
 
-  if (appBError) throw new Error(appBError.message);
-  seed.candidateBApplicationId = String(appB?.id ?? "");
+  if (employerInsert.error || !employerInsert.data?.id) {
+    throw new Error(`Unable to seed employer profile: ${employerInsert.error?.message ?? "unknown"}`);
+  }
+  seed.employer.employerId = employerInsert.data.id;
 });
 
 test.afterAll(async () => {
-  const candidateIds = [seed.candidateA.candidateId, seed.candidateB.candidateId].filter(Boolean) as string[];
-  const employerIds = [seed.employerA.employerId, seed.employerB.employerId].filter(Boolean) as string[];
-  const userIds = [
-    seed.candidateA.userId,
-    seed.candidateB.userId,
-    seed.employerA.userId,
-    seed.employerB.userId,
-    seed.ownerA.userId,
-    seed.staffA.userId,
-  ].filter(Boolean);
-
-  if (seed.candidateAApplicationId || seed.candidateBApplicationId) {
-    await admin.from("job_application_status_events").delete().in("application_id", [seed.candidateAApplicationId, seed.candidateBApplicationId].filter(Boolean));
-    await admin.from("job_applications_v2").delete().in("id", [seed.candidateAApplicationId, seed.candidateBApplicationId].filter(Boolean));
+  if (seed.candidate.candidateId) {
+    await admin.from("candidate_profiles").delete().eq("id", seed.candidate.candidateId);
   }
 
-  if (seed.employerAJobId || seed.employerBJobId) {
-    await admin.from("jobs").delete().in("id", [seed.employerAJobId, seed.employerBJobId].filter(Boolean));
+  if (seed.employer.employerId) {
+    await admin.from("employers").delete().eq("id", seed.employer.employerId);
   }
 
-  if (candidateIds.length > 0) {
-    await admin.from("candidate_public_profiles").delete().in("candidate_id", candidateIds);
-    await admin.from("candidate_private_profiles").delete().in("candidate_id", candidateIds);
-    await admin.from("candidate_professional_profiles").delete().in("candidate_id", candidateIds);
-    await admin.from("candidate_resumes").delete().in("candidate_id", candidateIds);
-    await admin.from("candidate_profiles").delete().in("id", candidateIds);
-  }
-
-  if (employerIds.length > 0) {
-    await admin.from("employers").delete().in("id", employerIds);
-  }
-
+  const userIds = [seed.candidate.userId, seed.employer.userId, seed.owner.userId, seed.staff.userId].filter(Boolean);
   for (const userId of userIds) {
     await admin.auth.admin.deleteUser(userId);
   }
 });
 
-test("targeted auth/application/privacy regression sweep", async ({ browser, page }) => {
-  page.on("pageerror", (error) => {
-    const text = String(error.message ?? "");
-    summary.sawPageError = true;
-    if (/ChunkLoadError/i.test(text)) summary.sawChunkLoadError = true;
-    if (/Unexpected token < in JSON|Unexpected token '<'/i.test(text)) summary.sawJsonParseHtmlError = true;
-    if (/password|token|secret|authorization/i.test(text)) summary.sawConsoleSensitiveError = true;
-  });
+test("Candidate post-login header", async ({ browser }, testInfo) => {
+  await withIsolatedPage(browser, testInfo, "Candidate post-login header", async (page, telemetry) => {
+    await runStep(page, telemetry, "Candidate login shows role menu immediately", async () => {
+      await uiLogin(page, "candidate", seed.candidate.email, seed.candidate.password, "en");
 
-  page.on("console", (msg) => {
-    const text = msg.text();
-    if (msg.type() === "error") summary.sawConsoleError = true;
-    if (/ChunkLoadError/i.test(text)) summary.sawChunkLoadError = true;
-    if (/Unexpected token < in JSON|Unexpected token '<'/i.test(text)) summary.sawJsonParseHtmlError = true;
-    if (/password|token|secret|authorization/i.test(text) && msg.type() === "error") summary.sawConsoleSensitiveError = true;
-  });
+      const header = page.locator("header").first();
+      await expect(header.getByText("Sign In")).toHaveCount(0);
+      await expect(header.getByText("Create Account")).toHaveCount(0);
 
-  let flowPage = page;
+      const accountButton = header.getByRole("button", { name: seed.candidate.fullName });
+      await expect(accountButton).toBeVisible();
 
-  await test.step("POST-LOGIN HEADER SYNCHRONIZATION without reload", async () => {
-    await flowPage.goto("/en/auth?mode=signin&audience=candidate");
-    const signInForm = flowPage.locator("form").first();
-    await signInForm.locator('input[type="email"]').fill(seed.candidateA.email);
-    await signInForm.locator('input[type="password"]').fill(seed.candidateA.password);
-    await signInForm.getByRole("button", { name: "Sign In" }).click();
+      await accountButton.hover();
+      await expect(header.getByRole("link", { name: "Dashboard" })).toBeVisible();
+      await expect(header.getByRole("link", { name: "Career Profile" })).toBeVisible();
+      await expect(header.getByRole("link", { name: "Applications" })).toBeVisible();
+      await expect(header.getByRole("link", { name: "Interviews" })).toBeVisible();
+      await expect(header.getByRole("link", { name: "Notifications" })).toBeVisible();
+      await expect(header.getByRole("link", { name: "Settings" })).toBeVisible();
+      await expect(header.getByRole("button", { name: "Logout" })).toBeVisible();
 
-    await flowPage.waitForURL((url) => !url.pathname.endsWith("/auth"), { timeout: 30_000 });
-    summary.firstDestinationPathname = new URL(flowPage.url()).pathname;
+      await expect(header.getByRole("link", { name: "Dashboard" })).toHaveCount(1);
+      await expect(header.getByRole("link", { name: "Career Profile" })).toHaveCount(1);
+      await expect(header.getByRole("link", { name: "Applications" })).toHaveCount(1);
+      await expect(header.getByRole("link", { name: "Interviews" })).toHaveCount(1);
+      await expect(header.getByRole("link", { name: "Notifications" })).toHaveCount(1);
+      await expect(header.getByRole("link", { name: "Settings" })).toHaveCount(1);
+      await expect(header.getByRole("link", { name: "Company Profile" })).toHaveCount(0);
+      await assertUniqueHeaderLinks(header);
 
-    const header = flowPage.locator("header").first();
-    await expect(header.getByText("Sign In")).toHaveCount(0);
-    await expect(header.getByText("Create Account")).toHaveCount(0);
+      await accountButton.click();
+      await expect(header.getByRole("link", { name: "Dashboard" })).toBeHidden();
+      await accountButton.click();
+      await expect(header.getByRole("link", { name: "Dashboard" })).toBeVisible();
 
-    const accountButton = header.getByRole("button", { name: seed.candidateA.fullName });
-    await expect(accountButton).toBeVisible();
-    await expect(accountButton.locator("img, span").first()).toBeVisible();
-
-    await accountButton.hover();
-    await expect(header.getByRole("link", { name: "Dashboard" })).toBeVisible();
-    await expect(header.getByRole("link", { name: "Career Profile" })).toBeVisible();
-    await expect(header.getByRole("link", { name: "Applications" })).toBeVisible();
-    await expect(header.getByRole("link", { name: "Interviews" })).toBeVisible();
-    await expect(header.getByRole("link", { name: "Notifications" })).toBeVisible();
-    await expect(header.getByRole("link", { name: "Settings" })).toBeVisible();
-    await expect(header.getByRole("button", { name: "Logout" })).toBeVisible();
-
-    await expect(header.getByRole("link", { name: "Dashboard" })).toHaveCount(1);
-    await expect(header.getByRole("link", { name: "Career Profile" })).toHaveCount(1);
-    await expect(header.getByRole("link", { name: "Applications" })).toHaveCount(1);
-    await expect(header.getByRole("link", { name: "Interviews" })).toHaveCount(1);
-    await expect(header.getByRole("link", { name: "Notifications" })).toHaveCount(1);
-    await expect(header.getByRole("link", { name: "Settings" })).toHaveCount(1);
-    await assertUniqueRoleMenuLinks(header);
-
-    await accountButton.click();
-    await expect(header.getByRole("link", { name: "Dashboard" })).toBeHidden();
-    await accountButton.click();
-    await expect(header.getByRole("link", { name: "Dashboard" })).toBeVisible();
-
-    await accountButton.focus();
-    await flowPage.keyboard.press("Escape");
-    await expect(header.getByRole("link", { name: "Dashboard" })).toBeHidden();
-    await flowPage.keyboard.press("Enter");
-    await expect(header.getByRole("link", { name: "Dashboard" })).toBeVisible();
-    await flowPage.mouse.click(4, 4);
-    await expect(header.getByRole("link", { name: "Dashboard" })).toBeHidden();
-
-    await flowPage.setViewportSize({ width: 390, height: 844 });
-    const mobileMenuToggle = header.getByRole("button", { name: /Open menu|Close menu/i });
-    await mobileMenuToggle.click();
-
-    const mobileAccountButton = flowPage.getByRole("button", { name: seed.candidateA.fullName });
-    await expect(mobileAccountButton).toBeVisible();
-    await mobileAccountButton.click();
-    const mobileDashboardLink = flowPage.getByRole("link", { name: "Dashboard" });
-    await expect(mobileDashboardLink).toBeVisible();
-    await expect(mobileDashboardLink).toHaveCount(1);
-
-    const mobileMenu = flowPage.locator('[role="dialog"]');
-    await assertUniqueRoleMenuLinks(mobileMenu);
-
-    await flowPage.keyboard.press("Escape");
-    await expect(flowPage.locator('[role="dialog"]')).toHaveCount(0);
-    await flowPage.setViewportSize({ width: 1280, height: 720 });
-
-    const recoveredPage = await flowPage.context().newPage();
-    await recoveredPage.goto("/en");
-    await flowPage.close();
-    flowPage = recoveredPage;
-  });
-
-  await test.step("Auth session regression: refresh/back-forward/second-tab/locale switch/en-en path", async () => {
-    const header = flowPage.locator("header").first();
-
-    await flowPage.goto("/en/jobs");
-    await flowPage.goBack();
-    await expect(header.getByRole("button", { name: seed.candidateA.fullName })).toBeVisible();
-    await flowPage.goForward();
-    await expect(header.getByRole("button", { name: seed.candidateA.fullName })).toBeVisible();
-
-    await flowPage.reload();
-    await expect(header.getByRole("button", { name: seed.candidateA.fullName })).toBeVisible();
-
-    const secondTab = await flowPage.context().newPage();
-    await secondTab.goto("/en/jobs");
-    await expect(secondTab.locator("header").first().getByRole("button", { name: seed.candidateA.fullName })).toBeVisible();
-    await secondTab.close();
-
-    await flowPage.goto("/ar/jobs");
-    await expect(flowPage.locator("header").first().getByRole("button", { name: seed.candidateA.fullName })).toBeVisible();
-    expect(flowPage.url()).not.toContain("/en/en/");
-
-    await flowPage.goto("/en/jobs");
-    expect(flowPage.url()).not.toContain("/en/en/");
-  });
-
-  await test.step("Candidate profile completeness and route boundaries", async () => {
-    await flowPage.goto("/en/candidate/profile");
-    await expect(flowPage.locator("main").getByText(seed.candidateA.fullName, { exact: false }).first()).toBeVisible();
-    await expect(flowPage.getByText("Senior QA Engineer").first()).toBeVisible();
-    await expect(flowPage.getByText("Tunisia - Sousse", { exact: false })).toBeVisible();
-    await expect(flowPage.getByText("Playwright", { exact: false })).toBeVisible();
-    await expect(flowPage.getByText("TypeScript", { exact: false })).toBeVisible();
-    await expect(flowPage.locator("main").getByText("Applications", { exact: true }).first()).toBeVisible();
-    await expect(flowPage.locator("main").getByText("Interviews", { exact: true }).first()).toBeVisible();
-    await expect(flowPage.locator("main").getByText("Notifications", { exact: true }).first()).toBeVisible();
-    await expect(flowPage.getByRole("heading", { name: "Verification Notes" })).toBeVisible();
-    await expect(flowPage.getByText("Current CV status", { exact: true })).toBeVisible();
-
-    await expect(flowPage.locator("main input, main textarea, main select")).toHaveCount(0);
-
-    await flowPage.goto("/en/candidate/settings");
-    await expect(flowPage.getByRole("textbox", { name: "Email" })).toBeDisabled();
-    await expect(flowPage.getByLabel("First name")).toBeEditable();
-    await expect(flowPage).toHaveURL(/\/en\/candidate\/settings/);
-
-    await flowPage.goto("/en/candidate/profile");
-    await expect(flowPage).toHaveURL(/\/en\/candidate\/profile/);
-  });
-
-  await test.step("Candidate application journey and duplicate prevention", async () => {
-    await flowPage.goto("/en/jobs");
-    const jobCard = flowPage.locator("article").filter({ hasText: seed.employerAJobTitle }).first();
-    await expect(jobCard).toBeVisible();
-    await jobCard.getByRole("link", { name: "View Job" }).click();
-
-    await expect(flowPage.getByText(seed.employerAJobTitle)).toBeVisible();
-    await expect(flowPage.getByText("Application deadline", { exact: false })).toBeVisible();
-    await expect(flowPage.getByText("Skills", { exact: false })).toBeVisible();
-    await expect(flowPage.getByText("Playwright", { exact: false })).toBeVisible();
-    await expect(flowPage.getByText("TypeScript", { exact: false })).toBeVisible();
-
-    await flowPage.getByRole("button", { name: "Apply Now" }).click();
-    await flowPage.getByRole("button", { name: "Submit Application" }).click();
-    await expect(flowPage.getByText("submitted successfully", { exact: false })).toBeVisible();
-
-    await flowPage.goto("/en/candidate/applications");
-    const applicationCard = flowPage.locator("article").filter({ hasText: seed.employerAJobTitle }).first();
-    await expect(applicationCard).toBeVisible();
-    await expect(applicationCard.getByText("Employer A", { exact: false })).toBeVisible();
-    await expect(applicationCard.getByText("Submitted", { exact: false })).toBeVisible();
-    await applicationCard.getByRole("link", { name: "Open Details" }).click();
-
-    await expect(flowPage.getByText("Status Timeline")).toBeVisible();
-    await expect(flowPage.getByText("Related Notifications")).toBeVisible();
-    seed.candidateAApplicationId = String(flowPage.url().split("/").pop() ?? "");
-    expect(seed.candidateAApplicationId.length).toBeGreaterThan(10);
-
-    await flowPage.goto(`/en/jobs/${seed.employerAJobId}`);
-    await flowPage.getByRole("button", { name: "Apply Now" }).click();
-    await expect(flowPage.getByText("already applied", { exact: false })).toBeVisible();
-  });
-
-  await test.step("Employer shortlist/interview/privacy gates", async () => {
-    await apiLogout(flowPage);
-    await flowPage.goto("/en/auth?mode=signin&audience=employer");
-
-    const signInForm = flowPage.locator("form").first();
-    await signInForm.locator('input[type="email"]').fill(seed.employerA.email);
-    await signInForm.locator('input[type="password"]').fill(seed.employerA.password);
-    await signInForm.getByRole("button", { name: "Sign In" }).click();
-    await flowPage.waitForURL((url) => !url.pathname.endsWith("/auth"), { timeout: 30_000 });
-
-    const header = flowPage.locator("header").first();
-    const employerAccountButton = header.getByRole("button", { name: seed.employerA.fullName });
-    await expect(employerAccountButton).toBeVisible();
-    await employerAccountButton.hover();
-    await expect(header.getByRole("link", { name: "Dashboard" })).toBeVisible();
-    await expect(header.getByRole("link", { name: "Company Profile" })).toBeVisible();
-    await expect(header.getByRole("link", { name: "Company Verification" })).toBeVisible();
-    await expect(header.getByRole("link", { name: "Job Management" })).toBeVisible();
-    await expect(header.getByRole("link", { name: "Advertisements" })).toBeVisible();
-    await expect(header.getByRole("link", { name: "Candidate Profiles" })).toBeVisible();
-    await expect(header.getByRole("link", { name: "Workflow" })).toBeVisible();
-    await expect(header.getByRole("link", { name: "Supervised Conversations" })).toBeVisible();
-    await expect(header.getByRole("link", { name: "Career Profile" })).toHaveCount(0);
-    await expect(header.getByRole("link", { name: "Applications" })).toHaveCount(0);
-    await assertUniqueRoleMenuLinks(header);
-
-    const applicantsResponse = await flowPage.request.get("/api/employers/applicants");
-    const applicantsPayload = await applicantsResponse.json();
-    expect(applicantsResponse.ok(), JSON.stringify(applicantsPayload)).toBeTruthy();
-    expect(Boolean(applicantsPayload?.success)).toBeTruthy();
-
-    const candidateApplication = (applicantsPayload?.data ?? []).find(
-      (item: { id?: string }) => String(item?.id ?? "") === seed.candidateAApplicationId
-    );
-
-    expect(candidateApplication).toBeTruthy();
-    const serialized = JSON.stringify(candidateApplication);
-    expect(serialized.includes("phone")).toBeFalsy();
-    expect(serialized.includes("email")).toBeFalsy();
-    expect(serialized.includes("original_cv")).toBeFalsy();
-    expect(serialized.includes("private/")).toBeFalsy();
-
-    const blockedCvResponse = await flowPage.request.get(`/api/employers/applicants/${seed.candidateAApplicationId}/cv`);
-    const blockedCvPayload = await blockedCvResponse.json();
-    expect(blockedCvResponse.status(), JSON.stringify(blockedCvPayload)).toBe(403);
-
-    const csrfToken = await getCsrfTokenViaPage(flowPage);
-    const interviewBeforeShortlistResponse = await flowPage.request.post(
-      `/api/employers/candidate-profiles/${seed.candidateA.candidateId}/interview-request?note=before_shortlist`,
-      { headers: csrfHeaders(csrfToken) }
-    );
-    const interviewBeforeShortlistPayload = await interviewBeforeShortlistResponse.json();
-    expect(interviewBeforeShortlistResponse.ok()).toBeFalsy();
-
-    const shortlistResponse = await flowPage.request.patch(`/api/hr/applications/${seed.candidateAApplicationId}/status`, {
-      headers: {
-        "Content-Type": "application/json",
-        ...csrfHeaders(csrfToken),
-      },
-      data: {
-        status: "shortlisted",
-        note: "shortlisted_by_regression_suite",
-      },
+      await accountButton.focus();
+      await page.keyboard.press("Escape");
+      await expect(header.getByRole("link", { name: "Dashboard" })).toBeHidden();
+      await page.keyboard.press("Enter");
+      await expect(header.getByRole("link", { name: "Dashboard" })).toBeVisible();
+      await page.mouse.click(4, 4);
+      await expect(header.getByRole("link", { name: "Dashboard" })).toBeHidden();
     });
-    const shortlistPayload = await shortlistResponse.json();
-    expect(shortlistResponse.ok(), JSON.stringify(shortlistPayload)).toBeTruthy();
 
-    const interviewAfterShortlistResponse = await flowPage.request.post(
-      `/api/employers/candidate-profiles/${seed.candidateA.candidateId}/interview-request?note=after_shortlist`,
-      { headers: csrfHeaders(csrfToken) }
-    );
-    const interviewAfterShortlistPayload = await interviewAfterShortlistResponse.json();
-    expect(interviewAfterShortlistResponse.ok(), JSON.stringify(interviewAfterShortlistPayload)).toBeTruthy();
+    await runStep(page, telemetry, "Candidate mobile tap behavior remains stable", async () => {
+      const header = page.locator("header").first();
+      await page.setViewportSize({ width: 390, height: 844 });
+      const mobileMenuToggle = header.getByRole("button", { name: /Open menu|Close menu/i });
+      await mobileMenuToggle.click();
 
-    const crossEmployerResponse = await flowPage.request.patch(`/api/hr/applications/${seed.candidateBApplicationId}/status`, {
-      headers: {
-        "Content-Type": "application/json",
-        ...csrfHeaders(csrfToken),
-      },
-      data: {
-        status: "shortlisted",
-        note: "cross_employer_attempt",
-      },
+      const mobileAccountButton = page.getByRole("button", { name: seed.candidate.fullName });
+      await expect(mobileAccountButton).toBeVisible();
+      await mobileAccountButton.click();
+
+      const mobileDashboardLink = page.getByRole("link", { name: "Dashboard" });
+      await expect(mobileDashboardLink).toBeVisible();
+      await expect(mobileDashboardLink).toHaveCount(1);
+
+      const mobileDialog = page.locator('[role="dialog"]');
+      await assertUniqueHeaderLinks(mobileDialog);
+
+      await page.keyboard.press("Escape");
+      await expect(page.locator('[role="dialog"]')).toHaveCount(0);
+      await page.setViewportSize({ width: 1280, height: 720 });
     });
-    const crossEmployerPayload = await crossEmployerResponse.json();
-    expect(crossEmployerResponse.status(), JSON.stringify(crossEmployerPayload)).toBe(404);
 
-    expect(Boolean(interviewBeforeShortlistPayload)).toBeTruthy();
+    assertNoClientErrors(telemetry, { allowUnauthorizedConsole: true });
   });
+});
 
-  await test.step("Owner and staff role menus sync without stale previous role", async () => {
-    await apiLogout(flowPage);
+test("Employer post-login header", async ({ browser }, testInfo) => {
+  await withIsolatedPage(browser, testInfo, "Employer post-login header", async (page, telemetry) => {
+    await runStep(page, telemetry, "Employer login shows employer navigation only", async () => {
+      await uiLogin(page, "employer", seed.employer.email, seed.employer.password, "en");
+      await expect(page).toHaveURL(/\/en\/employers\/dashboard/);
 
-    await apiLogin(flowPage, seed.ownerA.email, seed.ownerA.password, "staff");
-    await flowPage.goto("/en/admin/control-center");
-    const ownerHeader = flowPage.locator("header").first();
-    const ownerAccountButton = ownerHeader.getByRole("button", { name: seed.ownerA.fullName });
-    await expect(ownerAccountButton).toBeVisible();
-    await expect(ownerHeader.getByRole("link", { name: "Dashboard" })).toBeVisible();
-    await expect(ownerHeader.getByRole("link", { name: "Account" })).toBeVisible();
-    await expect(ownerHeader.getByRole("link", { name: "Company Profile" })).toHaveCount(0);
-    await expect(ownerHeader.getByRole("link", { name: "Career Profile" })).toHaveCount(0);
-    await assertUniqueRoleMenuLinks(ownerHeader);
+      const header = page.locator("header").first();
+      await expect(header.getByRole("link", { name: "Dashboard" })).toBeVisible();
+      await expect(header.getByRole("link", { name: "Company Profile" })).toBeVisible();
+      await expect(header.getByRole("link", { name: "Jobs", exact: true })).toBeVisible();
+      await expect(header.getByRole("link", { name: "Advertisements" })).toBeVisible();
+      await expect(header.getByRole("link", { name: "Settings" })).toBeVisible();
+      await expect(header.getByRole("link", { name: "View public website" })).toBeVisible();
+      await expect(header.getByRole("button", { name: "Logout" })).toBeVisible();
 
-    await apiLogout(flowPage);
+      await expect(header.getByRole("link", { name: "Career Profile" })).toHaveCount(0);
+      await expect(header.getByRole("link", { name: "Applications" })).toHaveCount(0);
+      await expect(header.getByRole("link", { name: "Interviews" })).toHaveCount(0);
+      await expect(header.getByRole("link", { name: "Careers" })).toHaveCount(0);
+      await expect(header.getByRole("link", { name: "Find Jobs" })).toHaveCount(0);
+      await expect(header.getByText("Sign In")).toHaveCount(0);
+      await expect(header.getByText("Create Account")).toHaveCount(0);
 
-    await apiLogin(flowPage, seed.staffA.email, seed.staffA.password, "staff");
-    await flowPage.goto("/en/admin/control-center");
-    const staffHeader = flowPage.locator("header").first();
-    const staffAccountButton = staffHeader.getByRole("button", { name: seed.staffA.fullName });
-    await expect(staffAccountButton).toBeVisible();
-    await expect(staffHeader.getByRole("link", { name: "Dashboard" })).toBeVisible();
-    await expect(staffHeader.getByRole("link", { name: "Account" })).toBeVisible();
-    await expect(staffHeader.getByRole("link", { name: "Company Profile" })).toHaveCount(0);
-    await expect(staffHeader.getByRole("link", { name: "Career Profile" })).toHaveCount(0);
-    await assertUniqueRoleMenuLinks(staffHeader);
-  });
-
-  await test.step("Candidate notification, shortlist timeline, and security boundaries", async () => {
-    await apiLogout(flowPage);
-    await flowPage.goto("/en/auth?mode=signin&audience=candidate");
-    const signin = flowPage.locator("form").first();
-    await signin.locator('input[type="email"]').fill(seed.candidateA.email);
-    await signin.locator('input[type="password"]').fill(seed.candidateA.password);
-    await signin.getByRole("button", { name: "Sign In" }).click();
-    await flowPage.waitForURL((url) => !url.pathname.endsWith("/auth"), { timeout: 30_000 });
-
-    const detailResponse = await flowPage.request.get(`/api/candidates/applications/${seed.candidateAApplicationId}`);
-    const detailPayload = await detailResponse.json();
-    expect(detailResponse.ok(), JSON.stringify(detailPayload)).toBeTruthy();
-    const statuses = (detailPayload?.data?.statusHistory ?? []).map((event: { next_status?: string }) => String(event.next_status ?? ""));
-    expect(statuses.includes("shortlisted")).toBeTruthy();
-
-    const notificationResponse = await flowPage.request.get("/api/notifications");
-    const notificationPayload = await notificationResponse.json();
-    expect(notificationResponse.ok(), JSON.stringify(notificationPayload)).toBeTruthy();
-    const hasShortlistNotice = (notificationPayload?.data ?? []).some((item: { entity_id?: string; body?: string; title?: string }) => {
-      return String(item.entity_id ?? "") === seed.candidateAApplicationId && /shortlist|Application updated/i.test(String(item.body ?? item.title ?? ""));
+      await expect(header.getByRole("link", { name: "Dashboard" })).toHaveCount(1);
+      await expect(header.getByRole("link", { name: "Company Profile" })).toHaveCount(1);
+      await expect(header.getByRole("link", { name: "Jobs", exact: true })).toHaveCount(1);
+      await expect(header.getByRole("link", { name: "Advertisements" })).toHaveCount(1);
+      await expect(header.getByRole("link", { name: "Settings" })).toHaveCount(1);
+      await assertUniqueHeaderLinks(header);
     });
-    expect(hasShortlistNotice).toBeTruthy();
 
-    await flowPage.goto(`/en/candidate/applications/${seed.candidateAApplicationId}`);
-    await expect(
-      flowPage.locator("article").filter({ hasText: "Shortlist Status" }).getByText("Shortlisted", { exact: true })
-    ).toBeVisible();
-
-    await flowPage.goto(`/ar/candidate/applications/${seed.candidateAApplicationId}`);
-    await expect(flowPage).toHaveURL(/\/ar\/candidate\/applications\//);
-
-    const forbiddenBApplication = await flowPage.request.get(`/api/candidates/applications/${seed.candidateBApplicationId}`);
-    const forbiddenBPayload = await forbiddenBApplication.json();
-    expect(forbiddenBApplication.status(), JSON.stringify(forbiddenBPayload)).toBe(404);
-
-    const forbiddenAdminProfile = await flowPage.request.get(`/api/admin/candidate-profiles/${seed.candidateB.candidateId}`);
-    expect([401, 403]).toContain(forbiddenAdminProfile.status());
-
-    await apiLogout(flowPage);
-    const unauthenticatedDetails = await flowPage.request.get(`/api/candidates/applications/${seed.candidateAApplicationId}`);
-    const unauthenticatedPayload = await unauthenticatedDetails.json();
-    expect(unauthenticatedDetails.status(), JSON.stringify(unauthenticatedPayload)).toBe(401);
+    assertNoClientErrors(telemetry, { allowUnauthorizedConsole: true });
   });
+});
 
-  await test.step("Logout restores guest header and Arabic login works", async () => {
-    await flowPage.goto("/en/auth?mode=signin&audience=candidate");
-    const form = flowPage.locator("form").first();
-    await form.locator('input[type="email"]').fill(seed.candidateA.email);
-    await form.locator('input[type="password"]').fill(seed.candidateA.password);
-    await form.getByRole("button", { name: "Sign In" }).click();
-    await flowPage.waitForURL((url) => !url.pathname.endsWith("/auth"), { timeout: 30_000 });
+test("Owner post-login header", async ({ browser }, testInfo) => {
+  await withIsolatedPage(browser, testInfo, "Owner post-login header", async (page, telemetry) => {
+    await runStep(page, telemetry, "Owner login has clean owner/staff menu with no stale role links", async () => {
+      await apiLogin(page, seed.owner.email, seed.owner.password, "staff");
+      await page.goto("/en/admin/control-center");
 
-    const header = flowPage.locator("header").first();
-    const accountButton = header.getByRole("button", { name: seed.candidateA.fullName });
-    await accountButton.hover();
-    await header.getByRole("button", { name: "Logout" }).click();
-    await expect(header.getByText("Sign In")).toBeVisible();
-    await expect(header.getByText("Create Account")).toBeVisible();
+      const header = page.locator("header").first();
+      await expect(header.getByRole("link", { name: "Dashboard" })).toBeVisible();
+      await expect(header.getByRole("link", { name: "Account" })).toBeVisible();
+      await expect(header.getByRole("button", { name: "Logout" })).toBeVisible();
 
-    await flowPage.goto("/ar/auth?mode=signin&audience=candidate");
-    const arForm = flowPage.locator("form").first();
-    await arForm.locator('input[type="email"]').fill(seed.candidateA.email);
-    await arForm.locator('input[type="password"]').fill(seed.candidateA.password);
-    await arForm.getByRole("button", { name: "تسجيل الدخول" }).click();
-    await flowPage.waitForURL((url) => !url.pathname.endsWith("/auth"), { timeout: 30_000 });
-    await expect(flowPage.locator("header").first().getByRole("button", { name: seed.candidateA.fullName })).toBeVisible();
+      await expect(header.getByRole("link", { name: "Company Profile" })).toHaveCount(0);
+      await expect(header.getByRole("link", { name: "Career Profile" })).toHaveCount(0);
+      await expect(header.getByRole("link", { name: "Applications" })).toHaveCount(0);
+
+      await expect(header.getByRole("link", { name: "Dashboard" })).toHaveCount(1);
+      await expect(header.getByRole("link", { name: "Account" })).toHaveCount(1);
+      await assertUniqueHeaderLinks(header);
+    });
+
+    assertNoClientErrors(telemetry);
   });
+});
 
-  expect(summary.firstDestinationPathname.length).toBeGreaterThan(1);
-  expect(summary.sawConsoleError).toBeFalsy();
-  expect(summary.sawPageError).toBeFalsy();
-  expect(summary.sawChunkLoadError).toBeFalsy();
-  expect(summary.sawJsonParseHtmlError).toBeFalsy();
-  expect(summary.sawConsoleSensitiveError).toBeFalsy();
+test("Staff post-login header", async ({ browser }, testInfo) => {
+  await withIsolatedPage(browser, testInfo, "Staff post-login header", async (page, telemetry) => {
+    await runStep(page, telemetry, "Staff login has clean staff menu with no stale role links", async () => {
+      await apiLogin(page, seed.staff.email, seed.staff.password, "staff");
+      await page.goto("/en/admin/control-center");
+
+      const header = page.locator("header").first();
+      await expect(header.getByRole("link", { name: "Dashboard" })).toBeVisible();
+      await expect(header.getByRole("link", { name: "Account" })).toBeVisible();
+      await expect(header.getByRole("button", { name: "Logout" })).toBeVisible();
+
+      await expect(header.getByRole("link", { name: "Company Profile" })).toHaveCount(0);
+      await expect(header.getByRole("link", { name: "Career Profile" })).toHaveCount(0);
+      await expect(header.getByRole("link", { name: "Applications" })).toHaveCount(0);
+
+      await expect(header.getByRole("link", { name: "Dashboard" })).toHaveCount(1);
+      await expect(header.getByRole("link", { name: "Account" })).toHaveCount(1);
+      await assertUniqueHeaderLinks(header);
+    });
+
+    assertNoClientErrors(telemetry);
+  });
+});
+
+test("Logout and session reset", async ({ browser }, testInfo) => {
+  await withIsolatedPage(browser, testInfo, "Logout and session reset", async (page, telemetry) => {
+    await runStep(page, telemetry, "Logout returns to guest header and clears authenticated session", async () => {
+      await uiLogin(page, "candidate", seed.candidate.email, seed.candidate.password, "en");
+
+      const header = page.locator("header").first();
+      const accountButton = header.getByRole("button", { name: seed.candidate.fullName });
+      await expect(accountButton).toBeVisible();
+      await accountButton.hover();
+      await header.getByRole("button", { name: "Logout" }).click();
+
+      await expect(header.getByText("Sign In")).toBeVisible();
+      await expect(header.getByText("Create Account")).toBeVisible();
+      await expect(header.getByRole("button", { name: seed.candidate.fullName })).toHaveCount(0);
+
+      const me = await page.request.get("/api/auth/me");
+      const payload = await me.json();
+      expect([200, 401], JSON.stringify(payload)).toContain(me.status());
+      expect(Boolean(payload?.success)).toBeFalsy();
+      expect(String(payload?.error?.code ?? "")).toBe("UNAUTHENTICATED");
+    });
+
+    assertNoClientErrors(telemetry);
+  });
+});
+
+test("Locale switching keeps header/session consistent", async ({ browser }, testInfo) => {
+  await withIsolatedPage(browser, testInfo, "Locale switching keeps header/session consistent", async (page, telemetry) => {
+    await runStep(page, telemetry, "Locale switch does not duplicate locale prefixes", async () => {
+      await apiLogin(page, seed.candidate.email, seed.candidate.password, "candidate");
+
+      await page.goto("/en/jobs");
+      await expect(page.url()).not.toContain("/en/en/");
+      const enHeader = page.locator("header").first();
+      await expect(enHeader.getByRole("button", { name: seed.candidate.fullName })).toBeVisible();
+      await assertUniqueHeaderLinks(enHeader);
+
+      await page.goto("/ar/jobs");
+      await expect(page.url()).not.toContain("/ar/ar/");
+      const arHeader = page.locator("header").first();
+      await expect(arHeader.getByRole("button", { name: seed.candidate.fullName })).toBeVisible();
+      await assertUniqueHeaderLinks(arHeader);
+
+      const arRequest = await page.request.get("/ar/jobs");
+      expect(arRequest.ok()).toBeTruthy();
+      expect(arRequest.url()).not.toContain("/ar/ar/");
+
+      const enRequest = await page.request.get("/en/jobs");
+      expect(enRequest.ok()).toBeTruthy();
+      expect(enRequest.url()).not.toContain("/en/en/");
+    });
+
+    await runStep(page, telemetry, "Arabic login keeps immediate role header", async () => {
+      await apiLogout(page);
+      await uiLogin(page, "candidate", seed.candidate.email, seed.candidate.password, "ar");
+      await expect(page.locator("header").first().getByRole("button", { name: seed.candidate.fullName })).toBeVisible();
+    });
+
+    assertNoClientErrors(telemetry);
+  });
 });

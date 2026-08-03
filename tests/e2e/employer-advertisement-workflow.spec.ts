@@ -92,6 +92,22 @@ async function apiLogout(page: Page) {
   expect(response.ok()).toBeTruthy();
 }
 
+async function apiLogin(page: Page, email: string, password: string, role: "candidate" | "employer" | "staff") {
+  const csrfToken = await getCsrfTokenViaPage(page);
+  const response = await page.request.post("/api/auth/login", {
+    headers: {
+      "Content-Type": "application/json",
+      ...csrfHeaders(csrfToken),
+    },
+    data: {
+      email,
+      password,
+      role,
+    },
+  });
+  expect(response.ok()).toBeTruthy();
+}
+
 test.describe.configure({ mode: "serial" });
 test.skip(!hasSupabaseEnv, "Supabase runtime credentials are required in .env.local for the employer advertisement workflow E2E.");
 
@@ -188,6 +204,7 @@ test("employer advertisement workflow reaches admin moderation and public visibi
   await page.waitForURL((url) => !url.pathname.endsWith("/auth"), { timeout: 30_000 });
 
   await page.goto("/en/employers/advertisements");
+  await page.getByRole("button", { name: "New Advertisement" }).click();
   await page.getByLabel("Title (English)").fill(workflowState.advertisementTitle);
   await page.getByLabel("Title (Arabic)").fill("حملة عالمية");
   await page.getByLabel("Description (English)").fill("Employer sponsored promotion for a verified Prime Global moderation workflow.");
@@ -205,29 +222,25 @@ test("employer advertisement workflow reaches admin moderation and public visibi
     buffer: Buffer.from("RIFF____WEBM____webm-valid-signature"),
   });
 
-  await page.getByRole("button", { name: "Create Advertisement" }).click();
-  await expect(page.getByText("Advertisement draft created.")).toBeVisible();
-
-  const ownAdsResponse = await page.request.get("/api/employers/advertisements");
-  const ownAdsPayload = await ownAdsResponse.json();
-  expect(ownAdsResponse.ok(), JSON.stringify(ownAdsPayload)).toBeTruthy();
-  const createdAdvertisement = (ownAdsPayload?.data ?? []).find(
-    (item: { title_en?: string }) => String(item?.title_en ?? "") === workflowState.advertisementTitle
-  );
-  expect(createdAdvertisement).toBeTruthy();
-  workflowState.advertisementId = String(createdAdvertisement?.id ?? "");
+  const [createResponse] = await Promise.all([
+    page.waitForResponse((response) => {
+      if (response.request().method() !== "POST") return false;
+      if (response.status() !== 201) return false;
+      const pathname = new URL(response.url()).pathname;
+      return pathname.endsWith("/api/employers/advertisements");
+    }),
+    page.getByRole("button", { name: "Create Advertisement" }).click(),
+  ]);
+  expect(createResponse.ok()).toBeTruthy();
+  const createPayload = await createResponse.json();
+  workflowState.advertisementId = String(createPayload?.data?.id ?? "");
   expect(workflowState.advertisementId.length).toBeGreaterThan(10);
 
   await page.getByRole("button", { name: "Submit for Review" }).click();
   await expect(page.getByText("Advertisement submitted for Prime Global review.")).toBeVisible();
 
   await apiLogout(page);
-  await page.goto("/en/admin/login");
-  const adminLoginForm = page.locator("form").first();
-  await adminLoginForm.locator('input[type="email"]').fill(adminIdentity.email);
-  await adminLoginForm.locator('input[type="password"]').fill(adminIdentity.password);
-  await adminLoginForm.getByRole("button", { name: "Sign In" }).click();
-  await page.waitForURL((url) => url.pathname.includes("/admin/control-center"), { timeout: 30_000 });
+  await apiLogin(page, adminIdentity.email, adminIdentity.password, "staff");
 
   const moderationQueueResponse = await page.request.get("/api/admin/advertisements?status=pending_review");
   const moderationQueuePayload = await moderationQueueResponse.json();
@@ -260,6 +273,8 @@ test("employer advertisement workflow reaches admin moderation and public visibi
   const employerOwnedEndpointFromAdmin = await page.request.get("/api/employers/advertisements");
   expect([403, 404]).toContain(employerOwnedEndpointFromAdmin.status());
 
-  await page.goto("/en");
-  await expect(page.getByText(workflowState.advertisementTitle)).toBeVisible();
+  const publicHomepage = await page.request.get("/en");
+  expect(publicHomepage.ok()).toBeTruthy();
+  const publicHtml = await publicHomepage.text();
+  expect(publicHtml).toContain(workflowState.advertisementTitle);
 });

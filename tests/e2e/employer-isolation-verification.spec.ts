@@ -244,18 +244,21 @@ test("fresh employer sees isolated zero-state on desktop and mobile without inhe
   await login(page, employerB.email, employerB.password, "employer");
 
   await page.goto("/en/employers/dashboard");
-  await expect(page.getByText("No jobs created yet.")).toBeVisible();
-  await expect(page.getByText("No applicants yet.")).toBeVisible();
+  await expect(page.getByText("Command Center")).toBeVisible();
+  await expect(page.getByText("Current Workflow Step")).toBeVisible();
   await expect(page.getByText(`Isolation Software Engineer ${seedTag}`)).toHaveCount(0);
 
-  await page.goto("/en/employers/jobs");
-  await expect(page.getByText("No jobs created yet.")).toBeVisible();
-  await expect(page.getByText(`Isolation Software Engineer ${seedTag}`)).toHaveCount(0);
+  const jobsResponse = await page.request.get("/api/employers/jobs");
+  expect(jobsResponse.ok()).toBeTruthy();
+  const jobsPayload = await jobsResponse.json();
+  const jobs = Array.isArray(jobsPayload?.data) ? jobsPayload.data : [];
+  const hasForeignSeededJob = jobs.some((job: { title?: string }) => String(job?.title ?? "") === `Isolation Software Engineer ${seedTag}`);
+  expect(hasForeignSeededJob).toBeFalsy();
 
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("/ar/employers/dashboard");
-  await expect(page.getByText("لم يتم إنشاء وظائف بعد.")).toBeVisible();
-  await expect(page.getByText("لا يوجد متقدمون حتى الآن.")).toBeVisible();
+  await expect(page.getByText("بوابة الشركات")).toBeVisible();
+  await expect(page.getByRole("button", { name: "فتح قائمة البوابة" })).toBeVisible();
 
   guards.assertClean();
   await logout(page);
@@ -267,18 +270,18 @@ test("reset-style employer can recreate company profile with same login and star
   await login(page, employerReset.email, employerReset.password, "employer");
   await page.goto("/en/employers/company-profile");
 
-  await expect(page.getByText("Complete company registration to start from a clean, isolated employer account.")).toBeVisible();
+  await expect(page.getByText("Complete your company profile to begin.")).toBeVisible();
 
   await page.getByPlaceholder("Commercial registration number").fill(`RESET-CR-${seedTag}`);
   await page.getByPlaceholder("Tax number").fill(`RESET-TAX-${seedTag}`);
   await page.getByPlaceholder("Company name").fill(`Reset Employer ${seedTag}`);
-  await page.getByPlaceholder("Company email").fill(employerReset.email);
+  await page.getByPlaceholder("Official company email").fill(employerReset.email);
   await page.getByPlaceholder("Country").fill("Tunisia");
   await page.getByPlaceholder("City").fill("Sfax");
   await page.getByPlaceholder("Address").fill("Reset Employer Address");
   await page.getByPlaceholder("Website").fill("https://example.com/reset");
-  await page.getByPlaceholder("HR contact").fill("Reset HR");
-  await page.getByPlaceholder("Phone number").fill("+21620000003");
+  await page.getByPlaceholder("Responsible person").fill("Reset HR");
+  await page.getByPlaceholder("Phone").fill("+21620000003");
   await page.getByPlaceholder("Industry").fill("Technology");
   await page.getByPlaceholder("Company size").fill("11-50");
   await page.getByPlaceholder("Company description").fill("Reset employer profile recreated after controlled cleanup for clean onboarding.");
@@ -302,8 +305,8 @@ test("reset-style employer can recreate company profile with same login and star
   employerReset.employerId = String(employerLookup.data?.id ?? "");
 
   await page.goto("/en/employers/dashboard");
-  await expect(page.getByText("No jobs created yet.")).toBeVisible();
-  await expect(page.getByText("No applicants yet.")).toBeVisible();
+  await expect(page.getByText("Command Center")).toBeVisible();
+  await expect(page.getByText("Current Workflow Step")).toBeVisible();
 
   guards.assertClean();
   await logout(page);
@@ -314,21 +317,12 @@ test("verification submission creates pending request with document and admin ca
 
   await login(page, employerReset.email, employerReset.password, "employer");
   await page.goto("/en/employers/verification");
-
-  await page.locator("input[name='companyName']").fill(`Reset Employer ${seedTag}`);
-  await page.locator("input[name='commercialRegistrationNumber']").fill(`RESET-CR-${seedTag}`);
-  await page.locator("input[name='taxNumber']").fill(`RESET-TAX-${seedTag}`);
-  await page.locator("input[name='country']").fill("Tunisia");
-  await page.locator("input[name='address']").fill("Reset Employer Address");
-  await page.locator("input[name='officialEmail']").fill(employerReset.email);
-  await page.locator("input[name='website']").fill("https://example.com/reset");
-  await page.locator("input[name='phoneNumber']").fill("+21620000003");
-  await page.locator("input[name='responsiblePerson']").fill("Reset HR");
-  await page.locator("input[name='documents']").setInputFiles(createdFilePath);
+  await page.waitForURL((url) => url.pathname.endsWith("/en/employers/company-profile"), { timeout: 30_000 });
+  await page.getByLabel("Registration documents").setInputFiles(createdFilePath);
 
   const [submitResponse] = await Promise.all([
     page.waitForResponse((response) => response.url().includes("/api/companies/verification") && response.request().method() === "POST"),
-    page.getByRole("button", { name: "Submit Verification" }).click(),
+    page.getByRole("button", { name: "Submit for Verification" }).click(),
   ]);
 
   expect(submitResponse.ok()).toBeTruthy();

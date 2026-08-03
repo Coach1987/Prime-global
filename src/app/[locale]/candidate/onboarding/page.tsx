@@ -11,6 +11,7 @@ import { CountrySelector } from "@/components/ui/CountrySelector";
 import { InternationalPhoneInput } from "@/components/ui/InternationalPhoneInput";
 import { LocalizedFileInput } from "@/components/ui/LocalizedFileInput";
 import { asCandidateLocale, localizeDocumentType } from "@/lib/candidates/localization";
+import { getEmployerBlockedFromCandidateActionsMessage } from "@/lib/auth/role-guard-messages";
 
 type CandidateProfile = {
   full_name?: string | null;
@@ -180,6 +181,7 @@ export default function CandidateOnboardingPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isEmployerBlocked, setIsEmployerBlocked] = useState(false);
   const [errorSummary, setErrorSummary] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const fieldRefs = useRef<Partial<Record<OnboardingField, HTMLElement | null>>>({});
@@ -388,7 +390,14 @@ export default function CandidateOnboardingPage() {
           isArabic ? "تعذر التحقق من الجلسة." : "Unable to verify your session."
         );
 
-        if (!authResponse.ok || !isApiSuccess(authPayload.payload as ApiErrorShape) || authPayload.payload?.data?.role !== "candidate") {
+        const authenticatedRole = authPayload.payload?.data?.role;
+        if (!authResponse.ok || !isApiSuccess(authPayload.payload as ApiErrorShape) || authenticatedRole !== "candidate") {
+          if (authenticatedRole === "employer") {
+            setIsEmployerBlocked(true);
+            setError(getEmployerBlockedFromCandidateActionsMessage(locale));
+            return;
+          }
+
           setError(isArabic ? "هذه الصفحة مخصصة للمرشحين المسجلين فقط." : "This page is only for authenticated candidates.");
           return;
         }
@@ -453,7 +462,7 @@ export default function CandidateOnboardingPage() {
     }
 
     void bootstrap();
-  }, [isArabic]);
+  }, [isArabic, locale]);
 
   async function uploadDocuments(onStepComplete: (label: string) => void) {
     const notices: string[] = [];
@@ -811,14 +820,53 @@ export default function CandidateOnboardingPage() {
   }
 
   if (!profile) {
+    async function handleBlockedEmployerSignOut() {
+      let csrf = "";
+      try {
+        const csrfResponse = await fetch("/api/security/csrf", { credentials: "include" });
+        const csrfPayload = await csrfResponse.json().catch(() => null);
+        csrf = typeof csrfPayload?.data?.csrfToken === "string" ? csrfPayload.data.csrfToken : "";
+      } catch {
+        csrf = "";
+      }
+
+      await fetch("/api/auth/logout", {
+        method: "POST",
+        headers: csrf ? { "x-csrf-token": csrf } : undefined,
+        credentials: "include",
+      }).catch(() => undefined);
+
+      router.push(`/${locale}`);
+      router.refresh();
+    }
+
     return (
       <main className="mx-auto w-full max-w-[820px] px-4 pb-20 pt-[124px] sm:px-6 md:px-8">
         <section className="rounded-3xl border border-blue-200/20 bg-[#081223]/82 p-8 backdrop-blur-xl">
           <h1 className="font-heading text-3xl text-text-primary">{isArabic ? "الدخول مطلوب" : "Sign in required"}</h1>
           <p className="mt-3 text-sm text-text-secondary">{error ?? (isArabic ? "يجب تسجيل الدخول أولاً للوصول إلى إعداد الملف الشخصي." : "You need to sign in before continuing to onboarding.")}</p>
-          <Link href="/auth?mode=signin&role=candidate" className={`${primeButtonClasses("secondary")} mt-5`}>
-            {isArabic ? "فتح تسجيل الدخول" : "Open sign in"}
-          </Link>
+          {isEmployerBlocked ? (
+            <div className="mt-5 flex flex-col gap-3 sm:flex-row">
+              <button
+                type="button"
+                onClick={() => router.push("/employer")}
+                className={primeButtonClasses("secondary")}
+              >
+                {isArabic ? "العودة إلى بوابة صاحب العمل" : "Return to Employer Portal"}
+              </button>
+              <button
+                type="button"
+                onClick={() => handleBlockedEmployerSignOut().catch(() => undefined)}
+                className="inline-flex items-center justify-center rounded-full border border-white/30 px-5 py-3 text-sm font-semibold text-text-primary"
+              >
+                {isArabic ? "تسجيل الخروج" : "Sign out"}
+              </button>
+            </div>
+          ) : (
+            <Link href="/auth?mode=signin&role=candidate" className={`${primeButtonClasses("secondary")} mt-5`}>
+              {isArabic ? "فتح تسجيل الدخول" : "Open sign in"}
+            </Link>
+          )}
         </section>
       </main>
     );

@@ -1,4 +1,5 @@
 import { requirePageRole } from "@/lib/server/security/page-access";
+import { EmployerPortalShell } from "@/components/layout/EmployerShell/EmployerPortalShell";
 
 export default async function EmployersLayout({
   children,
@@ -15,5 +16,5 @@ export default async function EmployersLayout({
     unauthenticatedRedirect: `/${locale}/auth?mode=signin&audience=employer`,
   });
 
-  return <>{children}</>;
+  return <EmployerPortalShell locale={locale}>{children}</EmployerPortalShell>;
 }

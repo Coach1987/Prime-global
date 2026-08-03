@@ -4,6 +4,12 @@ import Image from "next/image";
 import { FormEvent, useCallback, useEffect, useState } from "react";
 import { PrimeCard } from "@/components/ui/prime/PrimeCard";
 import { PrimeButton, primeButtonClasses } from "@/components/ui/prime/PrimeButton";
+import {
+  employerInput,
+  employerPageShell,
+  employerSecondaryButton,
+  employerSectionCard,
+} from "@/features/employers/ui/portal-theme";
 import type { AdvertisementRecord, AdvertisementStatus } from "@/features/advertisements/types";
 
 type EmployerAdvertisementItem = AdvertisementRecord;
@@ -296,8 +302,8 @@ export function EmployerAdvertisementsCenter({ locale }: { locale: string }) {
   }
 
   return (
-    <main className="mx-auto w-full max-w-[1340px] px-4 pb-20 pt-[124px] sm:px-6 md:px-8">
-      <PrimeCard className="p-7 md:p-10">
+    <main className={employerPageShell}>
+      <PrimeCard className="rounded-3xl border border-gold/20 bg-bg-secondary/80 p-7 shadow-[0_20px_70px_rgba(0,0,0,0.26)] backdrop-blur-xl md:p-10">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div>
             <h1 className="font-heading text-3xl text-text-primary md:text-4xl">{locale === "ar" ? "الإعلانات" : "Advertisements"}</h1>
@@ -330,7 +336,7 @@ export function EmployerAdvertisementsCenter({ locale }: { locale: string }) {
         {message ? <p className="mt-4 text-sm text-emerald-300">{message}</p> : null}
 
         {!loading && !hasEmployerProfile ? (
-          <div className="mt-8 rounded-2xl border border-gold/20 bg-bg-primary/60 p-5">
+          <div className={`mt-8 ${employerSectionCard}`}>
             <p className="text-sm text-text-secondary">
               {locale === "ar"
                 ? "أكمل ملف الشركة قبل إنشاء إعلان."
@@ -338,7 +344,7 @@ export function EmployerAdvertisementsCenter({ locale }: { locale: string }) {
             </p>
             <a
               href={`/${locale}/employers/company-profile`}
-              className="mt-4 inline-flex rounded-full border border-gold/30 px-4 py-2 text-sm font-semibold text-gold transition hover:bg-gold/10"
+              className={`mt-4 ${employerSecondaryButton}`}
             >
               {locale === "ar" ? "الانتقال إلى ملف الشركة" : "Go to Company Profile"}
             </a>
@@ -348,7 +354,7 @@ export function EmployerAdvertisementsCenter({ locale }: { locale: string }) {
         {!loading && hasEmployerProfile ? (
           <div className="mt-8 space-y-4">
             {items.length === 0 ? (
-              <p className="rounded-xl border border-gold/10 bg-bg-primary/50 p-4 text-sm text-text-secondary">
+              <p className={`${employerSectionCard} text-sm text-text-secondary`}>
                 {locale === "ar" ? "لا توجد إعلانات حتى الآن." : "No advertisements yet."}
               </p>
             ) : null}
@@ -361,7 +367,7 @@ export function EmployerAdvertisementsCenter({ locale }: { locale: string }) {
                   setForm(mapRecordToForm(item));
                   setShowCreateForm(true);
                 }}
-                className={`w-full rounded-xl border p-4 text-left transition ${item.id === selectedId ? "border-gold/40 bg-bg-primary" : "border-gold/15 bg-bg-primary/70 hover:border-gold/30"}`}
+                className={`w-full text-left ${employerSectionCard} ${item.id === selectedId ? "border-gold/40 bg-bg-primary" : "hover:border-gold/30"}`}
               >
                 <div className="flex items-center justify-between gap-3">
                   <h2 className="line-clamp-1 font-semibold text-text-primary">{item.title_en}</h2>
@@ -376,78 +382,78 @@ export function EmployerAdvertisementsCenter({ locale }: { locale: string }) {
         ) : null}
 
         {hasEmployerProfile && showCreateForm ? (
-          <section className="mt-6 rounded-2xl border border-gold/15 bg-bg-primary/60 p-5">
+          <section className={`mt-6 ${employerSectionCard}`}>
             <form className="space-y-4" onSubmit={onSubmit}>
               <div className="grid gap-4 sm:grid-cols-2">
                 <label className="text-sm text-text-secondary">
                   Title (English)
-                  <input required value={form.title_en} onChange={(event) => updateField("title_en", event.target.value)} className="mt-1.5 w-full rounded-xl border border-gold/20 bg-bg-primary px-3 py-2 text-sm text-text-primary" />
+                  <input required value={form.title_en} onChange={(event) => updateField("title_en", event.target.value)} className={`mt-1.5 ${employerInput}`} />
                 </label>
                 <label className="text-sm text-text-secondary">
                   Title (Arabic)
-                  <input required dir="rtl" value={form.title_ar} onChange={(event) => updateField("title_ar", event.target.value)} className="mt-1.5 w-full rounded-xl border border-gold/20 bg-bg-primary px-3 py-2 text-sm text-text-primary" />
+                  <input required dir="rtl" value={form.title_ar} onChange={(event) => updateField("title_ar", event.target.value)} className={`mt-1.5 ${employerInput}`} />
                 </label>
               </div>
 
               <div className="grid gap-4 sm:grid-cols-2">
                 <label className="text-sm text-text-secondary">
                   Description (English)
-                  <textarea required rows={4} value={form.description_en} onChange={(event) => updateField("description_en", event.target.value)} className="mt-1.5 w-full rounded-xl border border-gold/20 bg-bg-primary px-3 py-2 text-sm text-text-primary" />
+                  <textarea required rows={4} value={form.description_en} onChange={(event) => updateField("description_en", event.target.value)} className={`mt-1.5 ${employerInput}`} />
                 </label>
                 <label className="text-sm text-text-secondary">
                   Description (Arabic)
-                  <textarea required dir="rtl" rows={4} value={form.description_ar} onChange={(event) => updateField("description_ar", event.target.value)} className="mt-1.5 w-full rounded-xl border border-gold/20 bg-bg-primary px-3 py-2 text-sm text-text-primary" />
+                  <textarea required dir="rtl" rows={4} value={form.description_ar} onChange={(event) => updateField("description_ar", event.target.value)} className={`mt-1.5 ${employerInput}`} />
                 </label>
               </div>
 
               <div className="grid gap-4 sm:grid-cols-2">
                 <label className="text-sm text-text-secondary">
                   CTA Text (English)
-                  <input required value={form.cta_text_en} onChange={(event) => updateField("cta_text_en", event.target.value)} className="mt-1.5 w-full rounded-xl border border-gold/20 bg-bg-primary px-3 py-2 text-sm text-text-primary" />
+                  <input required value={form.cta_text_en} onChange={(event) => updateField("cta_text_en", event.target.value)} className={`mt-1.5 ${employerInput}`} />
                 </label>
                 <label className="text-sm text-text-secondary">
                   CTA Text (Arabic)
-                  <input required dir="rtl" value={form.cta_text_ar} onChange={(event) => updateField("cta_text_ar", event.target.value)} className="mt-1.5 w-full rounded-xl border border-gold/20 bg-bg-primary px-3 py-2 text-sm text-text-primary" />
+                  <input required dir="rtl" value={form.cta_text_ar} onChange={(event) => updateField("cta_text_ar", event.target.value)} className={`mt-1.5 ${employerInput}`} />
                 </label>
               </div>
 
               <div className="grid gap-4 sm:grid-cols-2">
                 <label className="text-sm text-text-secondary">
                   Media Alt Text (English)
-                  <input required value={form.media_alt_en} onChange={(event) => updateField("media_alt_en", event.target.value)} className="mt-1.5 w-full rounded-xl border border-gold/20 bg-bg-primary px-3 py-2 text-sm text-text-primary" />
+                  <input required value={form.media_alt_en} onChange={(event) => updateField("media_alt_en", event.target.value)} className={`mt-1.5 ${employerInput}`} />
                 </label>
                 <label className="text-sm text-text-secondary">
                   Media Alt Text (Arabic)
-                  <input required dir="rtl" value={form.media_alt_ar} onChange={(event) => updateField("media_alt_ar", event.target.value)} className="mt-1.5 w-full rounded-xl border border-gold/20 bg-bg-primary px-3 py-2 text-sm text-text-primary" />
+                  <input required dir="rtl" value={form.media_alt_ar} onChange={(event) => updateField("media_alt_ar", event.target.value)} className={`mt-1.5 ${employerInput}`} />
                 </label>
               </div>
 
               <div className="grid gap-4 sm:grid-cols-2">
                 <label className="text-sm text-text-secondary">
                   Target URL
-                  <input required type="url" value={form.target_url} onChange={(event) => updateField("target_url", event.target.value)} className="mt-1.5 w-full rounded-xl border border-gold/20 bg-bg-primary px-3 py-2 text-sm text-text-primary" />
+                  <input required type="url" value={form.target_url} onChange={(event) => updateField("target_url", event.target.value)} className={`mt-1.5 ${employerInput}`} />
                 </label>
                 <label className="text-sm text-text-secondary">
                   Display Priority
-                  <input required type="number" min={1} max={10000} value={form.priority} onChange={(event) => updateField("priority", Number(event.target.value || "0"))} className="mt-1.5 w-full rounded-xl border border-gold/20 bg-bg-primary px-3 py-2 text-sm text-text-primary" />
+                  <input required type="number" min={1} max={10000} value={form.priority} onChange={(event) => updateField("priority", Number(event.target.value || "0"))} className={`mt-1.5 ${employerInput}`} />
                 </label>
               </div>
 
               <div className="grid gap-4 sm:grid-cols-2">
                 <label className="text-sm text-text-secondary">
                   Start Date/Time
-                  <input type="datetime-local" value={form.starts_at} onChange={(event) => updateField("starts_at", event.target.value)} className="mt-1.5 w-full rounded-xl border border-gold/20 bg-bg-primary px-3 py-2 text-sm text-text-primary" />
+                  <input type="datetime-local" value={form.starts_at} onChange={(event) => updateField("starts_at", event.target.value)} className={`mt-1.5 ${employerInput}`} />
                 </label>
                 <label className="text-sm text-text-secondary">
                   End Date/Time
-                  <input type="datetime-local" value={form.ends_at} onChange={(event) => updateField("ends_at", event.target.value)} className="mt-1.5 w-full rounded-xl border border-gold/20 bg-bg-primary px-3 py-2 text-sm text-text-primary" />
+                  <input type="datetime-local" value={form.ends_at} onChange={(event) => updateField("ends_at", event.target.value)} className={`mt-1.5 ${employerInput}`} />
                 </label>
               </div>
 
               <div className="grid gap-3 rounded-xl border border-gold/15 bg-bg-primary/50 p-4">
                 <label className="text-sm text-text-secondary">
                   Media Type
-                  <select value={form.media_type} onChange={(event) => updateField("media_type", event.target.value as "image" | "video")} className="mt-1.5 w-full rounded-xl border border-gold/20 bg-bg-primary px-3 py-2 text-sm text-text-primary">
+                  <select value={form.media_type} onChange={(event) => updateField("media_type", event.target.value as "image" | "video")} className={`mt-1.5 ${employerInput}`}>
                     <option value="image">Image</option>
                     <option value="video">Video</option>
                   </select>
@@ -455,7 +461,7 @@ export function EmployerAdvertisementsCenter({ locale }: { locale: string }) {
 
                 <label className="text-sm text-text-secondary">
                   Storage Media Path
-                  <input required value={form.media_url} onChange={(event) => updateField("media_url", event.target.value)} className="mt-1.5 w-full rounded-xl border border-gold/20 bg-bg-primary px-3 py-2 text-sm text-text-primary" />
+                  <input required value={form.media_url} onChange={(event) => updateField("media_url", event.target.value)} className={`mt-1.5 ${employerInput}`} />
                 </label>
 
                 <label className="text-sm text-text-secondary">

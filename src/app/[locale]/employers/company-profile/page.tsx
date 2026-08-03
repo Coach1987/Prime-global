@@ -2,6 +2,13 @@
 
 import { FormEvent, useEffect, useState } from "react";
 import { useLocale } from "next-intl";
+import {
+  employerInput,
+  employerPageShell,
+  employerPrimaryButton,
+  employerSectionCard,
+  employerSurfaceCard,
+} from "@/features/employers/ui/portal-theme";
 
 type EmployerProfile = {
   company_name: string;
@@ -180,11 +187,11 @@ export default function EmployerCompanyProfilePage() {
     setSubmittingVerification(false);
   }
 
-  if (loading) return <main className="mx-auto w-full max-w-[980px] px-4 pb-20 pt-[124px] sm:px-6 md:px-8">{isArabic ? "جارٍ تحميل ملف الشركة..." : "Loading company profile..."}</main>;
+  if (loading) return <main className={employerPageShell}>{isArabic ? "جارٍ تحميل ملف الشركة..." : "Loading company profile..."}</main>;
 
   return (
-    <main className="mx-auto w-full max-w-[980px] px-4 pb-20 pt-[124px] sm:px-6 md:px-8">
-      <section className="rounded-3xl border border-gold/20 bg-bg-secondary/80 p-7 backdrop-blur-xl md:p-10">
+    <main className={employerPageShell}>
+      <section className={employerSurfaceCard}>
         <h1 className="font-heading text-3xl text-text-primary">{isArabic ? "ملف الشركة" : "Company Profile"}</h1>
         <p className="mt-3 text-sm text-text-secondary">
           {requiresOnboarding
@@ -194,19 +201,19 @@ export default function EmployerCompanyProfilePage() {
         {message ? <p className="mt-3 text-sm text-emerald-200">{message}</p> : null}
 
         <form onSubmit={onSubmit} className="mt-8 grid gap-4 md:grid-cols-2">
-          <input value={profile?.company_name ?? ""} onChange={(event) => updateField("company_name", event.target.value)} placeholder={isArabic ? "اسم الشركة" : "Company name"} required className="rounded-xl border border-gold/20 bg-bg-primary px-4 py-3 text-sm text-text-primary" />
-          <input value={profile?.company_email ?? ""} onChange={(event) => updateField("company_email", event.target.value)} placeholder={isArabic ? "البريد الرسمي للشركة" : "Official company email"} required className="rounded-xl border border-gold/20 bg-bg-primary px-4 py-3 text-sm text-text-primary" />
-          <input value={profile?.commercial_registration_number ?? ""} onChange={(event) => updateField("commercial_registration_number", event.target.value)} placeholder={isArabic ? "رقم السجل التجاري" : "Commercial registration number"} required className="rounded-xl border border-gold/20 bg-bg-primary px-4 py-3 text-sm text-text-primary" />
-          <input value={profile?.tax_number ?? ""} onChange={(event) => updateField("tax_number", event.target.value)} placeholder={isArabic ? "الرقم الجبائي" : "Tax number"} required className="rounded-xl border border-gold/20 bg-bg-primary px-4 py-3 text-sm text-text-primary" />
-          <input value={profile?.country ?? ""} onChange={(event) => updateField("country", event.target.value)} placeholder={isArabic ? "الدولة" : "Country"} required className="rounded-xl border border-gold/20 bg-bg-primary px-4 py-3 text-sm text-text-primary" />
-          <input value={profile?.city ?? ""} onChange={(event) => updateField("city", event.target.value)} placeholder={isArabic ? "المدينة" : "City"} required className="rounded-xl border border-gold/20 bg-bg-primary px-4 py-3 text-sm text-text-primary" />
-          <input value={profile?.address ?? ""} onChange={(event) => updateField("address", event.target.value)} placeholder={isArabic ? "العنوان" : "Address"} required className="rounded-xl border border-gold/20 bg-bg-primary px-4 py-3 text-sm text-text-primary" />
-          <input value={profile?.website ?? ""} onChange={(event) => updateField("website", event.target.value)} placeholder={isArabic ? "الموقع الإلكتروني" : "Website"} className="rounded-xl border border-gold/20 bg-bg-primary px-4 py-3 text-sm text-text-primary" />
-          <input value={profile?.hr_contact ?? ""} onChange={(event) => updateField("hr_contact", event.target.value)} placeholder={isArabic ? "الشخص المسؤول" : "Responsible person"} required className="rounded-xl border border-gold/20 bg-bg-primary px-4 py-3 text-sm text-text-primary" />
-          <input value={profile?.phone_number ?? ""} onChange={(event) => updateField("phone_number", event.target.value)} placeholder={isArabic ? "رقم الهاتف" : "Phone"} required className="rounded-xl border border-gold/20 bg-bg-primary px-4 py-3 text-sm text-text-primary" />
-          <input value={profile?.industry ?? ""} onChange={(event) => updateField("industry", event.target.value)} placeholder={isArabic ? "القطاع" : "Industry"} required className="rounded-xl border border-gold/20 bg-bg-primary px-4 py-3 text-sm text-text-primary" />
-          <input value={profile?.company_size ?? ""} onChange={(event) => updateField("company_size", event.target.value)} placeholder={isArabic ? "حجم الشركة" : "Company size"} required className="rounded-xl border border-gold/20 bg-bg-primary px-4 py-3 text-sm text-text-primary" />
-          <textarea value={profile?.company_description ?? ""} onChange={(event) => updateField("company_description", event.target.value)} rows={4} placeholder={isArabic ? "وصف الشركة" : "Company description"} required className="md:col-span-2 rounded-xl border border-gold/20 bg-bg-primary px-4 py-3 text-sm text-text-primary" />
+          <input value={profile?.company_name ?? ""} onChange={(event) => updateField("company_name", event.target.value)} placeholder={isArabic ? "اسم الشركة" : "Company name"} required className={employerInput} />
+          <input value={profile?.company_email ?? ""} onChange={(event) => updateField("company_email", event.target.value)} placeholder={isArabic ? "البريد الرسمي للشركة" : "Official company email"} required className={employerInput} />
+          <input value={profile?.commercial_registration_number ?? ""} onChange={(event) => updateField("commercial_registration_number", event.target.value)} placeholder={isArabic ? "رقم السجل التجاري" : "Commercial registration number"} required className={employerInput} />
+          <input value={profile?.tax_number ?? ""} onChange={(event) => updateField("tax_number", event.target.value)} placeholder={isArabic ? "الرقم الجبائي" : "Tax number"} required className={employerInput} />
+          <input value={profile?.country ?? ""} onChange={(event) => updateField("country", event.target.value)} placeholder={isArabic ? "الدولة" : "Country"} required className={employerInput} />
+          <input value={profile?.city ?? ""} onChange={(event) => updateField("city", event.target.value)} placeholder={isArabic ? "المدينة" : "City"} required className={employerInput} />
+          <input value={profile?.address ?? ""} onChange={(event) => updateField("address", event.target.value)} placeholder={isArabic ? "العنوان" : "Address"} required className={employerInput} />
+          <input value={profile?.website ?? ""} onChange={(event) => updateField("website", event.target.value)} placeholder={isArabic ? "الموقع الإلكتروني" : "Website"} className={employerInput} />
+          <input value={profile?.hr_contact ?? ""} onChange={(event) => updateField("hr_contact", event.target.value)} placeholder={isArabic ? "الشخص المسؤول" : "Responsible person"} required className={employerInput} />
+          <input value={profile?.phone_number ?? ""} onChange={(event) => updateField("phone_number", event.target.value)} placeholder={isArabic ? "رقم الهاتف" : "Phone"} required className={employerInput} />
+          <input value={profile?.industry ?? ""} onChange={(event) => updateField("industry", event.target.value)} placeholder={isArabic ? "القطاع" : "Industry"} required className={employerInput} />
+          <input value={profile?.company_size ?? ""} onChange={(event) => updateField("company_size", event.target.value)} placeholder={isArabic ? "حجم الشركة" : "Company size"} required className={employerInput} />
+          <textarea value={profile?.company_description ?? ""} onChange={(event) => updateField("company_description", event.target.value)} rows={4} placeholder={isArabic ? "وصف الشركة" : "Company description"} required className={`md:col-span-2 ${employerInput}`} />
           {Object.keys(fieldErrors).length > 0 ? (
             <div className="md:col-span-2 rounded-xl border border-red-400/20 bg-red-500/10 p-4 text-sm text-red-100">
               {Object.entries(fieldErrors).map(([fieldName, fieldMessage]) => (
@@ -214,10 +221,10 @@ export default function EmployerCompanyProfilePage() {
               ))}
             </div>
           ) : null}
-          <button type="submit" className="md:col-span-2 rounded-xl bg-gold px-5 py-3 text-sm font-semibold text-bg-primary">{requiresOnboarding ? (isArabic ? "إنشاء ملف الشركة" : "Create Company Profile") : (isArabic ? "حفظ ملف الشركة" : "Save Company Profile")}</button>
+          <button type="submit" className={`md:col-span-2 ${employerPrimaryButton}`}>{requiresOnboarding ? (isArabic ? "إنشاء ملف الشركة" : "Create Company Profile") : (isArabic ? "حفظ ملف الشركة" : "Save Company Profile")}</button>
         </form>
 
-        <section className="mt-10 rounded-2xl border border-gold/20 bg-bg-primary/60 p-5">
+        <section className={`mt-10 ${employerSectionCard}`}>
           <h2 className="font-heading text-2xl text-text-primary">{isArabic ? "التحقق من الشركة" : "Company Verification"}</h2>
           <p className="mt-2 text-sm text-text-secondary">
             {isArabic ? "أضف مستندات التسجيل ثم أرسل الملف للمراجعة." : "Upload registration documents and submit your profile for review."}
@@ -230,7 +237,7 @@ export default function EmployerCompanyProfilePage() {
                 type="file"
                 multiple
                 onChange={(event) => setDocuments(Array.from(event.target.files ?? []))}
-                className="mt-2 w-full rounded-xl border border-gold/20 bg-bg-primary px-4 py-3 text-sm text-text-primary"
+                className={`mt-2 ${employerInput}`}
               />
             </label>
 
@@ -240,7 +247,7 @@ export default function EmployerCompanyProfilePage() {
             <button
               type="submit"
               disabled={submittingVerification}
-              className="rounded-xl border border-gold/30 px-5 py-3 text-sm font-semibold text-gold transition hover:bg-gold/10 disabled:opacity-60"
+              className="inline-flex items-center justify-center rounded-xl border border-gold/30 px-5 py-3 text-sm font-semibold text-gold transition-colors duration-200 hover:bg-gold/10 disabled:opacity-60"
             >
               {submittingVerification
                 ? (isArabic ? "جارٍ الإرسال..." : "Submitting...")

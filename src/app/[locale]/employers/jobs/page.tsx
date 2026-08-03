@@ -2,6 +2,14 @@
 
 import { FormEvent, useEffect, useState } from "react";
 import { useLocale } from "next-intl";
+import {
+  employerInput,
+  employerPageShell,
+  employerPrimaryButton,
+  employerSecondaryButton,
+  employerSectionCard,
+  employerSurfaceCard,
+} from "@/features/employers/ui/portal-theme";
 
 type JobItem = {
   id: string;
@@ -157,11 +165,11 @@ export default function EmployerJobsPage() {
     await load();
   }
 
-  if (loading) return <main className="mx-auto w-full max-w-[1260px] px-4 pb-20 pt-[124px] sm:px-6 md:px-8">{isArabic ? "جارٍ تحميل الوظائف..." : "Loading jobs..."}</main>;
+  if (loading) return <main className={employerPageShell}>{isArabic ? "جارٍ تحميل الوظائف..." : "Loading jobs..."}</main>;
 
   return (
-    <main className="mx-auto w-full max-w-[1260px] px-4 pb-20 pt-[124px] sm:px-6 md:px-8">
-      <section className="rounded-3xl border border-gold/20 bg-bg-secondary/80 p-7 backdrop-blur-xl md:p-10">
+    <main className={employerPageShell}>
+      <section className={employerSurfaceCard}>
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <h1 className="font-heading text-3xl text-text-primary">{isArabic ? "الوظائف" : "Jobs"}</h1>
@@ -170,7 +178,7 @@ export default function EmployerJobsPage() {
           <button
             type="button"
             onClick={() => setShowCreateForm((current) => !current)}
-            className="rounded-xl border border-gold/30 px-4 py-2 text-sm font-semibold text-gold transition hover:bg-gold/10"
+            className={employerSecondaryButton}
           >
             {showCreateForm ? (isArabic ? "إغلاق" : "Close") : (isArabic ? "إنشاء وظيفة" : "Create Job")}
           </button>
@@ -179,28 +187,28 @@ export default function EmployerJobsPage() {
         {message ? <p className="mt-3 text-sm text-emerald-200">{message}</p> : null}
 
         {showCreateForm ? (
-          <form onSubmit={createJob} className="mt-6 grid gap-4 rounded-2xl border border-gold/20 bg-bg-primary/60 p-5 md:grid-cols-2 lg:grid-cols-3">
+          <form onSubmit={createJob} className={`mt-6 grid gap-4 md:grid-cols-2 lg:grid-cols-3 ${employerSectionCard}`}>
             <label className="block">
-              <input value={form.title} onChange={(event) => setForm((current) => ({ ...current, title: event.target.value }))} placeholder={isArabic ? "عنوان الوظيفة" : "Job title"} required className="w-full rounded-xl border border-gold/20 bg-bg-primary px-4 py-3 text-sm text-text-primary" />
+              <input value={form.title} onChange={(event) => setForm((current) => ({ ...current, title: event.target.value }))} placeholder={isArabic ? "عنوان الوظيفة" : "Job title"} required className={employerInput} />
               {fieldErrors.title ? <p className="mt-1 text-xs text-red-300">{fieldErrors.title}</p> : null}
             </label>
             <label className="block">
-              <input value={form.country} onChange={(event) => setForm((current) => ({ ...current, country: event.target.value }))} placeholder={isArabic ? "الدولة" : "Country"} required className="w-full rounded-xl border border-gold/20 bg-bg-primary px-4 py-3 text-sm text-text-primary" />
+              <input value={form.country} onChange={(event) => setForm((current) => ({ ...current, country: event.target.value }))} placeholder={isArabic ? "الدولة" : "Country"} required className={employerInput} />
               {fieldErrors.country ? <p className="mt-1 text-xs text-red-300">{fieldErrors.country}</p> : null}
             </label>
             <label className="block">
-              <input value={form.city} onChange={(event) => setForm((current) => ({ ...current, city: event.target.value }))} placeholder={isArabic ? "المدينة" : "City"} required className="w-full rounded-xl border border-gold/20 bg-bg-primary px-4 py-3 text-sm text-text-primary" />
+              <input value={form.city} onChange={(event) => setForm((current) => ({ ...current, city: event.target.value }))} placeholder={isArabic ? "المدينة" : "City"} required className={employerInput} />
               {fieldErrors.city ? <p className="mt-1 text-xs text-red-300">{fieldErrors.city}</p> : null}
             </label>
             <label className="block">
-              <input value={form.experience} onChange={(event) => setForm((current) => ({ ...current, experience: event.target.value }))} placeholder={isArabic ? "الخبرة" : "Experience"} required className="w-full rounded-xl border border-gold/20 bg-bg-primary px-4 py-3 text-sm text-text-primary" />
+              <input value={form.experience} onChange={(event) => setForm((current) => ({ ...current, experience: event.target.value }))} placeholder={isArabic ? "الخبرة" : "Experience"} required className={employerInput} />
               {fieldErrors.experience ? <p className="mt-1 text-xs text-red-300">{fieldErrors.experience}</p> : null}
             </label>
             <label className="block">
-              <input value={form.requiredSkills} onChange={(event) => setForm((current) => ({ ...current, requiredSkills: event.target.value }))} placeholder={isArabic ? "المهارات المطلوبة" : "Required skills (comma separated)"} required className="w-full rounded-xl border border-gold/20 bg-bg-primary px-4 py-3 text-sm text-text-primary" />
+              <input value={form.requiredSkills} onChange={(event) => setForm((current) => ({ ...current, requiredSkills: event.target.value }))} placeholder={isArabic ? "المهارات المطلوبة" : "Required skills (comma separated)"} required className={employerInput} />
               {fieldErrors.requiredSkills ? <p className="mt-1 text-xs text-red-300">{fieldErrors.requiredSkills}</p> : null}
             </label>
-            <button type="submit" className="rounded-xl bg-gold px-5 py-3 text-sm font-semibold text-bg-primary">{isArabic ? "حفظ كمسودة" : "Create Draft"}</button>
+            <button type="submit" className={employerPrimaryButton}>{isArabic ? "حفظ كمسودة" : "Create Draft"}</button>
           </form>
         ) : null}
 
@@ -219,13 +227,13 @@ export default function EmployerJobsPage() {
 
         <div className="mt-8 space-y-4">
           {jobs.length === 0 ? (
-            <article className="rounded-2xl border border-gold/20 bg-bg-primary/60 p-5 text-sm text-text-secondary">
+            <article className={`${employerSectionCard} text-sm text-text-secondary`}>
               {isArabic ? "لم يتم إنشاء وظائف بعد." : "No jobs created yet."}
             </article>
           ) : null}
           {jobs.map((job) => {
             return (
-              <article key={job.id} className="rounded-2xl border border-gold/20 bg-bg-primary/60 p-5">
+              <article key={job.id} className={employerSectionCard}>
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <div>
                     <h2 className="font-heading text-xl text-text-primary">{job.title}</h2>
@@ -235,8 +243,8 @@ export default function EmployerJobsPage() {
                 </div>
 
                 <div className="mt-5 flex flex-wrap gap-3">
-                  <button type="button" onClick={() => setStatus(job.id, "published")} className="rounded-full border border-gold/30 px-5 py-2 text-sm font-semibold text-gold hover:bg-gold/10">{isArabic ? "نشر" : "Publish"}</button>
-                  <button type="button" onClick={() => setStatus(job.id, "paused")} className="rounded-full border border-gold/30 px-5 py-2 text-sm font-semibold text-gold hover:bg-gold/10">{isArabic ? "إيقاف" : "Pause"}</button>
+                  <button type="button" onClick={() => setStatus(job.id, "published")} className={employerSecondaryButton}>{isArabic ? "نشر" : "Publish"}</button>
+                  <button type="button" onClick={() => setStatus(job.id, "paused")} className={employerSecondaryButton}>{isArabic ? "إيقاف" : "Pause"}</button>
                 </div>
               </article>
             );

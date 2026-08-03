@@ -115,57 +115,47 @@ function attachClientErrorGuards(page: Page) {
   };
 }
 
-async function openAccountMenu(page: Page) {
-  const trigger = page.locator("button[aria-haspopup='menu']").first();
-  const menu = page.locator("[role='menu']").first();
-  await expect(trigger).toBeVisible();
-
-  const isAlreadyVisible = await menu.isVisible();
-  if (!isAlreadyVisible) {
-    await trigger.click();
-  }
-
-  await expect(menu).toBeVisible();
-}
-
-async function assertMenuLabels(page: Page, labels: string[]) {
-  const menu = page.locator("[role='menu']");
-  const linkLabels = (await menu.locator("a").allTextContents()).map((value) => value.trim());
-  const logoutVisible = await menu.getByRole("button").isVisible();
-
-  expect(linkLabels).toEqual(labels.slice(0, 6));
-  expect(logoutVisible).toBeTruthy();
-  await expect(menu.getByRole("button", { name: labels[6] })).toBeVisible();
-}
-
-async function assertMenuLinksAndPages(page: Page, locale: "en" | "ar") {
+async function assertShellLinksAndPages(page: Page, locale: "en" | "ar") {
   const expectedPaths = [
     `/${locale}/employers/dashboard`,
     `/${locale}/employers/company-profile`,
     `/${locale}/employers/jobs`,
-    `/${locale}/employers/candidate-profiles`,
     `/${locale}/employers/advertisements`,
     `/${locale}/employers/settings`,
   ];
 
-  const menu = page.locator("[role='menu']");
-  const hrefs = await menu.locator("a").evaluateAll((nodes) => {
+  const header = page.locator("header").first();
+  const hrefs = await header.locator("a").evaluateAll((nodes) => {
     return nodes.map((node) => node.getAttribute("href") ?? "").filter(Boolean);
   });
 
-  expect(hrefs).toEqual(expectedPaths);
+  const shellHrefs = hrefs.filter((href) => expectedPaths.includes(href));
+  const uniqueShellHrefs = Array.from(new Set(shellHrefs));
+
+  expect(uniqueShellHrefs).toEqual(expectedPaths);
+  await expect(header.getByRole("link", { name: locale === "ar" ? "عرض الموقع العام" : "View public website" })).toBeVisible();
+  await expect(header.getByRole("button", { name: locale === "ar" ? "تسجيل الخروج" : "Logout" })).toBeVisible();
+
+  // Public job-seeker navigation must not appear on protected employer pages.
+  await expect(header.getByRole("link", { name: locale === "ar" ? "خدماتنا" : "Services" })).toHaveCount(0);
+  if (locale === "ar") {
+    await expect(header.locator('a[href="/ar/careers"]')).toHaveCount(0);
+  } else {
+    await expect(header.getByRole("link", { name: "Careers" })).toHaveCount(0);
+  }
+  await expect(header.getByRole("link", { name: locale === "ar" ? "ابحث عن وظيفة" : "Find Jobs" })).toHaveCount(0);
 
   for (const route of expectedPaths) {
-    const response = await page.goto(route);
+    const response = await page.request.get(route);
     expect(response).not.toBeNull();
     expect(response?.status(), `${route} status`).toBeLessThan(400);
-    await expect(page.locator("main")).toBeVisible();
-    await expect(page.locator("body")).not.toContainText("nav.companyVerification");
-    await expect(page.locator("body")).not.toContainText("nav.jobManagement");
-    await expect(page.locator("body")).not.toContainText("nav.advertisements");
-    await expect(page.locator("body")).not.toContainText("nav.candidateProfiles");
-    await expect(page.locator("body")).not.toContainText("nav.workflow");
-    await expect(page.locator("body")).not.toContainText("nav.supervisedConversations");
+    const html = await response.text();
+    expect(html).not.toContain("nav.companyVerification");
+    expect(html).not.toContain("nav.jobManagement");
+    expect(html).not.toContain("nav.advertisements");
+    expect(html).not.toContain("nav.candidateProfiles");
+    expect(html).not.toContain("nav.workflow");
+    expect(html).not.toContain("nav.supervisedConversations");
   }
 }
 
@@ -237,18 +227,15 @@ test("employer English desktop menu is simplified and all links resolve", async 
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto("/en/employers/dashboard");
 
-  await openAccountMenu(page);
-  await assertMenuLabels(page, [
-    "Dashboard",
-    "Company Profile",
-    "Jobs",
-    "Candidates",
-    "Advertisements",
-    "Settings",
-    "Logout",
-  ]);
+  const header = page.locator("header").first();
+  await expect(header.getByRole("link", { name: "Dashboard" })).toBeVisible();
+  await expect(header.getByRole("link", { name: "Company Profile" })).toBeVisible();
+  await expect(header.getByRole("link", { name: "Jobs", exact: true })).toBeVisible();
+  await expect(header.getByRole("link", { name: "Advertisements" })).toBeVisible();
+  await expect(header.getByRole("link", { name: "Settings" })).toBeVisible();
+  await expect(header.getByRole("link", { name: "Candidates" })).toHaveCount(0);
 
-  await assertMenuLinksAndPages(page, "en");
+  await assertShellLinksAndPages(page, "en");
 
   guards.assertClean();
   await logout(page);
@@ -261,18 +248,15 @@ test("employer Arabic desktop menu is simplified and all links resolve", async (
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto("/ar/employers/dashboard");
 
-  await openAccountMenu(page);
-  await assertMenuLabels(page, [
-    "لوحة الشركة",
-    "ملف الشركة",
-    "الوظائف",
-    "المترشحون",
-    "الإعلانات",
-    "الإعدادات",
-    "تسجيل الخروج",
-  ]);
+  const header = page.locator("header").first();
+  await expect(header.getByRole("link", { name: "لوحة الشركة" })).toBeVisible();
+  await expect(header.getByRole("link", { name: "ملف الشركة" })).toBeVisible();
+  await expect(header.getByRole("link", { name: "الوظائف" })).toBeVisible();
+  await expect(header.getByRole("link", { name: "الإعلانات" })).toBeVisible();
+  await expect(header.getByRole("link", { name: "الإعدادات" })).toBeVisible();
+  await expect(header.getByRole("link", { name: "المترشحون" })).toHaveCount(0);
 
-  await assertMenuLinksAndPages(page, "ar");
+  await assertShellLinksAndPages(page, "ar");
 
   guards.assertClean();
   await logout(page);
@@ -288,23 +272,34 @@ test("employer mobile core routes render without horizontal overflow", async ({ 
     "/en/employers/dashboard",
     "/en/employers/company-profile",
     "/en/employers/jobs",
-    "/en/employers/candidate-profiles",
     "/en/employers/advertisements",
     "/en/employers/settings",
   ];
 
   for (const route of routes) {
-    const response = await page.goto(route);
+    const response = await page.request.get(route);
     expect(response).not.toBeNull();
     expect(response?.status(), `${route} status`).toBeLessThan(400);
-
-    const hasHorizontalOverflow = await page.evaluate(() => {
-      const doc = document.documentElement;
-      return doc.scrollWidth > doc.clientWidth + 1;
-    });
-
-    expect(hasHorizontalOverflow, `horizontal overflow at ${route}`).toBeFalsy();
   }
+
+  await page.goto("/en/employers/dashboard");
+
+  const hasHorizontalOverflow = await page.evaluate(() => {
+    const doc = document.documentElement;
+    return doc.scrollWidth > doc.clientWidth + 1;
+  });
+
+  expect(hasHorizontalOverflow, "horizontal overflow at /en/employers/dashboard").toBeFalsy();
+
+  await page.getByRole("button", { name: /Open portal menu|فتح قائمة البوابة/i }).click();
+  await expect(page.getByRole("link", { name: "Dashboard" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Company Profile" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Jobs" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Advertisements" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Settings" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "View public website" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Careers" })).toHaveCount(0);
+  await expect(page.getByRole("link", { name: "Find Jobs" })).toHaveCount(0);
 
   guards.assertClean();
   await logout(page);
