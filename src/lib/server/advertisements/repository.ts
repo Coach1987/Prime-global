@@ -190,10 +190,15 @@ export async function logAdvertisementAudit(input: {
 export async function listPublicAdvertisements(locale: "en" | "ar") {
   const publicClient = createSupabasePublicClient();
   const adminClient = createSupabaseAdminClient();
+  const nowIso = new Date().toISOString();
 
   const { data, error } = await publicClient
     .from("advertisements")
     .select("*")
+    .eq("status", "active")
+    .eq("moderation_status", "passed")
+    .or(`starts_at.is.null,starts_at.lte.${nowIso}`)
+    .or(`ends_at.is.null,ends_at.gt.${nowIso}`)
     .order("priority", { ascending: true })
     .order("created_at", { ascending: false })
     .limit(12);

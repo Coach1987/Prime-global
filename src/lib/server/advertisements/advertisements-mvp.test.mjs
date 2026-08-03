@@ -147,3 +147,13 @@ test("advertisements translations exist for EN and AR locales", () => {
   assert.equal(typeof en.advertisementsAdmin.title, "string");
   assert.equal(typeof ar.advertisementsAdmin.title, "string");
 });
+
+test("homepage public advertisements query is pre-filtered and non-cached", () => {
+  const repository = readRepoFile("src/lib/server/advertisements/repository.ts");
+  const section = readRepoFile("src/components/sections/Advertisements/SponsoredAdvertisementsSection.tsx");
+
+  assert.match(repository, /\.eq\("status", "active"\)/);
+  assert.match(repository, /\.eq\("moderation_status", "passed"\)/);
+  assert.match(section, /unstable_noStore as noStore/);
+  assert.match(section, /noStore\(\)/);
+});

@@ -108,6 +108,64 @@ async function apiLogin(page: Page, email: string, password: string, role: "cand
   expect(response.ok()).toBeTruthy();
 }
 
+async function createPlayableVideoBuffer(page: Page) {
+  const base64 = await page.evaluate(async () => {
+    if (typeof MediaRecorder === "undefined") {
+      throw new Error("MediaRecorder is unavailable in this browser context");
+    }
+
+    const canvas = document.createElement("canvas");
+    canvas.width = 96;
+    canvas.height = 96;
+    const context = canvas.getContext("2d");
+    if (!context) {
+      throw new Error("Canvas 2D context is unavailable");
+    }
+
+    const stream = canvas.captureStream(12);
+    const recorder = new MediaRecorder(stream, { mimeType: "video/webm;codecs=vp8" });
+    const chunks: Blob[] = [];
+    const done = new Promise<string>((resolve, reject) => {
+      recorder.addEventListener("dataavailable", (event) => {
+        if (event.data.size > 0) {
+          chunks.push(event.data);
+        }
+      });
+
+      recorder.addEventListener("error", () => reject(new Error("MediaRecorder failed")));
+      recorder.addEventListener("stop", async () => {
+        try {
+          const blob = new Blob(chunks, { type: "video/webm" });
+          const bytes = new Uint8Array(await blob.arrayBuffer());
+          let binary = "";
+          const sliceSize = 0x8000;
+          for (let index = 0; index < bytes.length; index += sliceSize) {
+            binary += String.fromCharCode(...bytes.subarray(index, index + sliceSize));
+          }
+          resolve(btoa(binary));
+        } catch (error) {
+          reject(error instanceof Error ? error : new Error(String(error)));
+        }
+      });
+    });
+
+    recorder.start(100);
+    for (let frame = 0; frame < 18; frame += 1) {
+      context.fillStyle = frame % 2 === 0 ? "#0b5fff" : "#04142b";
+      context.fillRect(0, 0, canvas.width, canvas.height);
+      context.fillStyle = "#ffffff";
+      context.font = "bold 28px sans-serif";
+      context.fillText("PG", 24, 56);
+      await new Promise((resolve) => requestAnimationFrame(() => resolve(undefined)));
+    }
+
+    recorder.stop();
+    return done;
+  });
+
+  return Buffer.from(base64, "base64");
+}
+
 test.describe.configure({ mode: "serial" });
 test.skip(!hasSupabaseEnv, "Supabase runtime credentials are required in .env.local for the employer advertisement workflow E2E.");
 
@@ -150,6 +208,9 @@ test.afterAll(async () => {
 });
 
 test("employer advertisement workflow reaches admin moderation and public visibility", async ({ page }) => {
+  await page.goto("/en");
+  const playableVideoBuffer = await createPlayableVideoBuffer(page);
+
   const csrfToken = await getCsrfTokenViaPage(page);
 
   const registerResponse = await page.request.post("/api/employers/auth/register", {
@@ -219,7 +280,7 @@ test("employer advertisement workflow reaches admin moderation and public visibi
   await page.getByLabel("Upload Media").setInputFiles({
     name: "promo.webm",
     mimeType: "video/webm",
-    buffer: Buffer.from("RIFF____WEBM____webm-valid-signature"),
+    buffer: playableVideoBuffer,
   });
 
   const [createResponse] = await Promise.all([
@@ -277,4 +338,31 @@ test("employer advertisement workflow reaches admin moderation and public visibi
   expect(publicHomepage.ok()).toBeTruthy();
   const publicHtml = await publicHomepage.text();
   expect(publicHtml).toContain(workflowState.advertisementTitle);
+
+  await page.goto("/en");
+  const homepageVideo = page.getByLabel("Employer advertisement banner");
+  await homepageVideo.scrollIntoViewIfNeeded();
+  await expect(homepageVideo).toBeVisible();
+  await page.waitForFunction(() => {
+    const video = document.querySelector('video[aria-label="Employer advertisement banner"]') as HTMLVideoElement | null;
+    return Boolean(video && video.currentSrc && video.readyState >= 1);
+  });
+
+  await homepageVideo.evaluate(async (node) => {
+    const video = node as HTMLVideoElement;
+    await video.play();
+  });
+
+  const mediaState = await homepageVideo.evaluate((node) => {
+    const video = node as HTMLVideoElement;
+    return {
+      currentSrc: video.currentSrc,
+      paused: video.paused,
+      readyState: video.readyState,
+    };
+  });
+  expect(mediaState.currentSrc).toContain("/storage/v1/object/sign/");
+  expect(mediaState.readyState).toBeGreaterThanOrEqual(1);
+  await expect.poll(async () => homepageVideo.evaluate((node) => (node as HTMLVideoElement).currentTime)).toBeGreaterThan(0);
+  expect(mediaState.paused).toBe(false);
 });
