@@ -4,6 +4,7 @@ import { requireAuth, requireRole } from "@/lib/server/security/auth";
 import { enforceCsrf, enforceRateLimit, parseJsonBody } from "@/lib/server/http";
 import { createAuditLog } from "@/lib/server/security/audit";
 import { createSupabaseAdminClient } from "@/lib/server/supabase";
+import { isLikelyTestCandidateRecord } from "@/lib/server/candidates/profile-filter";
 
 const PRIME_GLOBAL_ROLES = ["prime_global_recruiter", "prime_global_admin", "admin", "super_admin"] as const;
 
@@ -55,6 +56,13 @@ export async function GET(request: Request, { params }: { params: Promise<{ cand
     return NextResponse.json(
       { success: false, error: { code: "CANDIDATE_PROFILE_LOAD_FAILED", message: error.message } },
       { status: 500 }
+    );
+  }
+
+  if (data && isLikelyTestCandidateRecord(data as Record<string, unknown>)) {
+    return NextResponse.json(
+      { success: false, error: { code: "CANDIDATE_PROFILE_NOT_FOUND", message: "Candidate profile not found" } },
+      { status: 404 }
     );
   }
 

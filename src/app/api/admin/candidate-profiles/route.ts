@@ -3,6 +3,7 @@ import { requireAuth, requireRole } from "@/lib/server/security/auth";
 import { enforceRateLimit } from "@/lib/server/http";
 import { createAuditLog } from "@/lib/server/security/audit";
 import { createSupabaseAdminClient } from "@/lib/server/supabase";
+import { isLikelyTestCandidateRecord } from "@/lib/server/candidates/profile-filter";
 
 const PRIME_GLOBAL_ROLES = ["prime_global_recruiter", "prime_global_admin", "admin", "super_admin"] as const;
 
@@ -39,7 +40,11 @@ export async function GET(request: Request) {
     );
   }
 
-  const candidateIds = (data ?? []).map((entry) => String((entry as Record<string, unknown>).candidate_id ?? "")).filter(Boolean);
+  const realCandidates = (data ?? []).filter(
+    (entry) => !isLikelyTestCandidateRecord(entry as Record<string, unknown>)
+  );
+
+  const candidateIds = realCandidates.map((entry) => String((entry as Record<string, unknown>).candidate_id ?? "")).filter(Boolean);
   const [latestVersions, latestCases] = await Promise.all([
     candidateIds.length > 0
       ? supabase
@@ -73,7 +78,7 @@ export async function GET(request: Request) {
     latestCaseByCandidate.set(candidateId, row as Record<string, unknown>);
   }
 
-  const enrichedData = (data ?? []).map((entry) => {
+  const enrichedData = realCandidates.map((entry) => {
     const candidateId = String((entry as Record<string, unknown>).candidate_id ?? "");
     return {
       ...entry,
@@ -87,7 +92,7 @@ export async function GET(request: Request) {
     actorRole: auth.role,
     action: "prime_global.candidate_private_profiles.list",
     targetType: "candidate_private_profiles",
-    metadata: { status: status ?? "all", count: data?.length ?? 0 },
+    metadata: { status: status ?? "all", count: realCandidates.length },
   });
 
   return NextResponse.json({ success: true, data: enrichedData });

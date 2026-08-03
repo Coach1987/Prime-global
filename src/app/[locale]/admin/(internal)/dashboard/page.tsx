@@ -71,19 +71,6 @@ function formatDateTime(value: string, locale: string) {
   }).format(date);
 }
 
-function localizeActorRole(role: string, locale: string) {
-  const normalized = role.trim().toLowerCase();
-  if (locale !== "ar") return role;
-
-  if (normalized === "prime_global_recruiter") return "مجند";
-  if (normalized === "prime_global_admin") return "مالك";
-  if (normalized === "admin") return "مسؤول";
-  if (normalized === "super_admin") return "مسؤول أعلى";
-  if (normalized === "employer") return "صاحب عمل";
-  if (normalized === "candidate") return "مرشح";
-  return "غير معروف";
-}
-
 function toSentence(entry: AuditEntry, locale: string, t: ReturnType<typeof useTranslations>) {
   const target = entry.targetLabel || entry.targetId || t("audit.unknownTarget");
   if (entry.action === "admin.employer.approve") {
@@ -108,7 +95,6 @@ export default function AdminDashboardPage() {
   const locale = String(params.locale ?? "en");
   const t = useTranslations("ownerPortal.dashboard");
   const [dashboard, setDashboard] = useState<DashboardPayload | null>(null);
-  const [selectedAudit, setSelectedAudit] = useState<AuditEntry | null>(null);
 
   useEffect(() => {
     fetch("/api/auth/me", { credentials: "include" })
@@ -126,10 +112,6 @@ export default function AdminDashboardPage() {
 
   const executive = dashboard?.executive;
   const auditLogs = dashboard?.reports?.recentAuditLogs ?? [];
-  const weekly = dashboard?.analyticsSeries?.weeklyActivity ?? [];
-  const monthly = dashboard?.analyticsSeries?.monthlyReports ?? [];
-  const maxWeekly = Math.max(1, ...weekly.map((item) => item.value));
-  const maxMonthly = Math.max(1, ...monthly.map((item) => item.value));
 
   return (
     <main className="mx-auto w-full max-w-[1260px] px-4 pb-20 pt-[124px] sm:px-6 md:px-8">
@@ -155,14 +137,10 @@ export default function AdminDashboardPage() {
         <div className="mt-8 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
           {[
             [t("metrics.companiesToday"), String(executive?.pendingCompanies ?? 0)],
-            [t("metrics.jobsToday"), String(executive?.pendingJobs ?? 0)],
             [t("metrics.pendingReviews"), String(executive?.pendingCandidateAiReviews ?? 0)],
-            [t("metrics.aiInterviews"), String(executive?.interviewsToday ?? 0)],
-            [t("metrics.successfulPlacements"), String(dashboard?.analyticsSeries?.recruitmentKpis?.requestsApproved ?? 0)],
-            [t("metrics.revenue"), "—"],
-            [t("metrics.activeEmployers"), String(dashboard?.analyticsSeries?.businessOverview?.companiesVerified ?? 0)],
-            [t("metrics.activeCandidates"), String(dashboard?.analyticsSeries?.businessOverview?.candidates ?? 0)],
             [t("metrics.systemHealth"), String(executive?.criticalAlerts ?? 0)],
+            [t("metrics.jobsToday"), String(executive?.pendingJobs ?? 0)],
+            [t("metrics.aiInterviews"), String(executive?.interviewsToday ?? 0)],
           ].map(([label, value]) => (
             <PrimeCard key={label} className="flex h-full flex-col justify-between rounded-2xl border border-gold/10 bg-bg-primary/70 p-4">
               <p className="text-[11px] uppercase tracking-[0.18em] text-text-tertiary">{label}</p>
@@ -171,163 +149,24 @@ export default function AdminDashboardPage() {
           ))}
         </div>
 
-        <section className="mt-10 grid gap-6 xl:grid-cols-2">
+        <section className="mt-10">
           <PrimeCard className="p-6">
             <h2 className="font-heading text-2xl text-text-primary">{t("sections.auditLogs")}</h2>
             <p className="mt-2 text-sm text-text-secondary">{t("sections.auditSubtitle")}</p>
             <ul className="mt-4 space-y-2 text-sm text-text-secondary">
               {auditLogs.slice(0, 12).map((item) => (
                 <li key={item.id}>
-                  <button
-                    type="button"
-                    onClick={() => setSelectedAudit(item)}
-                    className="w-full rounded-lg border border-blue-200/15 px-3 py-2 text-left transition hover:border-blue-200/40"
-                  >
+                  <div className="w-full rounded-lg border border-blue-200/15 px-3 py-2 text-left">
                     <p className="text-text-primary">{toSentence(item, locale, t)}</p>
                     <p className="mt-1 text-xs text-text-tertiary">{formatDateTime(item.createdAt, locale)}</p>
-                  </button>
+                  </div>
                 </li>
               ))}
             </ul>
-          </PrimeCard>
-
-          <PrimeCard className="p-6">
-            <h2 className="font-heading text-2xl text-text-primary">{t("sections.systemNotifications")}</h2>
-            <p className="mt-2 text-sm text-text-secondary">{t("sections.systemNotificationsSubtitle")}</p>
-            <ul className="mt-4 space-y-2 text-sm text-text-secondary">
-              {(dashboard?.reports?.systemNotifications ?? []).map((item) => (
-                <li key={item.id} className="rounded-lg border border-blue-200/15 px-3 py-2">
-                  <p className="text-text-primary">{item.title}</p>
-                  <p className="mt-1 text-xs text-text-tertiary">{item.body}</p>
-                  <p className="mt-1 text-xs text-text-tertiary">{formatDateTime(item.createdAt, locale)}</p>
-                </li>
-              ))}
-            </ul>
-          </PrimeCard>
-        </section>
-
-        <section className="mt-6 grid gap-6 xl:grid-cols-2">
-          <PrimeCard className="p-6">
-            <h2 className="font-heading text-2xl text-text-primary">{t("sections.weeklyActivity")}</h2>
-            <div className="mt-4 space-y-2">
-              {weekly.map((item) => (
-                <div key={item.date} className="grid grid-cols-[110px_minmax(0,1fr)_36px] items-center gap-3 text-xs text-text-secondary">
-                  <span>{item.date}</span>
-                  <div className="h-2 rounded-full bg-blue-200/10">
-                    <div
-                      className="h-2 rounded-full bg-blue-200/70"
-                      style={{ width: `${Math.max(6, Math.round((item.value / maxWeekly) * 100))}%` }}
-                    />
-                  </div>
-                  <span className="text-right text-text-primary">{item.value}</span>
-                </div>
-              ))}
-            </div>
-          </PrimeCard>
-
-          <PrimeCard className="p-6">
-            <h2 className="font-heading text-2xl text-text-primary">{t("sections.monthlyReports")}</h2>
-            <div className="mt-4 space-y-2">
-              {monthly.map((item) => (
-                <div key={item.month} className="grid grid-cols-[82px_minmax(0,1fr)_36px] items-center gap-3 text-xs text-text-secondary">
-                  <span>{item.month}</span>
-                  <div className="h-2 rounded-full bg-gold/10">
-                    <div
-                      className="h-2 rounded-full bg-gold/70"
-                      style={{ width: `${Math.max(6, Math.round((item.value / maxMonthly) * 100))}%` }}
-                    />
-                  </div>
-                  <span className="text-right text-text-primary">{item.value}</span>
-                </div>
-              ))}
-            </div>
-          </PrimeCard>
-        </section>
-
-        <section className="mt-6 grid gap-6 xl:grid-cols-3">
-          <PrimeCard className="p-5">
-            <h3 className="text-lg font-semibold text-text-primary">{t("sections.recruitmentKpis")}</h3>
-            <p className="mt-3 text-sm text-text-secondary">
-              {t("kpis.requestsApproved")}: {dashboard?.analyticsSeries?.recruitmentKpis?.requestsApproved ?? 0}
-            </p>
-            <p className="mt-2 text-sm text-text-secondary">
-              {t("kpis.requestsRejected")}: {dashboard?.analyticsSeries?.recruitmentKpis?.requestsRejected ?? 0}
-            </p>
-            <p className="mt-2 text-sm text-text-secondary">
-              {t("kpis.interviewsStarted")}: {dashboard?.analyticsSeries?.recruitmentKpis?.interviewsStarted ?? 0}
-            </p>
-          </PrimeCard>
-
-          <PrimeCard className="p-5">
-            <h3 className="text-lg font-semibold text-text-primary">{t("sections.aiStatistics")}</h3>
-            <p className="mt-3 text-sm text-text-secondary">
-              {t("kpis.pendingManualReview")}: {dashboard?.analyticsSeries?.aiStatistics?.pendingManualReview ?? 0}
-            </p>
-            <p className="mt-2 text-sm text-text-secondary">
-              {t("kpis.criticalCases")}: {dashboard?.analyticsSeries?.aiStatistics?.criticalCases ?? 0}
-            </p>
-            <p className="mt-2 text-sm text-text-secondary">
-              {t("kpis.aiQueue")}: {dashboard?.analyticsSeries?.aiStatistics?.aiQueue ?? 0}
-            </p>
-          </PrimeCard>
-
-          <PrimeCard className="p-5">
-            <h3 className="text-lg font-semibold text-text-primary">{t("sections.businessOverview")}</h3>
-            <p className="mt-3 text-sm text-text-secondary">
-              {t("kpis.verifiedCompanies")}: {dashboard?.analyticsSeries?.businessOverview?.companiesVerified ?? 0}
-            </p>
-            <p className="mt-2 text-sm text-text-secondary">
-              {t("kpis.activeJobs")}: {dashboard?.analyticsSeries?.businessOverview?.activeJobs ?? 0}
-            </p>
-            <p className="mt-2 text-sm text-text-secondary">
-              {t("kpis.applications")}: {dashboard?.analyticsSeries?.businessOverview?.applications ?? 0}
-            </p>
-            <p className="mt-2 text-sm text-text-secondary">
-              {t("kpis.candidates")}: {dashboard?.analyticsSeries?.businessOverview?.candidates ?? 0}
-            </p>
+            {auditLogs.length === 0 ? <p className="mt-4 text-sm text-text-secondary">{t("sections.auditSubtitle")}</p> : null}
           </PrimeCard>
         </section>
       </PrimeCard>
-
-      {selectedAudit ? (
-        <div className="fixed inset-0 z-50 flex justify-end bg-black/40 backdrop-blur-sm" onClick={() => setSelectedAudit(null)}>
-          <aside
-            className="h-full w-full max-w-[560px] overflow-y-auto border-l border-gold/20 bg-bg-primary p-6"
-            onClick={(event) => event.stopPropagation()}
-            aria-label={t("audit.details")}
-          >
-            <div className="flex items-start justify-between gap-4">
-              <div>
-                <p className="text-xs uppercase tracking-[0.15em] text-text-tertiary">{t("audit.details")}</p>
-                <h3 className="mt-2 font-heading text-2xl text-text-primary">{toSentence(selectedAudit, locale, t)}</h3>
-              </div>
-              <button
-                type="button"
-                onClick={() => setSelectedAudit(null)}
-                className="rounded-full border border-gold/20 px-3 py-1 text-xs font-semibold text-text-primary"
-              >
-                {t("audit.close")}
-              </button>
-            </div>
-
-            <div className="mt-6 space-y-3 text-sm text-text-secondary">
-              <PrimeCard className="p-4">
-                <p>{t("audit.user")}: {selectedAudit.actorRole ? localizeActorRole(selectedAudit.actorRole, locale) : t("audit.unknownUser")}</p>
-                <p className="mt-2">{t("audit.action")}: {locale === "ar" ? "إجراء إداري" : selectedAudit.action}</p>
-                <p className="mt-2">
-                  {t("audit.target")}: {selectedAudit.targetLabel
-                    ? selectedAudit.targetLabel
-                    : selectedAudit.targetId
-                      ? <span dir="ltr" className="[unicode-bidi:isolate]">{selectedAudit.targetId}</span>
-                      : t("audit.unknownTarget")}
-                </p>
-                <p className="mt-2">{t("audit.dateTime")}: {formatDateTime(selectedAudit.createdAt, locale)}</p>
-                {selectedAudit.reason ? <p className="mt-2">{t("audit.reason")}: {selectedAudit.reason}</p> : null}
-              </PrimeCard>
-            </div>
-          </aside>
-        </div>
-      ) : null}
     </main>
   );
 }

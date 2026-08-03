@@ -7,6 +7,7 @@ import {
   EMPLOYER_CANDIDATE_PROFILE_SELECT,
   sanitizeEmployerCandidateProfiles,
 } from "@/lib/server/candidates/employer-profile";
+import { isLikelyTestCandidateRecord } from "@/lib/server/candidates/profile-filter";
 
 export async function GET(request: Request) {
   const rateLimitResult = enforceRateLimit(request, "employer-candidate-profiles-get", 90);
@@ -53,8 +54,11 @@ export async function GET(request: Request) {
     );
   }
 
+  const sanitizedProfiles = sanitizeEmployerCandidateProfiles((data ?? []) as Array<Record<string, unknown>>)
+    .filter((profile) => !isLikelyTestCandidateRecord(profile as Record<string, unknown>));
+
   return NextResponse.json({
     success: true,
-    data: sanitizeEmployerCandidateProfiles((data ?? []) as Array<Record<string, unknown>>),
+    data: sanitizedProfiles,
   });
 }

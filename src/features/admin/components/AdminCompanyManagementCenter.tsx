@@ -178,24 +178,6 @@ function localizeErrorMessage(message: string | null | undefined, locale: string
   return t("errors.actionFailed");
 }
 
-function localizeDeletionReason(reason: string, locale: string) {
-  if (locale !== "ar") return reason;
-
-  if (reason === "Only rejected or suspended companies can be deleted.") {
-    return "يُسمح بالحذف فقط للشركات المرفوضة أو المعلّقة.";
-  }
-
-  if (reason === "Delete is blocked while the company still owns job records.") {
-    return "الحذف محظور طالما أن الشركة لا تزال تملك سجلات وظائف.";
-  }
-
-  if (reason === "Deletion is blocked while the company still owns job records.") {
-    return "الحذف محظور طالما أن الشركة لا تزال تملك سجلات وظائف.";
-  }
-
-  return reason;
-}
-
 function isLikelyTestCompany(item: EmployerListItem) {
   const source = `${item.companyName} ${item.companyEmail} ${item.commercialRegistrationNumber}`.toLowerCase();
   return source.includes("test") || source.includes("demo") || source.includes("sample") || source.includes("dummy");
@@ -210,7 +192,6 @@ export function AdminCompanyManagementCenter({ locale }: { locale: string }) {
   const [acting, setActing] = useState(false);
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState<FilterValue>("all");
-  const [hideTestData, setHideTestData] = useState(true);
   const [items, setItems] = useState<EmployerListItem[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [detail, setDetail] = useState<EmployerDetail | null>(null);
@@ -221,10 +202,7 @@ export function AdminCompanyManagementCenter({ locale }: { locale: string }) {
   const [deleteName, setDeleteName] = useState("");
   const [deleteReason, setDeleteReason] = useState("");
 
-  const visibleItems = useMemo(() => {
-    if (!hideTestData) return items;
-    return items.filter((item) => !isLikelyTestCompany(item));
-  }, [hideTestData, items]);
+  const visibleItems = useMemo(() => items.filter((item) => !isLikelyTestCompany(item)), [items]);
 
   const loadEmployers = useCallback(async (nextQuery: string, nextFilter: FilterValue) => {
     const params = new URLSearchParams();
@@ -420,16 +398,6 @@ export function AdminCompanyManagementCenter({ locale }: { locale: string }) {
             {t("search")}
           </button>
         </form>
-
-        <label className="mt-4 inline-flex items-center gap-2 text-sm text-text-secondary">
-          <input
-            type="checkbox"
-            checked={hideTestData}
-            onChange={(event) => setHideTestData(event.target.checked)}
-            className="h-4 w-4 rounded border-gold/20 bg-bg-primary"
-          />
-          <span>{t("hideTestData")}</span>
-        </label>
 
         {loading ? <p className="mt-6 text-sm text-text-secondary">{t("loading")}</p> : null}
         {message ? <p className="mt-4 text-sm text-emerald-300">{message}</p> : null}
@@ -636,20 +604,6 @@ export function AdminCompanyManagementCenter({ locale }: { locale: string }) {
                 </section>
 
                 <section className="mt-4 rounded-2xl border border-gold/15 bg-bg-primary/50 p-4 text-sm text-text-secondary">
-                  <h3 className="font-semibold text-text-primary">{t("sections.activityTimeline")}</h3>
-                  <div className="mt-3 space-y-2">
-                    {detail.activityTimeline.slice(0, 20).map((entry) => (
-                      <div key={entry.id} className="rounded-lg border border-gold/10 px-3 py-2">
-                        <p className="text-text-primary">{t(`timeline.${entry.eventType}`)}</p>
-                        <p className="mt-1 text-xs text-text-tertiary"><span dir={isArabic ? "rtl" : "ltr"} className="[unicode-bidi:isolate]">{formatDateTime(entry.timestamp, locale)}</span></p>
-                        {entry.reason ? <p className="mt-1 text-xs text-text-tertiary">{t("fields.reason")}: {localizeReason(entry.reason, locale)}</p> : null}
-                      </div>
-                    ))}
-                    {detail.activityTimeline.length === 0 ? <p>{t("emptyTimeline")}</p> : null}
-                  </div>
-                </section>
-
-                <section className="mt-4 rounded-2xl border border-gold/15 bg-bg-primary/50 p-4 text-sm text-text-secondary">
                   <h3 className="font-semibold text-text-primary">{t("sections.reviewNotes")}</h3>
                   <textarea
                     value={note}
@@ -659,20 +613,6 @@ export function AdminCompanyManagementCenter({ locale }: { locale: string }) {
                     className="mt-3 w-full rounded-xl border border-gold/20 bg-bg-primary px-4 py-3 text-sm text-text-primary"
                   />
                   {detail.verificationNotes ? <p className="mt-3">{t("currentNote")}: {detail.verificationNotes}</p> : null}
-                </section>
-
-                <section className="mt-4 rounded-2xl border border-gold/15 bg-bg-primary/50 p-4 text-sm text-text-secondary">
-                  <h3 className="font-semibold text-text-primary">{t("sections.deletionPolicy")}</h3>
-                  <p className="mt-3">{t("fields.jobsCount")}: {detail.deletionPolicy.jobsCount}</p>
-                  <p className="mt-2">{t("fields.documentsCount")}: {detail.deletionPolicy.documentsCount}</p>
-                  <p className="mt-2">{t("fields.deleteAllowed")}: {detail.deletionPolicy.allowed ? t("yes") : t("no")}</p>
-                  {detail.deletionPolicy.reasons.length > 0 ? (
-                    <ul className="mt-3 space-y-1">
-                      {detail.deletionPolicy.reasons.map((reason) => (
-                        <li key={reason}>{localizeDeletionReason(reason, locale)}</li>
-                      ))}
-                    </ul>
-                  ) : null}
                 </section>
 
                 <div className="mt-6 flex flex-wrap gap-3">

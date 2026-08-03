@@ -149,11 +149,7 @@ export default function EmployerDashboardPage() {
           ) : null}
         </div>
 
-        <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
-          <article className={employerSectionCard}>
-            <p className="text-xs uppercase tracking-[0.16em] text-text-tertiary">{isArabic ? "حالة التحقق" : "Verification"}</p>
-            <p className="mt-2 text-2xl font-semibold text-gold">{verificationLabel}</p>
-          </article>
+        <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <article className={employerSectionCard}>
             <p className="text-xs uppercase tracking-[0.16em] text-text-tertiary">{isArabic ? "إجمالي الوظائف" : "Total Jobs"}</p>
             <p className="mt-2 text-2xl font-semibold text-gold">{stats.totalJobs}</p>
@@ -172,11 +168,7 @@ export default function EmployerDashboardPage() {
           </article>
         </div>
 
-        <section className="mt-8 grid gap-4 lg:grid-cols-2">
-          <article className={employerSectionCard}>
-            <h2 className="font-heading text-2xl text-text-primary">{isArabic ? "النشاط الأخير" : "Recent Activity"}</h2>
-            <p className="mt-3 text-sm text-text-secondary">{isArabic ? "لا يوجد نشاط بعد" : "No activity yet"}</p>
-          </article>
+        <section className="mt-8">
           <article className={employerSectionCard}>
             <h2 className="font-heading text-2xl text-text-primary">{isArabic ? "الإجراءات السريعة" : "Quick Actions"}</h2>
             <div className="mt-4 grid gap-3 sm:grid-cols-2">
@@ -194,12 +186,6 @@ export default function EmployerDashboardPage() {
               </Link>
             </div>
           </article>
-        </section>
-
-        <section className="mt-6">
-          <div className={employerSectionCard}>
-            <p className="text-xs text-text-tertiary">{isArabic ? "سيتم عرض التحديثات المهمة هنا." : "Important updates will appear here."}</p>
-          </div>
         </section>
       </section>
     </main>
