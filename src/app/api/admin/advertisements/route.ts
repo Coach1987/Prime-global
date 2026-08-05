@@ -10,9 +10,11 @@ import { createAuditLog } from "@/lib/server/security/audit";
 import { AD_ADMIN_ROLES } from "@/lib/server/advertisements/constants";
 import { moderateAdvertisementContent } from "@/lib/server/advertisements/moderation";
 import {
+  AdvertisementMediaIntegrityError,
   createAdvertisement,
   listAdminAdvertisements,
   logAdvertisementAudit,
+  verifyAdvertisementMediaObjectExists,
 } from "@/lib/server/advertisements/repository";
 
 export async function GET(request: Request) {
@@ -57,6 +59,14 @@ export async function POST(request: Request) {
   const parsed = await parseJsonBody(request, createAdvertisementSchema);
   if (parsed.error) return parsed.error;
 
+  const mediaCheck = await verifyAdvertisementMediaObjectExists(parsed.data.media_url);
+  if (!mediaCheck.ok) {
+    return NextResponse.json(
+      { success: false, error: { code: mediaCheck.code, message: mediaCheck.message } },
+      { status: 400 }
+    );
+  }
+
   const moderation = await moderateAdvertisementContent({
     titleAr: parsed.data.title_ar,
     titleEn: parsed.data.title_en,
@@ -68,13 +78,27 @@ export async function POST(request: Request) {
     mediaMetadata: parsed.data.media_url,
   });
 
-  const created = await createAdvertisement({
-    ...parsed.data,
-    status: "draft",
-    moderation_status: moderation.status,
-    moderation_reason: moderation.reason,
-    created_by: auth.userId,
-  } as Partial<AdvertisementRecord>);
+  let created: AdvertisementRecord;
+
+  try {
+    created = await createAdvertisement({
+      ...parsed.data,
+      media_url: mediaCheck.storagePath,
+      status: "draft",
+      moderation_status: moderation.status,
+      moderation_reason: moderation.reason,
+      created_by: auth.userId,
+    } as Partial<AdvertisementRecord>);
+  } catch (error) {
+    if (error instanceof AdvertisementMediaIntegrityError) {
+      return NextResponse.json(
+        { success: false, error: { code: error.code, message: error.message } },
+        { status: error.status }
+      );
+    }
+
+    throw error;
+  }
 
   await logAdvertisementAudit({
     advertisementId: created.id,

@@ -8,9 +8,11 @@ import { createAuditLog } from "@/lib/server/security/audit";
 import { AD_ADMIN_ROLES } from "@/lib/server/advertisements/constants";
 import { moderateAdvertisementContent } from "@/lib/server/advertisements/moderation";
 import {
+  AdvertisementMediaIntegrityError,
   getAdminAdvertisementById,
   logAdvertisementAudit,
   updateAdvertisement,
+  verifyAdvertisementMediaObjectExists,
 } from "@/lib/server/advertisements/repository";
 
 const idSchema = z.string().uuid();
@@ -56,6 +58,21 @@ export async function POST(
   let toStatus: string | null = existing.status;
 
   if (action === "submit_review") {
+    const mediaCheck = await verifyAdvertisementMediaObjectExists(existing.media_url);
+    if (!mediaCheck.ok) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: {
+            code: mediaCheck.code,
+            message:
+              "Cannot submit advertisement for review because media upload did not complete successfully or the storage object is missing.",
+          },
+        },
+        { status: 400 }
+      );
+    }
+
     const moderation = await moderateAdvertisementContent({
       titleAr: existing.title_ar,
       titleEn: existing.title_en,
@@ -83,6 +100,21 @@ export async function POST(
           error: {
             code: "APPROVAL_BLOCKED",
             message: "Only advertisements in pending review that did not fail moderation can be approved",
+          },
+        },
+        { status: 400 }
+      );
+    }
+
+    const mediaCheck = await verifyAdvertisementMediaObjectExists(existing.media_url);
+    if (!mediaCheck.ok) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: {
+            code: mediaCheck.code,
+            message:
+              "Cannot approve advertisement because media upload did not complete successfully or the storage object is missing.",
           },
         },
         { status: 400 }
@@ -128,6 +160,21 @@ export async function POST(
       );
     }
 
+    const mediaCheck = await verifyAdvertisementMediaObjectExists(existing.media_url);
+    if (!mediaCheck.ok) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: {
+            code: mediaCheck.code,
+            message:
+              "Cannot activate advertisement because media upload did not complete successfully or the storage object is missing.",
+          },
+        },
+        { status: 400 }
+      );
+    }
+
     patch = { status: "active", moderation_status: "passed" };
     toStatus = "active";
   }
@@ -137,7 +184,20 @@ export async function POST(
     toStatus = "paused";
   }
 
-  const updated = await updateAdvertisement(advertisementId, patch);
+  let updated;
+
+  try {
+    updated = await updateAdvertisement(advertisementId, patch);
+  } catch (error) {
+    if (error instanceof AdvertisementMediaIntegrityError) {
+      return NextResponse.json(
+        { success: false, error: { code: error.code, message: error.message } },
+        { status: error.status }
+      );
+    }
+
+    throw error;
+  }
 
   await logAdvertisementAudit({
     advertisementId,

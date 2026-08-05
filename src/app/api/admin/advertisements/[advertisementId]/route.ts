@@ -8,10 +8,12 @@ import { createAuditLog } from "@/lib/server/security/audit";
 import { AD_ADMIN_ROLES } from "@/lib/server/advertisements/constants";
 import { moderateAdvertisementContent } from "@/lib/server/advertisements/moderation";
 import {
+  AdvertisementMediaIntegrityError,
   deleteAdvertisement,
   getAdminAdvertisementById,
   logAdvertisementAudit,
   updateAdvertisement,
+  verifyAdvertisementMediaObjectExists,
 } from "@/lib/server/advertisements/repository";
 
 const idSchema = z.string().uuid();
@@ -88,6 +90,14 @@ export async function PATCH(
     ...parsed.data,
   };
 
+  const mediaCheck = await verifyAdvertisementMediaObjectExists(nextSnapshot.media_url);
+  if (!mediaCheck.ok) {
+    return NextResponse.json(
+      { success: false, error: { code: mediaCheck.code, message: mediaCheck.message } },
+      { status: 400 }
+    );
+  }
+
   const moderation = await moderateAdvertisementContent({
     titleAr: nextSnapshot.title_ar,
     titleEn: nextSnapshot.title_en,
@@ -99,12 +109,26 @@ export async function PATCH(
     mediaMetadata: nextSnapshot.media_url,
   });
 
-  const updated = await updateAdvertisement(advertisementId, {
-    ...parsed.data,
-    moderation_status: moderation.status,
-    moderation_reason: moderation.reason,
-    status: existing.status === "active" && moderation.status !== "passed" ? "paused" : existing.status,
-  } as Partial<AdvertisementRecord>);
+  let updated: AdvertisementRecord;
+
+  try {
+    updated = await updateAdvertisement(advertisementId, {
+      ...parsed.data,
+      media_url: parsed.data.media_url ? mediaCheck.storagePath : undefined,
+      moderation_status: moderation.status,
+      moderation_reason: moderation.reason,
+      status: existing.status === "active" && moderation.status !== "passed" ? "paused" : existing.status,
+    } as Partial<AdvertisementRecord>);
+  } catch (error) {
+    if (error instanceof AdvertisementMediaIntegrityError) {
+      return NextResponse.json(
+        { success: false, error: { code: error.code, message: error.message } },
+        { status: error.status }
+      );
+    }
+
+    throw error;
+  }
 
   await logAdvertisementAudit({
     advertisementId,

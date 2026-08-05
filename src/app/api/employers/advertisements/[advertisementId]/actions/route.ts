@@ -6,9 +6,11 @@ import { getEmployerByAuthUserId, requireEmployerOperationalStatus } from "@/lib
 import { advertisementActionSchema } from "@/features/advertisements/schemas";
 import { moderateAdvertisementContent } from "@/lib/server/advertisements/moderation";
 import {
+  AdvertisementMediaIntegrityError,
   getEmployerAdvertisementByIdForAuthUser,
   logAdvertisementAudit,
   updateAdvertisement,
+  verifyAdvertisementMediaObjectExists,
 } from "@/lib/server/advertisements/repository";
 import { enforceCsrf, enforceRateLimit, parseJsonBody } from "@/lib/server/http";
 
@@ -67,6 +69,21 @@ export async function POST(
     );
   }
 
+  const mediaCheck = await verifyAdvertisementMediaObjectExists(existing.media_url);
+  if (!mediaCheck.ok) {
+    return NextResponse.json(
+      {
+        success: false,
+        error: {
+          code: mediaCheck.code,
+          message:
+            "Cannot submit advertisement for review because media upload did not complete successfully or the storage object is missing. Re-upload media and try again.",
+        },
+      },
+      { status: 400 }
+    );
+  }
+
   const moderation = await moderateAdvertisementContent({
     titleAr: existing.title_ar,
     titleEn: existing.title_en,
@@ -79,11 +96,24 @@ export async function POST(
   });
 
   const nextStatus = moderation.status === "failed" ? "draft" : "pending_review";
-  const updated = await updateAdvertisement(advertisementId, {
-    status: nextStatus,
-    moderation_status: moderation.status,
-    moderation_reason: moderation.reason,
-  });
+  let updated;
+
+  try {
+    updated = await updateAdvertisement(advertisementId, {
+      status: nextStatus,
+      moderation_status: moderation.status,
+      moderation_reason: moderation.reason,
+    });
+  } catch (error) {
+    if (error instanceof AdvertisementMediaIntegrityError) {
+      return NextResponse.json(
+        { success: false, error: { code: error.code, message: error.message } },
+        { status: error.status }
+      );
+    }
+
+    throw error;
+  }
 
   await logAdvertisementAudit({
     advertisementId,

@@ -157,3 +157,52 @@ test("homepage public advertisements query is pre-filtered and non-cached", () =
   assert.match(section, /unstable_noStore as noStore/);
   assert.match(section, /noStore\(\)/);
 });
+
+test("advertisement routes enforce media existence before persisting or activating", () => {
+  const employerCreateRoute = readRepoFile("src/app/api/employers/advertisements/route.ts");
+  const employerEditRoute = readRepoFile("src/app/api/employers/advertisements/[advertisementId]/route.ts");
+  const employerActionRoute = readRepoFile("src/app/api/employers/advertisements/[advertisementId]/actions/route.ts");
+  const employerUploadRoute = readRepoFile("src/app/api/employers/advertisements/upload/route.ts");
+  const adminCreateRoute = readRepoFile("src/app/api/admin/advertisements/route.ts");
+  const adminEditRoute = readRepoFile("src/app/api/admin/advertisements/[advertisementId]/route.ts");
+  const adminActionRoute = readRepoFile("src/app/api/admin/advertisements/[advertisementId]/actions/route.ts");
+  const adminUploadRoute = readRepoFile("src/app/api/admin/advertisements/upload/route.ts");
+  const repository = readRepoFile("src/lib/server/advertisements/repository.ts");
+
+  for (const routeSource of [
+    employerCreateRoute,
+    employerEditRoute,
+    employerActionRoute,
+    adminCreateRoute,
+    adminEditRoute,
+    adminActionRoute,
+  ]) {
+    assert.match(routeSource, /verifyAdvertisementMediaObjectExists/);
+    assert.match(routeSource, /AdvertisementMediaIntegrityError/);
+  }
+
+  for (const routeSource of [employerUploadRoute, adminUploadRoute]) {
+    assert.match(routeSource, /verifyAdvertisementMediaObjectExists\(storagePath, \{ attempts: 4, delayMs: 150 \}\)/);
+    assert.match(routeSource, /UPLOAD_NOT_CONFIRMED/);
+  }
+
+  assert.match(repository, /\.schema\("storage"\)/);
+  assert.match(repository, /\.from\("objects"\)/);
+  assert.match(repository, /\.eq\("bucket_id", ADVERTISEMENT_BUCKET\)/);
+  assert.match(repository, /\.eq\("name", storagePath\)/);
+  assert.match(repository, /verifyAdvertisementMediaObjectExists\(entry\.media_url, \{ attempts: 2, delayMs: 75 \}\)/);
+});
+
+test("advertisement media integrity migration enforces storage-object invariants", () => {
+  const migration = readRepoFile("supabase/migrations/202608040001_advertisement_media_integrity_guards.sql");
+
+  assert.match(migration, /create or replace function public\.assert_advertisement_media_integrity\(\)/);
+  assert.match(migration, /before insert or update of media_url, status/);
+  assert.match(migration, /from storage\.objects o/);
+  assert.match(migration, /bucket_id = 'advertisement-media'/);
+  assert.match(migration, /Cannot activate advertisement because media object is missing from storage\./);
+  assert.match(migration, /prevent_deleting_referenced_advertisement_media/);
+  assert.match(migration, /before delete\s+on storage\.objects/);
+  assert.match(migration, /Cannot delete advertisement media object/);
+  assert.match(migration, /delete from public\.advertisements/);
+});

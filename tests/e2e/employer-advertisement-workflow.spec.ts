@@ -66,6 +66,7 @@ const workflowState = {
   employerUserId: "",
   employerId: "",
   advertisementId: "",
+  advertisementMediaPath: "",
   advertisementTitle: `Global campaign ${seedTag}`,
   advertisementTarget: "https://primeglobal.pro/en/employers",
   adminUserId: "",
@@ -296,6 +297,14 @@ test("employer advertisement workflow reaches admin moderation and public visibi
   const createPayload = await createResponse.json();
   workflowState.advertisementId = String(createPayload?.data?.id ?? "");
   expect(workflowState.advertisementId.length).toBeGreaterThan(10);
+  workflowState.advertisementMediaPath = String(createPayload?.data?.media_url ?? "");
+  expect(workflowState.advertisementMediaPath.length).toBeGreaterThan(10);
+
+  const uploadedMediaExists = await admin.storage
+    .from("advertisement-media")
+    .createSignedUrl(workflowState.advertisementMediaPath, 60);
+  expect(uploadedMediaExists.error, uploadedMediaExists.error?.message ?? "").toBeNull();
+  expect(String(uploadedMediaExists.data?.signedUrl ?? "")).toContain("/storage/v1/object/sign/");
 
   await page.getByRole("button", { name: "Submit for Review" }).click();
   await expect(page.getByText("Advertisement submitted for Prime Global review.")).toBeVisible();

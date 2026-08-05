@@ -7,6 +7,19 @@ import { createSupabaseAdminClient, createSupabasePublicClient } from "@/lib/ser
 import { ADVERTISEMENT_BUCKET } from "./constants";
 import { isAdvertisementPubliclyVisible, sortAdvertisementsForPublic } from "./public";
 
+export class AdvertisementMediaIntegrityError extends Error {
+  code: "INVALID_MEDIA_URL" | "MEDIA_OBJECT_MISSING";
+
+  status: number;
+
+  constructor(code: "INVALID_MEDIA_URL" | "MEDIA_OBJECT_MISSING", message: string, status = 400) {
+    super(message);
+    this.name = "AdvertisementMediaIntegrityError";
+    this.code = code;
+    this.status = status;
+  }
+}
+
 function mapPublicAdvertisement(
   record: AdvertisementRecord,
   locale: "en" | "ar",
@@ -33,6 +46,177 @@ async function buildSignedMediaUrl(supabase: SupabaseClient, storagePath: string
     .createSignedUrl(storagePath, 60 * 10);
 
   return data?.signedUrl ?? "";
+}
+
+function wait(ms: number) {
+  return new Promise<void>((resolve) => setTimeout(resolve, ms));
+}
+
+function normalizeAdvertisementStoragePath(storagePath: string) {
+  return storagePath.trim().replace(/^\/+/, "");
+}
+
+function splitAdvertisementStoragePath(storagePath: string) {
+  const slashIndex = storagePath.lastIndexOf("/");
+  if (slashIndex === -1) {
+    return { directory: "", objectName: storagePath };
+  }
+
+  return {
+    directory: storagePath.slice(0, slashIndex),
+    objectName: storagePath.slice(slashIndex + 1),
+  };
+}
+
+function toAdvertisementMediaIntegrityError(message: string) {
+  if (message.includes("Invalid advertisement media path")) {
+    return new AdvertisementMediaIntegrityError(
+      "INVALID_MEDIA_URL",
+      "Advertisement media path must be a valid storage object key."
+    );
+  }
+
+  if (
+    message.includes("Advertisement media object is missing") ||
+    message.includes("Cannot activate advertisement because media object is missing from storage")
+  ) {
+    return new AdvertisementMediaIntegrityError(
+      "MEDIA_OBJECT_MISSING",
+      "Advertisement media file is missing from storage. Upload the media again before continuing."
+    );
+  }
+
+  return null;
+}
+
+function normalizeAdvertisementWriteError(error: { message?: string } | null) {
+  const message = String(error?.message ?? "");
+  const integrityError = toAdvertisementMediaIntegrityError(message);
+  if (integrityError) {
+    return integrityError;
+  }
+
+  return new Error(message || "Advertisement write failed.");
+}
+
+async function checkAdvertisementMediaObjectExistsViaMetadata(storagePath: string) {
+  const supabase = createSupabaseAdminClient();
+  const { data, error } = await supabase
+    .schema("storage")
+    .from("objects")
+    .select("id")
+    .eq("bucket_id", ADVERTISEMENT_BUCKET)
+    .eq("name", storagePath)
+    .maybeSingle();
+
+  if (error) {
+    return {
+      ok: false,
+      data: null,
+      error,
+    } as const;
+  }
+
+  return {
+    ok: true,
+    data,
+    error: null,
+  } as const;
+}
+
+async function checkAdvertisementMediaObjectExistsOnce(storagePath: string) {
+  const normalizedPath = normalizeAdvertisementStoragePath(storagePath);
+
+  if (!normalizedPath || normalizedPath.includes("://")) {
+    return {
+      ok: false,
+      code: "INVALID_MEDIA_URL",
+      message: "Advertisement media path must be a valid storage object key.",
+      storagePath: normalizedPath,
+    } as const;
+  }
+
+  const metadataLookup = await checkAdvertisementMediaObjectExistsViaMetadata(normalizedPath);
+  if (metadataLookup.ok) {
+    if (metadataLookup.data) {
+      return {
+        ok: true,
+        storagePath: normalizedPath,
+      } as const;
+    }
+
+    return {
+      ok: false,
+      code: "MEDIA_OBJECT_MISSING",
+      message: "Advertisement media file is missing from storage. Upload the media again before continuing.",
+      storagePath: normalizedPath,
+    } as const;
+  }
+
+  const { directory, objectName } = splitAdvertisementStoragePath(normalizedPath);
+  if (!objectName) {
+    return {
+      ok: false,
+      code: "INVALID_MEDIA_URL",
+      message: "Advertisement media path must include a file name.",
+      storagePath: normalizedPath,
+    } as const;
+  }
+
+  const supabase = createSupabaseAdminClient();
+  const { data, error } = await supabase.storage
+    .from(ADVERTISEMENT_BUCKET)
+    .list(directory, { limit: 100, search: objectName });
+
+  if (error) {
+    return {
+      ok: false,
+      code: "MEDIA_OBJECT_MISSING",
+      message: "Advertisement media file is missing from storage. Upload the media again before continuing.",
+      storagePath: normalizedPath,
+    } as const;
+  }
+
+  const exactMatch = (data ?? []).some((entry) => entry.name === objectName);
+  if (!exactMatch) {
+    return {
+      ok: false,
+      code: "MEDIA_OBJECT_MISSING",
+      message: "Advertisement media file is missing from storage. Upload the media again before continuing.",
+      storagePath: normalizedPath,
+    } as const;
+  }
+
+  return {
+    ok: true,
+    storagePath: normalizedPath,
+  } as const;
+}
+
+export async function verifyAdvertisementMediaObjectExists(
+  storagePath: string,
+  options?: { attempts?: number; delayMs?: number }
+) {
+  const attempts = Number.isFinite(options?.attempts) ? Math.max(1, Math.floor(options?.attempts ?? 1)) : 1;
+  const delayMs = Number.isFinite(options?.delayMs) ? Math.max(0, Math.floor(options?.delayMs ?? 0)) : 0;
+
+  let lastResult = await checkAdvertisementMediaObjectExistsOnce(storagePath);
+  if (lastResult.ok || lastResult.code === "INVALID_MEDIA_URL") {
+    return lastResult;
+  }
+
+  for (let attemptIndex = 1; attemptIndex < attempts; attemptIndex += 1) {
+    if (delayMs > 0) {
+      await wait(delayMs);
+    }
+
+    lastResult = await checkAdvertisementMediaObjectExistsOnce(storagePath);
+    if (lastResult.ok || lastResult.code === "INVALID_MEDIA_URL") {
+      return lastResult;
+    }
+  }
+
+  return lastResult;
 }
 
 export async function listAdminAdvertisements(status?: string) {
@@ -111,7 +295,7 @@ export async function createAdvertisement(input: Partial<AdvertisementRecord>) {
     .single();
 
   if (error) {
-    throw new Error(error.message);
+    throw normalizeAdvertisementWriteError(error);
   }
 
   return data as AdvertisementRecord;
@@ -127,7 +311,7 @@ export async function updateAdvertisement(id: string, input: Partial<Advertiseme
     .single();
 
   if (error) {
-    throw new Error(error.message);
+    throw normalizeAdvertisementWriteError(error);
   }
 
   return data as AdvertisementRecord;
@@ -214,7 +398,12 @@ export async function listPublicAdvertisements(locale: "en" | "ar") {
 
   const items: PublicAdvertisementItem[] = [];
   for (const entry of visibleRecords) {
-    const signedUrl = await buildSignedMediaUrl(adminClient, entry.media_url);
+    const mediaCheck = await verifyAdvertisementMediaObjectExists(entry.media_url, { attempts: 2, delayMs: 75 });
+    if (!mediaCheck.ok) {
+      continue;
+    }
+
+    const signedUrl = await buildSignedMediaUrl(adminClient, mediaCheck.storagePath);
     if (!signedUrl) {
       continue;
     }
