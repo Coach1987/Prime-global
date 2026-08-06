@@ -64,13 +64,18 @@ export async function parseJsonBody<T>(request: Request, schema: ZodSchema<T>) {
 
   const parsed = schema.safeParse(payload);
   if (!parsed.success) {
+    const flat = parsed.error.flatten();
+    const firstField = Object.keys(flat.fieldErrors)[0];
+    const firstMessage = firstField
+      ? `${firstField}: ${flat.fieldErrors[firstField as keyof typeof flat.fieldErrors]?.[0] ?? "invalid value"}`
+      : (flat.formErrors[0] ?? "Invalid request payload");
     return {
       data: null,
       error: NextResponse.json(
         {
           success: false,
-          error: { code: "VALIDATION_ERROR", message: "Invalid request payload" },
-          details: parsed.error.flatten(),
+          error: { code: "VALIDATION_ERROR", message: firstMessage },
+          details: flat,
         },
         { status: 400 }
       ),

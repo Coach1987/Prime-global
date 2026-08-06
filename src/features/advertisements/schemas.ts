@@ -7,7 +7,8 @@ export const advertisementBaseSchema = z.object({
   description_ar: z.string().trim().min(10).max(2000),
   description_en: z.string().trim().min(10).max(2000),
   media_type: z.enum(AD_MEDIA_TYPES),
-  media_url: z.string().trim().min(3).max(500),
+  // min length not enforced here — the API route calls verifyAdvertisementMediaObjectExists which returns INVALID_MEDIA_URL for empty paths
+  media_url: z.string().trim().max(500),
   media_alt_ar: z.string().trim().min(2).max(240),
   media_alt_en: z.string().trim().min(2).max(240),
   target_url: z.string().trim().url().max(1000),
