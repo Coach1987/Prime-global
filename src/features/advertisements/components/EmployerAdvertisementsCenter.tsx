@@ -461,26 +461,27 @@ export function EmployerAdvertisementsCenter({ locale }: { locale: string }) {
 
                 <label className="text-sm text-text-secondary">
                   Storage Media Path
-                  <input required value={form.media_url} onChange={(event) => updateField("media_url", event.target.value)} className={`mt-1.5 ${employerInput}`} />
+                  {/* read-only — populated automatically by the upload endpoint */}
+                  <input readOnly value={form.media_url} className={`mt-1.5 ${employerInput} cursor-not-allowed opacity-60`} placeholder="Populated automatically after upload" />
                 </label>
 
                 <label className="text-sm text-text-secondary">
-                  Upload Media
-                  <input type="file" accept="image/jpeg,image/png,image/webp,video/mp4,video/webm" onChange={(event) => {
+                  {uploading ? "Uploading…" : "Upload Media"}
+                  <input type="file" disabled={uploading} accept="image/jpeg,image/png,image/webp,video/mp4,video/webm" onChange={(event) => {
                     const file = event.target.files?.[0];
                     if (file) {
                       void onUpload(file);
                     }
-                  }} className="mt-1.5 block w-full text-sm text-text-secondary file:me-3 file:rounded-full file:border-0 file:bg-gold/20 file:px-4 file:py-2 file:text-xs file:font-semibold file:text-gold" />
+                  }} className="mt-1.5 block w-full text-sm text-text-secondary file:me-3 file:rounded-full file:border-0 file:bg-gold/20 file:px-4 file:py-2 file:text-xs file:font-semibold file:text-gold disabled:opacity-50" />
                 </label>
 
                 <p className="text-xs text-text-tertiary">Upload JPG, JPEG, PNG, WEBP, MP4, or WEBM. Images should be at least 1200x420.</p>
               </div>
 
               <div className="flex flex-wrap items-center gap-2">
-                <PrimeButton type="submit" disabled={saving || uploading}>{saving ? "Saving..." : selectedId ? "Update Advertisement" : "Create Advertisement"}</PrimeButton>
-                <button type="button" className={primeButtonClasses("secondary")} onClick={() => void submitForReview()} disabled={!selectedId}>Submit for Review</button>
-                <button type="button" className={primeButtonClasses("secondary")} onClick={() => void onDelete()} disabled={!selectedId}>Delete</button>
+                <PrimeButton type="submit" disabled={saving || uploading}>{saving ? "Saving..." : uploading ? "Uploading…" : selectedId ? "Update Advertisement" : "Create Advertisement"}</PrimeButton>
+                <button type="button" className={primeButtonClasses("secondary")} onClick={() => void submitForReview()} disabled={!selectedId || uploading}>Submit for Review</button>
+                <button type="button" className={primeButtonClasses("secondary")} onClick={() => void onDelete()} disabled={!selectedId || saving || uploading}>Delete</button>
               </div>
             </form>
 

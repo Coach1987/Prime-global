@@ -1,3 +1,71 @@
+-- ============================================================
+-- Phase 1: Retract orphaned advertisements BEFORE triggers are
+-- installed so the cleanup DML is not blocked by the guards it
+-- is about to put in place.
+-- ============================================================
+
+-- Log every advertisement whose media_url references a missing storage object.
+-- Skip already-retracted rows where media_url was cleared to ''.
+with invalid_ads as (
+  select a.id, a.status, a.media_url
+  from public.advertisements a
+  left join storage.objects o
+    on o.bucket_id = 'advertisement-media'
+   and o.name = regexp_replace(trim(a.media_url), '^/+', '')
+  where o.id is null
+    and a.media_url <> ''
+)
+insert into public.advertisement_audit_logs (
+  advertisement_id,
+  action,
+  actor_auth_user_id,
+  actor_role,
+  from_status,
+  to_status,
+  reason,
+  metadata
+)
+select
+  invalid_ads.id,
+  'edit',
+  null,
+  'system',
+  invalid_ads.status,
+  'draft',
+  'Migration 202608040001: media object missing from advertisement-media bucket. Advertisement retracted to draft for re-upload.',
+  jsonb_build_object(
+    'media_url', invalid_ads.media_url,
+    'source', '202608040001_advertisement_media_integrity_guards'
+  )
+from invalid_ads;
+
+-- Retract to draft — never delete; employer can re-upload the media.
+update public.advertisements a
+set
+  status            = 'draft',
+  moderation_status = 'needs_review',
+  moderation_reason = 'Migration 202608040001: media object missing from storage. Upload replacement media before resubmitting.',
+  approved_by       = null,
+  approved_at       = null,
+  updated_at        = timezone('utc', now())
+where exists (
+  select 1
+  from (
+    select a2.id
+    from public.advertisements a2
+    left join storage.objects o
+      on o.bucket_id = 'advertisement-media'
+     and o.name = regexp_replace(trim(a2.media_url), '^/+', '')
+    where o.id is null
+      and a2.media_url <> ''
+  ) orphaned
+  where orphaned.id = a.id
+);
+
+-- ============================================================
+-- Phase 2: Install integrity guards now that the table is clean.
+-- ============================================================
+
 create or replace function public.assert_advertisement_media_integrity()
 returns trigger
 language plpgsql
@@ -105,43 +173,3 @@ before update of bucket_id, name
 on storage.objects
 for each row
 execute function public.prevent_renaming_referenced_advertisement_media();
-
-with invalid_ads as (
-  select a.id, a.status, a.media_url
-  from public.advertisements a
-  left join storage.objects o
-    on o.bucket_id = 'advertisement-media'
-   and o.name = regexp_replace(trim(a.media_url), '^/+', '')
-  where o.id is null
-)
-insert into public.advertisement_audit_logs (
-  advertisement_id,
-  action,
-  actor_auth_user_id,
-  actor_role,
-  from_status,
-  to_status,
-  reason,
-  metadata
-)
-select
-  invalid_ads.id,
-  'delete',
-  null,
-  'system',
-  invalid_ads.status,
-  null,
-  'Removed advertisement because referenced media object was missing from advertisement-media bucket.',
-  jsonb_build_object('media_url', invalid_ads.media_url, 'source', '202608040001_advertisement_media_integrity_guards')
-from invalid_ads;
-
-delete from public.advertisements a
-using (
-  select a2.id
-  from public.advertisements a2
-  left join storage.objects o
-    on o.bucket_id = 'advertisement-media'
-   and o.name = regexp_replace(trim(a2.media_url), '^/+', '')
-  where o.id is null
-) doomed
-where a.id = doomed.id;

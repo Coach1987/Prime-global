@@ -11,7 +11,6 @@ import {
   inferExtensionFromMime,
   validateAdvertisementMedia,
 } from "@/lib/server/advertisements/upload";
-import { verifyAdvertisementMediaObjectExists } from "@/lib/server/advertisements/repository";
 
 export async function POST(request: Request) {
   const rateLimitResult = enforceRateLimit(request, "employer-advertisement-upload", 40);
@@ -96,24 +95,6 @@ export async function POST(request: Request) {
     );
   }
 
-  const mediaCheck = await verifyAdvertisementMediaObjectExists(storagePath, { attempts: 4, delayMs: 150 });
-  if (!mediaCheck.ok) {
-    await supabase.storage.from(ADVERTISEMENT_BUCKET).remove([storagePath]);
-    return NextResponse.json(
-      {
-        success: false,
-        error: {
-          code: "UPLOAD_NOT_CONFIRMED",
-          message:
-            locale === "ar"
-              ? "تم استلام الملف لكن تعذر تأكيد وجوده في التخزين. أعد الرفع قبل المتابعة."
-              : "Upload did not complete successfully in storage. Please upload the media again before publishing.",
-        },
-      },
-      { status: 500 }
-    );
-  }
-
   await createAuditLog({
     actorAuthUserId: auth.userId,
     actorRole: auth.role,
@@ -126,7 +107,7 @@ export async function POST(request: Request) {
     success: true,
     data: {
       mediaType: validation.mediaType,
-      mediaUrl: mediaCheck.storagePath,
+      mediaUrl: storagePath,
       sizeBytes: file.size,
       mimeType: file.type,
       bucket: ADVERTISEMENT_BUCKET,

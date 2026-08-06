@@ -182,15 +182,19 @@ test("advertisement routes enforce media existence before persisting or activati
   }
 
   for (const routeSource of [employerUploadRoute, adminUploadRoute]) {
-    assert.match(routeSource, /verifyAdvertisementMediaObjectExists\(storagePath, \{ attempts: 4, delayMs: 150 \}\)/);
-    assert.match(routeSource, /UPLOAD_NOT_CONFIRMED/);
+    // Upload routes trust storage.upload() — no post-upload re-verification loop.
+    assert.doesNotMatch(routeSource, /verifyAdvertisementMediaObjectExists/);
+    assert.doesNotMatch(routeSource, /UPLOAD_NOT_CONFIRMED/);
+    assert.match(routeSource, /supabase\.storage\.from\(ADVERTISEMENT_BUCKET\)\.upload\(/);
   }
 
-  assert.match(repository, /\.schema\("storage"\)/);
-  assert.match(repository, /\.from\("objects"\)/);
-  assert.match(repository, /\.eq\("bucket_id", ADVERTISEMENT_BUCKET\)/);
-  assert.match(repository, /\.eq\("name", storagePath\)/);
-  assert.match(repository, /verifyAdvertisementMediaObjectExists\(entry\.media_url, \{ attempts: 2, delayMs: 75 \}\)/);
+  // Repository uses storage.list() — never .schema("storage") which is not exposed via PostgREST.
+  assert.doesNotMatch(repository, /\.schema\("storage"\)/);
+  assert.doesNotMatch(repository, /\.from\("objects"\)/);
+  // storage.list() is spread across chained lines; check for each part separately.
+  assert.match(repository, /supabase\.storage/);
+  assert.match(repository, /\.list\(directory,/);
+  assert.match(repository, /verifyAdvertisementMediaObjectExists\(entry\.media_url\)/);
 });
 
 test("advertisement media integrity migration enforces storage-object invariants", () => {
@@ -204,5 +208,13 @@ test("advertisement media integrity migration enforces storage-object invariants
   assert.match(migration, /prevent_deleting_referenced_advertisement_media/);
   assert.match(migration, /before delete\s+on storage\.objects/);
   assert.match(migration, /Cannot delete advertisement media object/);
-  assert.match(migration, /delete from public\.advertisements/);
+  // Migration must NOT contain a broad DELETE of advertisements.
+  assert.doesNotMatch(migration, /^delete from public\.advertisements/m);
+  // Migration must retract orphans to draft instead of deleting.
+  assert.match(migration, /update public\.advertisements/);
+  assert.match(migration, /status\s+=\s+'draft'/);
+  // Cleanup must precede trigger installation to avoid self-blocking.
+  const cleanupPos = migration.indexOf("update public.advertisements");
+  const triggerPos = migration.indexOf("create trigger trg_assert_advertisement_media_integrity");
+  assert.ok(cleanupPos < triggerPos, "cleanup UPDATE must appear before trigger installation");
 });

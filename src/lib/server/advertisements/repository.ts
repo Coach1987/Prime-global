@@ -48,10 +48,6 @@ async function buildSignedMediaUrl(supabase: SupabaseClient, storagePath: string
   return data?.signedUrl ?? "";
 }
 
-function wait(ms: number) {
-  return new Promise<void>((resolve) => setTimeout(resolve, ms));
-}
-
 function normalizeAdvertisementStoragePath(storagePath: string) {
   return storagePath.trim().replace(/^\/+/, "");
 }
@@ -99,32 +95,9 @@ function normalizeAdvertisementWriteError(error: { message?: string } | null) {
   return new Error(message || "Advertisement write failed.");
 }
 
-async function checkAdvertisementMediaObjectExistsViaMetadata(storagePath: string) {
-  const supabase = createSupabaseAdminClient();
-  const { data, error } = await supabase
-    .schema("storage")
-    .from("objects")
-    .select("id")
-    .eq("bucket_id", ADVERTISEMENT_BUCKET)
-    .eq("name", storagePath)
-    .maybeSingle();
-
-  if (error) {
-    return {
-      ok: false,
-      data: null,
-      error,
-    } as const;
-  }
-
-  return {
-    ok: true,
-    data,
-    error: null,
-  } as const;
-}
-
-async function checkAdvertisementMediaObjectExistsOnce(storagePath: string) {
+// Uses storage.list() — the only Storage API that works without exposing the
+// storage schema through PostgREST (which this project does not do).
+export async function verifyAdvertisementMediaObjectExists(storagePath: string) {
   const normalizedPath = normalizeAdvertisementStoragePath(storagePath);
 
   if (!normalizedPath || normalizedPath.includes("://")) {
@@ -132,23 +105,6 @@ async function checkAdvertisementMediaObjectExistsOnce(storagePath: string) {
       ok: false,
       code: "INVALID_MEDIA_URL",
       message: "Advertisement media path must be a valid storage object key.",
-      storagePath: normalizedPath,
-    } as const;
-  }
-
-  const metadataLookup = await checkAdvertisementMediaObjectExistsViaMetadata(normalizedPath);
-  if (metadataLookup.ok) {
-    if (metadataLookup.data) {
-      return {
-        ok: true,
-        storagePath: normalizedPath,
-      } as const;
-    }
-
-    return {
-      ok: false,
-      code: "MEDIA_OBJECT_MISSING",
-      message: "Advertisement media file is missing from storage. Upload the media again before continuing.",
       storagePath: normalizedPath,
     } as const;
   }
@@ -191,32 +147,6 @@ async function checkAdvertisementMediaObjectExistsOnce(storagePath: string) {
     ok: true,
     storagePath: normalizedPath,
   } as const;
-}
-
-export async function verifyAdvertisementMediaObjectExists(
-  storagePath: string,
-  options?: { attempts?: number; delayMs?: number }
-) {
-  const attempts = Number.isFinite(options?.attempts) ? Math.max(1, Math.floor(options?.attempts ?? 1)) : 1;
-  const delayMs = Number.isFinite(options?.delayMs) ? Math.max(0, Math.floor(options?.delayMs ?? 0)) : 0;
-
-  let lastResult = await checkAdvertisementMediaObjectExistsOnce(storagePath);
-  if (lastResult.ok || lastResult.code === "INVALID_MEDIA_URL") {
-    return lastResult;
-  }
-
-  for (let attemptIndex = 1; attemptIndex < attempts; attemptIndex += 1) {
-    if (delayMs > 0) {
-      await wait(delayMs);
-    }
-
-    lastResult = await checkAdvertisementMediaObjectExistsOnce(storagePath);
-    if (lastResult.ok || lastResult.code === "INVALID_MEDIA_URL") {
-      return lastResult;
-    }
-  }
-
-  return lastResult;
 }
 
 export async function listAdminAdvertisements(status?: string) {
@@ -398,7 +328,7 @@ export async function listPublicAdvertisements(locale: "en" | "ar") {
 
   const items: PublicAdvertisementItem[] = [];
   for (const entry of visibleRecords) {
-    const mediaCheck = await verifyAdvertisementMediaObjectExists(entry.media_url, { attempts: 2, delayMs: 75 });
+    const mediaCheck = await verifyAdvertisementMediaObjectExists(entry.media_url);
     if (!mediaCheck.ok) {
       continue;
     }
