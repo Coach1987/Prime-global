@@ -97,6 +97,7 @@ export function EmployerAdvertisementsCenter({ locale }: { locale: string }) {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [pendingFile, setPendingFile] = useState<File | null>(null);
   const [hasEmployerProfile, setHasEmployerProfile] = useState(true);
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [items, setItems] = useState<EmployerAdvertisementItem[]>([]);
@@ -181,6 +182,23 @@ export function EmployerAdvertisementsCenter({ locale }: { locale: string }) {
       setError(null);
       setMessage(null);
 
+      // Upload pending file before saving — media_url must exist before the API call.
+      if (pendingFile) {
+        const uploaded = await onUpload(pendingFile);
+        setPendingFile(null);
+        if (!uploaded) {
+          setSaving(false);
+          return;
+        }
+      }
+
+      // Guard: reject the save if media_url is still empty after any upload.
+      if (!form.media_url) {
+        setError(locale === "ar" ? "يرجى اختيار ملف وسائط قبل حفظ الإعلان." : "Please select a media file to upload before saving the advertisement.");
+        setSaving(false);
+        return;
+      }
+
       const response = await fetch(
         selectedId ? `/api/employers/advertisements/${selectedId}` : "/api/employers/advertisements",
         {
@@ -213,7 +231,8 @@ export function EmployerAdvertisementsCenter({ locale }: { locale: string }) {
     }
   }
 
-  async function onUpload(file: File) {
+  // Returns true on success so onSubmit can continue; false on failure.
+  async function onUpload(file: File): Promise<boolean> {
     try {
       setUploading(true);
       setError(null);
@@ -241,9 +260,10 @@ export function EmployerAdvertisementsCenter({ locale }: { locale: string }) {
       if (payload.data?.mediaUrl) updateField("media_url", payload.data.mediaUrl);
       if (payload.data?.mediaType) updateField("media_type", payload.data.mediaType);
 
-      setMessage("Media uploaded successfully.");
+      return true;
     } catch (uploadError) {
       setError(uploadError instanceof Error ? uploadError.message : "Unable to upload media.");
+      return false;
     } finally {
       setUploading(false);
     }
@@ -294,6 +314,7 @@ export function EmployerAdvertisementsCenter({ locale }: { locale: string }) {
 
       setSelectedId(null);
       setForm(INITIAL_FORM);
+      setPendingFile(null);
       await loadAds();
       setMessage("Advertisement deleted.");
     } catch (deleteError) {
@@ -320,6 +341,7 @@ export function EmployerAdvertisementsCenter({ locale }: { locale: string }) {
               onClick={() => {
                 setSelectedId(null);
                 setForm(INITIAL_FORM);
+                setPendingFile(null);
                 setShowCreateForm((current) => !current);
                 setMessage(null);
               }}
@@ -365,6 +387,7 @@ export function EmployerAdvertisementsCenter({ locale }: { locale: string }) {
                 onClick={() => {
                   setSelectedId(item.id);
                   setForm(mapRecordToForm(item));
+                  setPendingFile(null);
                   setShowCreateForm(true);
                 }}
                 className={`w-full text-left ${employerSectionCard} ${item.id === selectedId ? "border-gold/40 bg-bg-primary" : "hover:border-gold/30"}`}
@@ -467,20 +490,22 @@ export function EmployerAdvertisementsCenter({ locale }: { locale: string }) {
 
                 <label className="text-sm text-text-secondary">
                   {uploading ? "Uploading…" : "Upload Media"}
-                  <input type="file" disabled={uploading} accept="image/jpeg,image/png,image/webp,video/mp4,video/webm" onChange={(event) => {
-                    const file = event.target.files?.[0];
-                    if (file) {
-                      void onUpload(file);
-                    }
+                  {/* Store the file; actual upload runs at the start of onSubmit */}
+                  <input type="file" disabled={uploading || saving} accept="image/jpeg,image/png,image/webp,video/mp4,video/webm" onChange={(event) => {
+                    const file = event.target.files?.[0] ?? null;
+                    setPendingFile(file);
                   }} className="mt-1.5 block w-full text-sm text-text-secondary file:me-3 file:rounded-full file:border-0 file:bg-gold/20 file:px-4 file:py-2 file:text-xs file:font-semibold file:text-gold disabled:opacity-50" />
+                  {pendingFile && !form.media_url && (
+                    <span className="mt-1 block text-xs text-gold/70">{pendingFile.name} — will upload when you save</span>
+                  )}
                 </label>
 
                 <p className="text-xs text-text-tertiary">Upload JPG, JPEG, PNG, WEBP, MP4, or WEBM. Images should be at least 1200x420.</p>
               </div>
 
               <div className="flex flex-wrap items-center gap-2">
-                <PrimeButton type="submit" disabled={saving || uploading}>{saving ? "Saving..." : uploading ? "Uploading…" : selectedId ? "Update Advertisement" : "Create Advertisement"}</PrimeButton>
-                <button type="button" className={primeButtonClasses("secondary")} onClick={() => void submitForReview()} disabled={!selectedId || uploading}>Submit for Review</button>
+                <PrimeButton type="submit" disabled={saving || uploading}>{saving ? (uploading ? "Uploading…" : "Saving...") : uploading ? "Uploading…" : selectedId ? "Update Advertisement" : "Create Advertisement"}</PrimeButton>
+                <button type="button" className={primeButtonClasses("secondary")} onClick={() => void submitForReview()} disabled={!selectedId || uploading || saving}>Submit for Review</button>
                 <button type="button" className={primeButtonClasses("secondary")} onClick={() => void onDelete()} disabled={!selectedId || saving || uploading}>Delete</button>
               </div>
             </form>
