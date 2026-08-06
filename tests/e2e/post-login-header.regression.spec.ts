@@ -105,11 +105,25 @@ async function apiLogin(page: Page, email: string, password: string, role: "cand
 }
 
 async function apiLogout(page: Page) {
-  const csrfToken = await getCsrfTokenViaPage(page);
-  const response = await page.request.post("/api/auth/logout", {
-    headers: csrfHeaders(csrfToken),
+  const result = await page.evaluate(async () => {
+    const csrfResponse = await fetch("/api/security/csrf", { credentials: "include" });
+    const csrfPayload = (await csrfResponse.json().catch(() => null)) as { data?: { csrfToken?: string } } | null;
+    const csrfToken = String(csrfPayload?.data?.csrfToken ?? "");
+
+    const response = await fetch("/api/auth/logout", {
+      method: "POST",
+      headers: { "x-csrf-token": csrfToken },
+      credentials: "include",
+    });
+
+    return {
+      ok: response.ok,
+      status: response.status,
+      body: await response.text(),
+    };
   });
-  expect(response.ok()).toBeTruthy();
+
+  expect(result.ok, `Logout failed with status ${result.status}: ${result.body}`).toBeTruthy();
 }
 
 async function uiLogin(page: Page, audience: "candidate" | "employer" | "staff", email: string, password: string, locale: "en" | "ar" = "en") {
@@ -208,6 +222,104 @@ function assertNoClientErrors(telemetry: CrashTelemetry, options?: { allowUnauth
   expect(filteredConsoleErrors, `Console errors: ${filteredConsoleErrors.join("\\n")}`).toEqual([]);
   expect(telemetry.pageErrors, `Page errors: ${telemetry.pageErrors.join("\n")}`).toEqual([]);
   expect(telemetry.browserCrashReason).toBe("");
+}
+
+function candidateAuthLabels(locale: "en" | "ar") {
+  if (locale === "ar") {
+    return {
+      signIn: "تسجيل الدخول",
+      createAccount: "إنشاء حساب",
+      openMenu: /فتح القائمة|إغلاق القائمة/,
+    };
+  }
+
+  return {
+    signIn: "Sign In",
+    createAccount: "Create Account",
+    openMenu: /Open menu|Close menu/i,
+  };
+}
+
+async function openCandidateMenuScope(input: {
+  page: Page;
+  header: Locator;
+  fullName: string;
+  locale: "en" | "ar";
+  mobile: boolean;
+}) {
+  if (input.mobile) {
+    await input.header.getByRole("button", { name: candidateAuthLabels(input.locale).openMenu }).click();
+    const dialog = input.page.locator('[role="dialog"]');
+    await expect(dialog).toBeVisible();
+
+    const accountButton = dialog.getByRole("button", { name: input.fullName }).first();
+    await expect(accountButton).toBeVisible();
+    await accountButton.click();
+    return dialog;
+  }
+
+  const accountButton = input.header.getByRole("button", { name: input.fullName }).first();
+  await expect(accountButton).toBeVisible();
+  await accountButton.click();
+  return input.header;
+}
+
+async function verifyCandidateMenuClickFlow(input: {
+  page: Page;
+  locale: "en" | "ar";
+  fullName: string;
+  mobile: boolean;
+}) {
+  const { page, locale, fullName, mobile } = input;
+  const labels = candidateAuthLabels(locale);
+  const header = page.locator("header").first();
+
+  await expect(page.locator("html")).toHaveAttribute("dir", locale === "ar" ? "rtl" : "ltr");
+
+  await expect(header.getByText(labels.signIn)).toHaveCount(0);
+  await expect(header.getByText(labels.createAccount)).toHaveCount(0);
+
+  if (!mobile) {
+    const accountButton = header.getByRole("button", { name: fullName }).first();
+    await expect(accountButton).toBeVisible({ timeout: 5000 });
+  } else {
+    await expect(header.getByRole("button", { name: labels.openMenu })).toBeVisible();
+  }
+
+  async function expectAuthenticatedHeader() {
+    await expect(page.locator("html")).toHaveAttribute("dir", locale === "ar" ? "rtl" : "ltr");
+
+    if (mobile) {
+      await expect(header.getByRole("button", { name: labels.openMenu })).toBeVisible();
+      return;
+    }
+
+    await expect(header.getByRole("button", { name: fullName }).first()).toBeVisible();
+  }
+
+  const menuForCareer = await openCandidateMenuScope({ page, header, fullName, locale, mobile });
+  const careerLink = menuForCareer.locator('a[href$="/candidate/profile"]:visible').first();
+  await expect(careerLink).toBeVisible();
+  await careerLink.click();
+  await expect(page).toHaveURL(new RegExp(`/${locale}/candidate/profile$`));
+
+  await expectAuthenticatedHeader();
+
+  const menuForDashboard = await openCandidateMenuScope({ page, header, fullName, locale, mobile });
+  const dashboardLink = menuForDashboard.locator('a[href$="/candidate/dashboard"]:visible').first();
+  await expect(dashboardLink).toBeVisible();
+  await dashboardLink.click();
+  await expect(page).toHaveURL(new RegExp(`/${locale}/candidate/dashboard$`));
+
+  await expectAuthenticatedHeader();
+
+  const menuForEditProfile = await openCandidateMenuScope({ page, header, fullName, locale, mobile });
+  const editProfileLink = menuForEditProfile.locator('a[href$="/candidate/onboarding"]:visible').first();
+  await expect(editProfileLink).toBeVisible();
+  await editProfileLink.click();
+  await expect(page).toHaveURL(new RegExp(`/${locale}/candidate/onboarding$`));
+
+  await expectAuthenticatedHeader();
 }
 
 async function withIsolatedPage(
@@ -423,6 +535,43 @@ test("Candidate post-login header", async ({ browser }, testInfo) => {
 
     assertNoClientErrors(telemetry, { allowUnauthorizedConsole: true });
   });
+});
+
+test("Candidate menu click routes stay session-stable across EN/AR desktop/mobile", async ({ browser }, testInfo) => {
+  await withIsolatedPage(
+    browser,
+    testInfo,
+    "Candidate menu click routes stay session-stable across EN/AR desktop/mobile",
+    async (page, telemetry) => {
+      const scenarios: Array<{ locale: "en" | "ar"; mobile: boolean; viewport: { width: number; height: number } }> = [
+        { locale: "en", mobile: false, viewport: { width: 1280, height: 900 } },
+        { locale: "en", mobile: true, viewport: { width: 390, height: 844 } },
+        { locale: "ar", mobile: false, viewport: { width: 1280, height: 900 } },
+        { locale: "ar", mobile: true, viewport: { width: 390, height: 844 } },
+      ];
+
+      for (const scenario of scenarios) {
+        await runStep(
+          page,
+          telemetry,
+          `Candidate menu-click flow (${scenario.locale}, ${scenario.mobile ? "mobile" : "desktop"})`,
+          async () => {
+            await page.setViewportSize(scenario.viewport);
+            await uiLogin(page, "candidate", seed.candidate.email, seed.candidate.password, scenario.locale);
+            await verifyCandidateMenuClickFlow({
+              page,
+              locale: scenario.locale,
+              fullName: seed.candidate.fullName,
+              mobile: scenario.mobile,
+            });
+            await apiLogout(page);
+          }
+        );
+      }
+
+      assertNoClientErrors(telemetry, { allowUnauthorizedConsole: true });
+    }
+  );
 });
 
 test("Employer post-login header", async ({ browser }, testInfo) => {

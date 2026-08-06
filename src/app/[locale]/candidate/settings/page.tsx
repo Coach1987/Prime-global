@@ -747,6 +747,9 @@ export default function CandidateSettingsPage() {
           <Link href="/candidate/profile" className={primeButtonClasses("secondary")}>
             {isArabic ? "الملف المهني" : "Career Profile"}
           </Link>
+          <Link href="/candidate/onboarding" className={primeButtonClasses("secondary")}>
+            {isArabic ? "تعديل الملف" : "Edit Profile"}
+          </Link>
           <Link href="/candidate/documents" className={primeButtonClasses("secondary")}>
             {isArabic ? "مركز الوثائق" : "Document Center"}
           </Link>

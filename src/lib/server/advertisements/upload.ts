@@ -28,6 +28,12 @@ interface UploadValidationResult {
   mediaType?: "image" | "video";
 }
 
+interface UploadMetadataLike {
+  name: string;
+  type: string;
+  size: number;
+}
+
 const VIDEO_MP4_SIGNATURE = "ftyp";
 const VIDEO_WEBM_SIGNATURE = "webm";
 
@@ -141,6 +147,50 @@ export function validateAdvertisementMedia(file: File, buffer: Buffer): UploadVa
       return { ok: false, reasonKey: "invalid_image_dimensions" };
     }
 
+    return { ok: true, mediaType: "image" };
+  }
+
+  if (declaredVideo) {
+    return { ok: true, mediaType: "video" };
+  }
+
+  return { ok: false, reasonKey: "unsupported_mime" };
+}
+
+export function validateAdvertisementMediaMetadata(file: UploadMetadataLike): UploadValidationResult {
+  if (!file?.name || !file?.type || typeof file.size !== "number") {
+    return { ok: false, reasonKey: "file_required" };
+  }
+
+  if (file.size <= 0) {
+    return { ok: false, reasonKey: "empty_file" };
+  }
+
+  if (!ALL_ALLOWED_MIME_TYPES.has(file.type)) {
+    return { ok: false, reasonKey: "unsupported_mime" };
+  }
+
+  const extension = getFileExtension(file.name);
+  const declaredImage = IMAGE_ALLOWED_MIME_TYPES.has(file.type);
+  const declaredVideo = VIDEO_ALLOWED_MIME_TYPES.has(file.type);
+
+  if (declaredImage && !IMAGE_ALLOWED_EXTENSIONS.has(extension)) {
+    return { ok: false, reasonKey: "unsupported_extension" };
+  }
+
+  if (declaredVideo && !VIDEO_ALLOWED_EXTENSIONS.has(extension)) {
+    return { ok: false, reasonKey: "unsupported_extension" };
+  }
+
+  if (declaredImage && file.size > MAX_IMAGE_BYTES) {
+    return { ok: false, reasonKey: "file_too_large" };
+  }
+
+  if (declaredVideo && file.size > MAX_VIDEO_BYTES) {
+    return { ok: false, reasonKey: "file_too_large" };
+  }
+
+  if (declaredImage) {
     return { ok: true, mediaType: "image" };
   }
 

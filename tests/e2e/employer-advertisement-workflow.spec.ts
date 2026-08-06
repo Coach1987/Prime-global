@@ -289,15 +289,18 @@ test("employer advertisement workflow reaches admin moderation and public visibi
       if (response.request().method() !== "POST") return false;
       if (response.status() !== 201) return false;
       const pathname = new URL(response.url()).pathname;
-      return pathname.endsWith("/api/employers/advertisements");
+      if (!pathname.endsWith("/api/employers/advertisements/upload")) return false;
+
+      const body = response.request().postData() ?? "";
+      return body.includes('"action":"finalize"');
     }),
     page.getByRole("button", { name: "Create Advertisement" }).click(),
   ]);
   expect(createResponse.ok()).toBeTruthy();
   const createPayload = await createResponse.json();
-  workflowState.advertisementId = String(createPayload?.data?.id ?? "");
+  workflowState.advertisementId = String(createPayload?.data?.advertisement?.id ?? "");
   expect(workflowState.advertisementId.length).toBeGreaterThan(10);
-  workflowState.advertisementMediaPath = String(createPayload?.data?.media_url ?? "");
+  workflowState.advertisementMediaPath = String(createPayload?.data?.mediaUrl ?? "");
   expect(workflowState.advertisementMediaPath.length).toBeGreaterThan(10);
 
   const uploadedMediaExists = await admin.storage

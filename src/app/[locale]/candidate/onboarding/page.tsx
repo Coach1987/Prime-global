@@ -127,6 +127,25 @@ async function readJsonResponse<T>(response: Response, fallbackMessage: string) 
   }
 }
 
+async function fetchWithTimeout(input: RequestInfo | URL, init: RequestInit = {}, timeoutMs = 12000) {
+  const controller = new AbortController();
+  const timeoutId = window.setTimeout(() => controller.abort(), timeoutMs);
+
+  try {
+    return await fetch(input, { ...init, signal: controller.signal });
+  } catch (error) {
+    if (error instanceof DOMException && error.name === "AbortError") {
+      return new Response(JSON.stringify({ ok: false, success: false, message: "Request timed out." }), {
+        status: 504,
+        headers: { "content-type": "application/json" },
+      });
+    }
+    throw error;
+  } finally {
+    window.clearTimeout(timeoutId);
+  }
+}
+
 function isApiSuccess(payload: ApiErrorShape | null | undefined) {
   return payload?.ok === true || payload?.success === true;
 }
@@ -380,11 +399,11 @@ export default function CandidateOnboardingPage() {
   useEffect(() => {
     async function bootstrap() {
       try {
-        const csrfResponse = await fetch("/api/security/csrf");
+        const csrfResponse = await fetchWithTimeout("/api/security/csrf");
         const csrfPayload = await readJsonResponse<{ data?: { csrfToken?: string } }>(csrfResponse, "");
         setCsrfToken(csrfPayload.payload?.data?.csrfToken ?? "");
 
-        const authResponse = await fetch("/api/auth/me", { credentials: "include" });
+        const authResponse = await fetchWithTimeout("/api/auth/me", { credentials: "include" });
         const authPayload = await readJsonResponse<{ success?: boolean; data?: { role?: string } }>(
           authResponse,
           isArabic ? "تعذر التحقق من الجلسة." : "Unable to verify your session."
@@ -403,10 +422,10 @@ export default function CandidateOnboardingPage() {
         }
 
         const [profileResponse, professionalResponse, completionResponse, verificationResponse] = await Promise.all([
-          fetch("/api/candidates/profile", { credentials: "include" }),
-          fetch("/api/candidates/professional-profile", { credentials: "include" }),
-          fetch("/api/candidates/profile-completion", { credentials: "include" }),
-          fetch("/api/candidates/document-verification", { credentials: "include" }),
+          fetchWithTimeout("/api/candidates/profile", { credentials: "include" }),
+          fetchWithTimeout("/api/candidates/professional-profile", { credentials: "include" }),
+          fetchWithTimeout("/api/candidates/profile-completion", { credentials: "include" }),
+          fetchWithTimeout("/api/candidates/document-verification", { credentials: "include" }),
         ]);
 
         const [profilePayload, professionalPayload, completionPayload, verificationPayload] = await Promise.all([

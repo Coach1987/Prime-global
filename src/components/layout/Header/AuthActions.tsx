@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useId, useRef, useState } from "react";
+import { MouseEvent, useEffect, useId, useRef, useState } from "react";
 import { Link, useRouter } from "@/i18n/routing";
 import { useTranslations } from "next-intl";
 import { AuthRole, getAccountHref, getDashboardHref, normalizeAuthRole } from "@/lib/auth/routing";
@@ -19,6 +19,33 @@ type AuthActionsProps = {
   onNavigate?: () => void;
 };
 
+const AUTH_STORAGE_KEY = "prime-global:auth-session-sync";
+
+function readCachedAuthState(): AuthState | null {
+  if (typeof window === "undefined") return null;
+
+  try {
+    const raw = window.localStorage.getItem(AUTH_STORAGE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as { role?: string | null; displayName?: string | null; ts?: number };
+    const role = normalizeAuthRole(String(parsed?.role ?? ""));
+    if (!role) return null;
+
+    // Ignore stale snapshots so signed-out users are not kept signed-in.
+    const timestamp = Number(parsed?.ts ?? 0);
+    const isFresh = Number.isFinite(timestamp) && timestamp > 0 && Date.now() - timestamp < 5 * 60 * 1000;
+    if (!isFresh) return null;
+
+    return {
+      role,
+      displayName: typeof parsed?.displayName === "string" ? parsed.displayName : null,
+      hasPhoto: false,
+    };
+  } catch {
+    return null;
+  }
+}
+
 export function AuthActions({ mobile = false, onNavigate }: AuthActionsProps) {
   const t = useTranslations("nav");
   const router = useRouter();
@@ -28,6 +55,7 @@ export function AuthActions({ mobile = false, onNavigate }: AuthActionsProps) {
   const [menuOpen, setMenuOpen] = useState(false);
   const refreshInFlight = useRef(false);
   const refreshQueued = useRef(false);
+  const openedByHover = useRef(false);
   const menuRootRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const closeTimerRef = useRef<number | null>(null);
@@ -42,6 +70,7 @@ export function AuthActions({ mobile = false, onNavigate }: AuthActionsProps) {
 
   function closeMenu(options?: { focusTrigger?: boolean }) {
     clearPendingClose();
+    openedByHover.current = false;
     setMenuOpen(false);
     if (options?.focusTrigger) {
       window.requestAnimationFrame(() => {
@@ -103,7 +132,8 @@ export function AuthActions({ mobile = false, onNavigate }: AuthActionsProps) {
         }
 
         if (!payload?.success) {
-          setAuthState(null);
+          const cached = readCachedAuthState();
+          setAuthState(cached);
           continue;
         }
 
@@ -113,25 +143,30 @@ export function AuthActions({ mobile = false, onNavigate }: AuthActionsProps) {
           continue;
         }
 
-        let hasPhoto = false;
-        if (role === "candidate") {
-          const photoResponse = await fetch("/api/candidates/profile-photo", {
-            credentials: "include",
-            cache: "no-store",
-          }).catch(() => null);
-          const photoPayload = photoResponse ? await photoResponse.json().catch(() => null) : null;
-          hasPhoto = Boolean(photoPayload?.success && photoPayload?.data?.hasPhoto);
-        }
-
-        if (refreshQueued.current) {
-          continue;
-        }
-
         setAuthState({
           role,
           displayName: payload?.data?.displayName ?? null,
-          hasPhoto,
+          hasPhoto: false,
         });
+
+        if (role === "candidate") {
+          void (async () => {
+            const photoResponse = await fetch("/api/candidates/profile-photo", {
+              credentials: "include",
+              cache: "no-store",
+            }).catch(() => null);
+            const photoPayload = photoResponse ? await photoResponse.json().catch(() => null) : null;
+            const hasPhoto = Boolean(photoPayload?.success && photoPayload?.data?.hasPhoto);
+
+            setAuthState((previous) => {
+              if (!previous || previous.role !== "candidate") return previous;
+              return {
+                ...previous,
+                hasPhoto,
+              };
+            });
+          })();
+        }
       } while (refreshQueued.current);
     } catch {
       setAuthState(null);
@@ -142,6 +177,12 @@ export function AuthActions({ mobile = false, onNavigate }: AuthActionsProps) {
   }
 
   useEffect(() => {
+    const cached = readCachedAuthState();
+    if (cached) {
+      setAuthState(cached);
+      setResolved(true);
+    }
+
     void refreshAuthState();
 
     const unsubscribe = subscribeAuthSessionChanged(() => {
@@ -187,14 +228,6 @@ export function AuthActions({ mobile = false, onNavigate }: AuthActionsProps) {
     };
   }, [menuOpen]);
 
-  useEffect(() => {
-    if (mobile) return;
-    if (!authState) return;
-
-    // Keep account navigation discoverable on desktop after auth redirects.
-    setMenuOpen(true);
-  }, [authState, mobile]);
-
   async function handleSignOut() {
     let csrfToken = "";
     try {
@@ -220,10 +253,17 @@ export function AuthActions({ mobile = false, onNavigate }: AuthActionsProps) {
   }
 
   function handleTriggerClick() {
+    if (!mobile && menuOpen && openedByHover.current) {
+      openedByHover.current = false;
+      return;
+    }
+
     if (menuOpen) {
       closeMenu();
       return;
     }
+
+    openedByHover.current = false;
     openMenu();
   }
 
@@ -292,9 +332,11 @@ export function AuthActions({ mobile = false, onNavigate }: AuthActionsProps) {
     }
   }
 
-  function handleMenuNavigate() {
+  function handleMenuNavigate(event: MouseEvent<HTMLAnchorElement>, href: string) {
+    event.preventDefault();
     closeMenu();
     onNavigate?.();
+    router.push(href);
   }
 
   const actionClassName = mobile
@@ -320,6 +362,7 @@ export function AuthActions({ mobile = false, onNavigate }: AuthActionsProps) {
   const candidateLinks = [
     { href: getDashboardHref("candidate"), label: t("dashboard") },
     { href: getAccountHref("candidate"), label: t("careerProfile") },
+    { href: "/candidate/onboarding", label: t("editProfile") },
     { href: "/candidate/applications", label: t("applications") },
     { href: "/candidate/my-interviews", label: t("interviews") },
     { href: "/notifications", label: t("notifications") },
@@ -350,11 +393,14 @@ export function AuthActions({ mobile = false, onNavigate }: AuthActionsProps) {
         onPointerEnter={() => {
           clearPendingClose();
           if (!mobile) {
+            openedByHover.current = true;
             openMenu();
           }
         }}
         onPointerLeave={() => {
-          scheduleClose();
+          if (mobile) {
+            scheduleClose();
+          }
         }}
         onKeyDown={handleMenuKeyDown}
       >
@@ -368,6 +414,7 @@ export function AuthActions({ mobile = false, onNavigate }: AuthActionsProps) {
           aria-expanded={menuOpen}
           onMouseEnter={() => {
             if (!mobile) {
+              openedByHover.current = true;
               openMenu();
             }
           }}
@@ -399,7 +446,7 @@ export function AuthActions({ mobile = false, onNavigate }: AuthActionsProps) {
             <Link
               key={item.href}
               href={item.href}
-              onClick={handleMenuNavigate}
+              onClick={(event) => handleMenuNavigate(event, item.href)}
               className={`${primeButtonClasses("secondary")} justify-start`}
               ref={(el) => {
                 menuItemRefs.current[links.findIndex((link) => link.href === item.href)] = el;

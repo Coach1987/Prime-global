@@ -31,6 +31,13 @@ type AdvertisementFormState = {
   ends_at: string;
 };
 
+const IMAGE_ALLOWED_MIME_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
+const VIDEO_ALLOWED_MIME_TYPES = new Set(["video/mp4", "video/webm"]);
+const IMAGE_ALLOWED_EXTENSIONS = new Set(["jpg", "jpeg", "png", "webp"]);
+const VIDEO_ALLOWED_EXTENSIONS = new Set(["mp4", "webm"]);
+const MAX_IMAGE_BYTES = 8 * 1024 * 1024;
+const MAX_VIDEO_BYTES = 50 * 1024 * 1024;
+
 const INITIAL_FORM: AdvertisementFormState = {
   title_ar: "",
   title_en: "",
@@ -93,10 +100,12 @@ function statusLabel(status: AdvertisementStatus) {
 }
 
 export function EmployerAdvertisementsCenter({ locale }: { locale: string }) {
+  const isArabic = locale === "ar";
   const [csrfToken, setCsrfToken] = useState("");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState<number | null>(null);
   const [pendingFile, setPendingFile] = useState<File | null>(null);
   const [hasEmployerProfile, setHasEmployerProfile] = useState(true);
   const [showCreateForm, setShowCreateForm] = useState(false);
@@ -105,15 +114,159 @@ export function EmployerAdvertisementsCenter({ locale }: { locale: string }) {
   const [form, setForm] = useState<AdvertisementFormState>(INITIAL_FORM);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [uploadFieldError, setUploadFieldError] = useState<string | null>(null);
 
   const readErrorMessage = useCallback(async (response: Response, fallback: string) => {
+    if (response.status === 413) {
+      return isArabic
+        ? "حجم الملف كبير جداً. الحد الأقصى للصور 8MB وللفيديو 50MB."
+        : "File is too large. Maximum size is 8MB for images and 50MB for videos.";
+    }
+
     try {
-      const payload = (await response.json()) as { error?: { message?: string } };
-      return payload.error?.message ?? fallback;
+      const payload = (await response.json()) as { error?: { message?: string }; requestId?: string };
+      const message = payload.error?.message ?? fallback;
+      const requestId = typeof payload.requestId === "string" ? payload.requestId : null;
+      return requestId ? `${message} (Request ID: ${requestId})` : message;
     } catch {
       return fallback;
     }
-  }, []);
+  }, [isArabic]);
+
+  function getFileExtension(fileName: string) {
+    const segments = fileName.toLowerCase().split(".");
+    return segments.length > 1 ? segments.pop() ?? "" : "";
+  }
+
+  function validateSelectedMediaFile(file: File | null) {
+    if (!file) {
+      return {
+        ok: false as const,
+        message: isArabic ? "يرجى اختيار ملف صورة أو فيديو." : "Please select an image or video file.",
+      };
+    }
+
+    const extension = getFileExtension(file.name);
+    const isImage = IMAGE_ALLOWED_MIME_TYPES.has(file.type);
+    const isVideo = VIDEO_ALLOWED_MIME_TYPES.has(file.type);
+
+    if (!isImage && !isVideo) {
+      return {
+        ok: false as const,
+        message: isArabic
+          ? "نوع الملف غير مدعوم. الأنواع المسموح بها: JPG وJPEG وPNG وWEBP وMP4 وWEBM."
+          : "Unsupported file format. Allowed: JPG, JPEG, PNG, WEBP, MP4, WEBM.",
+      };
+    }
+
+    if (isImage && !IMAGE_ALLOWED_EXTENSIONS.has(extension)) {
+      return {
+        ok: false as const,
+        message: isArabic
+          ? "امتداد الملف لا يطابق نوع الصورة المسموح."
+          : "File extension does not match the allowed image formats.",
+      };
+    }
+
+    if (isVideo && !VIDEO_ALLOWED_EXTENSIONS.has(extension)) {
+      return {
+        ok: false as const,
+        message: isArabic
+          ? "امتداد الملف لا يطابق نوع الفيديو المسموح."
+          : "File extension does not match the allowed video formats.",
+      };
+    }
+
+    if (isImage && file.size > MAX_IMAGE_BYTES) {
+      return {
+        ok: false as const,
+        message: isArabic
+          ? "حجم الصورة كبير جداً. الحد الأقصى للصور هو 8MB."
+          : "Image file is too large. Maximum allowed image size is 8MB.",
+      };
+    }
+
+    if (isVideo && file.size > MAX_VIDEO_BYTES) {
+      return {
+        ok: false as const,
+        message: isArabic
+          ? "حجم الفيديو كبير جداً. الحد الأقصى للفيديو هو 50MB."
+          : "Video file is too large. Maximum allowed video size is 50MB.",
+      };
+    }
+
+    return {
+      ok: true as const,
+      inferredMediaType: (isVideo ? "video" : "image") as "video" | "image",
+    };
+  }
+
+  function normalizeSupabasePublicUrl(value: string) {
+    try {
+      const url = new URL(value.trim());
+      const normalizedPath = url.pathname.replace(/\/+$/, "");
+      if (normalizedPath === "/rest/v1") {
+        url.pathname = "";
+      }
+      return url.toString().replace(/\/+$/, "");
+    } catch {
+      return value.trim().replace(/\/+$/, "").replace(/\/rest\/v1$/i, "");
+    }
+  }
+
+  function toEncodedObjectPath(storagePath: string) {
+    return storagePath
+      .split("/")
+      .filter(Boolean)
+      .map((segment) => encodeURIComponent(segment))
+      .join("/");
+  }
+
+  async function uploadToSignedUrl(input: {
+    supabaseUrl: string;
+    bucket: string;
+    storagePath: string;
+    uploadToken: string;
+    file: File;
+    onProgress: (value: number) => void;
+  }) {
+    const endpoint = `${input.supabaseUrl}/storage/v1/object/upload/sign/${encodeURIComponent(input.bucket)}/${toEncodedObjectPath(input.storagePath)}?token=${encodeURIComponent(input.uploadToken)}`;
+
+    await new Promise<void>((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      xhr.open("PUT", endpoint);
+      xhr.setRequestHeader("content-type", input.file.type);
+      xhr.upload.onprogress = (event) => {
+        if (!event.lengthComputable || event.total <= 0) return;
+        const progress = Math.max(0, Math.min(100, Math.round((event.loaded / event.total) * 100)));
+        input.onProgress(progress);
+      };
+      xhr.onerror = () => reject(new Error("Direct upload failed before completion."));
+      xhr.onload = () => {
+        if (xhr.status >= 200 && xhr.status < 300) {
+          resolve();
+          return;
+        }
+
+        let message = "Unable to upload media.";
+        try {
+          const body = JSON.parse(xhr.responseText) as { error?: string | { message?: string } };
+          if (typeof body.error === "string") {
+            message = body.error;
+          } else if (body.error?.message) {
+            message = body.error.message;
+          }
+        } catch {
+          if (xhr.responseText?.trim()) {
+            message = xhr.responseText.trim();
+          }
+        }
+
+        reject(new Error(message));
+      };
+      xhr.send(input.file);
+    });
+  }
 
   const loadAds = useCallback(async () => {
     const response = await fetch("/api/employers/advertisements", {
@@ -181,20 +334,37 @@ export function EmployerAdvertisementsCenter({ locale }: { locale: string }) {
       setSaving(true);
       setError(null);
       setMessage(null);
+      setUploadFieldError(null);
 
-      // Upload pending file before saving — media_url must exist before the API call.
+      // Upload pending file and finalize save through the upload endpoint.
       if (pendingFile) {
-        const uploaded = await onUpload(pendingFile);
-        setPendingFile(null);
-        if (!uploaded) {
+        const selectionValidation = validateSelectedMediaFile(pendingFile);
+        if (!selectionValidation.ok) {
+          setUploadFieldError(selectionValidation.message);
+          setError(selectionValidation.message);
           setSaving(false);
           return;
         }
+
+        const payload = buildPayload(form);
+        const finalized = await onUploadAndFinalize(pendingFile, payload);
+        if (!finalized) return;
+
+        setPendingFile(null);
+        setSelectedId(finalized.id);
+        setForm(mapRecordToForm(finalized));
+        await loadAds();
+        setMessage(selectedId ? "Advertisement updated." : "Advertisement draft created.");
+        return;
       }
 
       // Guard: reject the save if media_url is still empty after any upload.
       if (!form.media_url) {
-        setError(locale === "ar" ? "يرجى اختيار ملف وسائط قبل حفظ الإعلان." : "Please select a media file to upload before saving the advertisement.");
+        const missingMediaMessage = isArabic
+          ? "يرجى اختيار ملف وسائط قبل حفظ الإعلان."
+          : "Please select a media file to upload before saving the advertisement.";
+        setUploadFieldError(missingMediaMessage);
+        setError(missingMediaMessage);
         setSaving(false);
         return;
       }
@@ -231,41 +401,126 @@ export function EmployerAdvertisementsCenter({ locale }: { locale: string }) {
     }
   }
 
-  // Returns true on success so onSubmit can continue; false on failure.
-  async function onUpload(file: File): Promise<boolean> {
+  // Upload media directly to Storage, then finalize and persist advertisement in one server call.
+  async function onUploadAndFinalize(file: File, payload: ReturnType<typeof buildPayload>): Promise<EmployerAdvertisementItem | null> {
     try {
       setUploading(true);
+      setUploadProgress(0);
       setError(null);
       setMessage(null);
+      setUploadFieldError(null);
 
-      const formData = new FormData();
-      formData.set("file", file);
-      formData.set("locale", locale === "ar" ? "ar" : "en");
-
-      const response = await fetch("/api/employers/advertisements/upload", {
-        method: "POST",
-        credentials: "include",
-        headers: { "x-csrf-token": csrfToken },
-        body: formData,
-      });
-
-      if (!response.ok) {
-        throw new Error(await readErrorMessage(response, "Unable to upload media."));
+      const selectionValidation = validateSelectedMediaFile(file);
+      if (!selectionValidation.ok) {
+        setUploadFieldError(selectionValidation.message);
+        throw new Error(selectionValidation.message);
       }
 
-      const payload = (await response.json()) as {
-        data?: { mediaUrl?: string; mediaType?: "image" | "video" };
+      if (form.media_type !== selectionValidation.inferredMediaType) {
+        updateField("media_type", selectionValidation.inferredMediaType);
+      }
+
+      const requestId = typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
+        ? crypto.randomUUID()
+        : `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+
+      const authorizeResponse = await fetch("/api/employers/advertisements/upload", {
+        method: "POST",
+        credentials: "include",
+        headers: {
+          "content-type": "application/json",
+          "x-csrf-token": csrfToken,
+          "x-request-id": requestId,
+        },
+        body: JSON.stringify({
+          action: "authorize",
+          locale: locale === "ar" ? "ar" : "en",
+          fileName: file.name,
+          mimeType: file.type,
+          sizeBytes: file.size,
+        }),
+      });
+
+      if (!authorizeResponse.ok) {
+        throw new Error(await readErrorMessage(authorizeResponse, "Unable to authorize media upload."));
+      }
+
+      const authorizePayload = (await authorizeResponse.json()) as {
+        data?: {
+          mediaUrl?: string;
+          mediaType?: "image" | "video";
+          signedUploadToken?: string;
+          bucket?: string;
+        };
       };
 
-      if (payload.data?.mediaUrl) updateField("media_url", payload.data.mediaUrl);
-      if (payload.data?.mediaType) updateField("media_type", payload.data.mediaType);
+      const signedUploadToken = String(authorizePayload.data?.signedUploadToken ?? "");
+      const storagePath = String(authorizePayload.data?.mediaUrl ?? "");
+      const mediaType = authorizePayload.data?.mediaType;
+      const bucket = String(authorizePayload.data?.bucket ?? "advertisement-media");
 
-      return true;
+      if (!signedUploadToken || !storagePath || !mediaType) {
+        throw new Error("Upload authorization response is incomplete.");
+      }
+
+      const supabaseUrlRaw = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
+      if (!supabaseUrlRaw.trim()) {
+        throw new Error("Missing NEXT_PUBLIC_SUPABASE_URL for direct upload.");
+      }
+
+      await uploadToSignedUrl({
+        supabaseUrl: normalizeSupabasePublicUrl(supabaseUrlRaw),
+        bucket,
+        storagePath,
+        uploadToken: signedUploadToken,
+        file,
+        onProgress: (value) => setUploadProgress(value),
+      });
+
+      setUploadProgress(100);
+
+      const finalizeResponse = await fetch("/api/employers/advertisements/upload", {
+        method: "POST",
+        credentials: "include",
+        headers: {
+          "content-type": "application/json",
+          "x-csrf-token": csrfToken,
+          "x-request-id": requestId,
+        },
+        body: JSON.stringify({
+          action: "finalize",
+          locale: locale === "ar" ? "ar" : "en",
+          mediaUrl: storagePath,
+          mediaType,
+          advertisementId: selectedId ?? undefined,
+          payload: {
+            ...payload,
+            media_type: mediaType,
+            media_url: storagePath,
+          },
+        }),
+      });
+
+      if (!finalizeResponse.ok) {
+        throw new Error(await readErrorMessage(finalizeResponse, "Unable to finalize advertisement upload."));
+      }
+
+      const finalizePayload = (await finalizeResponse.json()) as {
+        data?: { advertisement?: EmployerAdvertisementItem };
+      };
+
+      const advertisement = finalizePayload.data?.advertisement;
+      if (!advertisement) {
+        throw new Error("Finalize response did not include advertisement data.");
+      }
+
+      return advertisement;
     } catch (uploadError) {
       setError(uploadError instanceof Error ? uploadError.message : "Unable to upload media.");
-      return false;
+      return null;
     } finally {
       setUploading(false);
+      setUploadProgress(null);
     }
   }
 
@@ -493,14 +748,37 @@ export function EmployerAdvertisementsCenter({ locale }: { locale: string }) {
                   {/* Store the file; actual upload runs at the start of onSubmit */}
                   <input type="file" disabled={uploading || saving} accept="image/jpeg,image/png,image/webp,video/mp4,video/webm" onChange={(event) => {
                     const file = event.target.files?.[0] ?? null;
+                    const selectionValidation = validateSelectedMediaFile(file);
+                    if (!selectionValidation.ok) {
+                      setPendingFile(null);
+                      setUploadFieldError(selectionValidation.message);
+                      setError(selectionValidation.message);
+                      return;
+                    }
+
+                    setUploadFieldError(null);
+                    setError(null);
                     setPendingFile(file);
-                  }} className="mt-1.5 block w-full text-sm text-text-secondary file:me-3 file:rounded-full file:border-0 file:bg-gold/20 file:px-4 file:py-2 file:text-xs file:font-semibold file:text-gold disabled:opacity-50" />
+                    if (selectionValidation.inferredMediaType && form.media_type !== selectionValidation.inferredMediaType) {
+                      updateField("media_type", selectionValidation.inferredMediaType);
+                    }
+                  }} className={`mt-1.5 block w-full text-sm text-text-secondary file:me-3 file:rounded-full file:border-0 file:bg-gold/20 file:px-4 file:py-2 file:text-xs file:font-semibold file:text-gold disabled:opacity-50 ${uploadFieldError ? "rounded-md border border-red-400/70 bg-red-950/20 p-2" : ""}`} />
                   {pendingFile && !form.media_url && (
                     <span className="mt-1 block text-xs text-gold/70">{pendingFile.name} — will upload when you save</span>
                   )}
+                  {uploading && uploadProgress !== null ? (
+                    <span className="mt-1 block text-xs text-gold/70">Upload progress: {uploadProgress}%</span>
+                  ) : null}
+                  {uploadFieldError ? (
+                    <span className="mt-1 block text-xs text-red-300">{uploadFieldError}</span>
+                  ) : null}
                 </label>
 
-                <p className="text-xs text-text-tertiary">Upload JPG, JPEG, PNG, WEBP, MP4, or WEBM. Images should be at least 1200x420.</p>
+                <p className="text-xs text-text-tertiary">
+                  {isArabic
+                    ? "الصيغ المسموحة: JPG وJPEG وPNG وWEBP وMP4 وWEBM. الحد الأقصى للصور: 8MB. الحد الأقصى للفيديو: 50MB. أبعاد الصور الموصى بها لا تقل عن 1200x420."
+                    : "Allowed formats: JPG, JPEG, PNG, WEBP, MP4, WEBM. Max image size: 8MB. Max video size: 50MB. Recommended image dimensions are at least 1200x420."}
+                </p>
               </div>
 
               <div className="flex flex-wrap items-center gap-2">

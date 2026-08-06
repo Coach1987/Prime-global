@@ -98,6 +98,25 @@ async function readJsonResponse<T>(response: Response, fallbackMessage: string) 
   }
 }
 
+async function fetchWithTimeout(input: RequestInfo | URL, init: RequestInit = {}, timeoutMs = 12000) {
+  const controller = new AbortController();
+  const timeoutId = window.setTimeout(() => controller.abort(), timeoutMs);
+
+  try {
+    return await fetch(input, { ...init, signal: controller.signal });
+  } catch (error) {
+    if (error instanceof DOMException && error.name === "AbortError") {
+      return new Response(JSON.stringify({ ok: false, success: false, message: "Request timed out." }), {
+        status: 504,
+        headers: { "content-type": "application/json" },
+      });
+    }
+    throw error;
+  } finally {
+    window.clearTimeout(timeoutId);
+  }
+}
+
 function isApiSuccess(payload: ApiPayload | null | undefined) {
   return payload?.ok === true || payload?.success === true;
 }
@@ -149,7 +168,7 @@ export default function CandidateProfilePage() {
       const authFallback = isArabic ? "تعذر التحقق من الجلسة." : "Unable to verify your session.";
 
       try {
-        const authResponse = await fetch("/api/auth/me", { credentials: "include" });
+        const authResponse = await fetchWithTimeout("/api/auth/me", { credentials: "include" });
         const authPayload = await readJsonResponse<ApiPayload & { data?: { role?: string } }>(authResponse, authFallback);
 
         if (!authResponse.ok || !isApiSuccess(authPayload.payload) || authPayload.payload?.data?.role !== "candidate") {
@@ -169,16 +188,16 @@ export default function CandidateProfilePage() {
           interviewsResponse,
           notificationsResponse,
         ] = await Promise.all([
-          fetch("/api/candidates/profile", { credentials: "include" }),
-          fetch("/api/candidates/professional-profile", { credentials: "include" }),
-          fetch("/api/candidates/profile-completion", { credentials: "include" }),
-          fetch("/api/candidates/document-verification", { credentials: "include" }),
-          fetch("/api/candidates/resumes", { credentials: "include" }),
-          fetch("/api/candidates/private-documents", { credentials: "include" }),
-          fetch("/api/candidates/profile-photo", { credentials: "include" }),
-          fetch("/api/candidates/applications", { credentials: "include" }),
-          fetch("/api/interviews", { credentials: "include" }),
-          fetch("/api/candidates/notifications", { credentials: "include" }),
+          fetchWithTimeout("/api/candidates/profile", { credentials: "include" }),
+          fetchWithTimeout("/api/candidates/professional-profile", { credentials: "include" }),
+          fetchWithTimeout("/api/candidates/profile-completion", { credentials: "include" }),
+          fetchWithTimeout("/api/candidates/document-verification", { credentials: "include" }),
+          fetchWithTimeout("/api/candidates/resumes", { credentials: "include" }),
+          fetchWithTimeout("/api/candidates/private-documents", { credentials: "include" }),
+          fetchWithTimeout("/api/candidates/profile-photo", { credentials: "include" }),
+          fetchWithTimeout("/api/candidates/applications", { credentials: "include" }),
+          fetchWithTimeout("/api/interviews", { credentials: "include" }),
+          fetchWithTimeout("/api/candidates/notifications", { credentials: "include" }),
         ]);
 
         const [
@@ -341,7 +360,7 @@ export default function CandidateProfilePage() {
             </div>
           </div>
 
-          <Link href="/candidate/settings" className={primeButtonClasses("primary")}>
+          <Link href="/candidate/onboarding" className={primeButtonClasses("primary")}>
             {isArabic ? "تعديل الملف" : "Edit Profile"}
           </Link>
         </div>
