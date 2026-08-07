@@ -8,6 +8,7 @@ import { getEmployerByAuthUserId, requireEmployerOperationalStatus } from "@/lib
 import { moderateAdvertisementContent } from "@/lib/server/advertisements/moderation";
 import {
   AdvertisementMediaIntegrityError,
+  attachSignedMediaUrl,
   createAdvertisement,
   listEmployerAdvertisementsByAuthUserId,
   logAdvertisementAudit,
@@ -36,7 +37,8 @@ export async function GET(request: Request) {
   if (statusGate) return statusGate;
 
   const data = await listEmployerAdvertisementsByAuthUserId(auth.userId);
-  return NextResponse.json({ success: true, data });
+  const withSignedMedia = await Promise.all(data.map(async (record) => attachSignedMediaUrl(record)));
+  return NextResponse.json({ success: true, data: withSignedMedia });
 }
 
 export async function POST(request: Request) {
@@ -127,5 +129,6 @@ export async function POST(request: Request) {
     metadata: { moderationStatus: moderation.status, employerId: employer.id },
   });
 
-  return NextResponse.json({ success: true, data: created }, { status: 201 });
+  const withSignedMedia = await attachSignedMediaUrl(created);
+  return NextResponse.json({ success: true, data: withSignedMedia }, { status: 201 });
 }

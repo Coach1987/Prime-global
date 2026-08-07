@@ -48,6 +48,42 @@ async function buildSignedMediaUrl(supabase: SupabaseClient, storagePath: string
   return data?.signedUrl ?? "";
 }
 
+export async function attachSignedMediaUrls(records: AdvertisementRecord[]) {
+  if (records.length === 0) {
+    return records;
+  }
+
+  const supabase = createSupabaseAdminClient();
+  const signed = await Promise.all(
+    records.map(async (record) => {
+      const mediaCheck = await verifyAdvertisementMediaObjectExists(record.media_url);
+      if (!mediaCheck.ok) {
+        return {
+          ...record,
+          media_url: "",
+        };
+      }
+
+      const signedUrl = await buildSignedMediaUrl(supabase, mediaCheck.storagePath);
+      return {
+        ...record,
+        media_url: signedUrl,
+      };
+    })
+  );
+
+  return signed;
+}
+
+export async function attachSignedMediaUrl(record: AdvertisementRecord | null) {
+  if (!record) {
+    return null;
+  }
+
+  const [signedRecord] = await attachSignedMediaUrls([record]);
+  return signedRecord ?? record;
+}
+
 function normalizeAdvertisementStoragePath(storagePath: string) {
   return storagePath.trim().replace(/^\/+/, "");
 }

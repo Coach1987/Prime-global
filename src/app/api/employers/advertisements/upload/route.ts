@@ -18,6 +18,7 @@ import { enforceCsrf, enforceRateLimit } from "@/lib/server/http";
 import { getEmployerByAuthUserId, requireEmployerOperationalStatus } from "@/lib/server/employers";
 import { createSupabaseAdminClient } from "@/lib/server/supabase";
 import { ADVERTISEMENT_BUCKET } from "@/lib/server/advertisements/constants";
+import { attachSignedMediaUrl } from "@/lib/server/advertisements/repository";
 import {
   buildAdvertisementMediaPath,
   getUploadValidationMessage,
@@ -180,10 +181,11 @@ async function createOrUpdateAdvertisementFromUploadedMedia(input: {
       },
     });
 
+    const withSignedMedia = await attachSignedMediaUrl(updated);
     return {
       ok: true as const,
       status: 200,
-      data: updated,
+      data: withSignedMedia,
     };
   }
 
@@ -227,10 +229,11 @@ async function createOrUpdateAdvertisementFromUploadedMedia(input: {
     metadata: { moderationStatus: moderation.status, employerId: input.employerId, mediaPath: input.verifiedStoragePath },
   });
 
+  const withSignedMedia = await attachSignedMediaUrl(created);
   return {
     ok: true as const,
     status: 201,
-    data: created,
+    data: withSignedMedia,
   };
 }
 
@@ -570,8 +573,13 @@ export async function POST(request: Request) {
       );
     }
 
+    const advertisement = writeResult.data;
+    if (!advertisement) {
+      throw new Error("Advertisement write succeeded without returning a record.");
+    }
+
     logger.log("finalize_write_success", {
-      advertisementId: writeResult.data.id,
+      advertisementId: advertisement.id,
       uploadPath: mediaCheck.storagePath,
     });
 
@@ -581,7 +589,7 @@ export async function POST(request: Request) {
       {
         success: true,
         data: {
-          advertisement: writeResult.data,
+          advertisement,
           mediaUrl: mediaCheck.storagePath,
           mediaType,
           bucket: ADVERTISEMENT_BUCKET,

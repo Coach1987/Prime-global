@@ -8,6 +8,7 @@ import { createAuditLog } from "@/lib/server/security/audit";
 import { getEmployerByAuthUserId, requireEmployerOperationalStatus } from "@/lib/server/employers";
 import { moderateAdvertisementContent } from "@/lib/server/advertisements/moderation";
 import {
+  attachSignedMediaUrl,
   AdvertisementMediaIntegrityError,
   deleteAdvertisement,
   getEmployerAdvertisementByIdForAuthUser,
@@ -55,7 +56,8 @@ export async function GET(
     );
   }
 
-  return NextResponse.json({ success: true, data });
+  const withSignedMedia = await attachSignedMediaUrl(data);
+  return NextResponse.json({ success: true, data: withSignedMedia });
 }
 
 export async function PATCH(
@@ -174,7 +176,8 @@ export async function PATCH(
     metadata: { changedFields: Object.keys(parsed.data), moderationStatus: moderation.status, employerId: employer.id },
   });
 
-  return NextResponse.json({ success: true, data: updated });
+  const withSignedMedia = await attachSignedMediaUrl(updated);
+  return NextResponse.json({ success: true, data: withSignedMedia });
 }
 
 export async function DELETE(

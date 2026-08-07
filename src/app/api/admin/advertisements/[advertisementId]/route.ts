@@ -8,6 +8,7 @@ import { createAuditLog } from "@/lib/server/security/audit";
 import { AD_ADMIN_ROLES } from "@/lib/server/advertisements/constants";
 import { moderateAdvertisementContent } from "@/lib/server/advertisements/moderation";
 import {
+  attachSignedMediaUrl,
   AdvertisementMediaIntegrityError,
   deleteAdvertisement,
   getAdminAdvertisementById,
@@ -47,7 +48,8 @@ export async function GET(
     );
   }
 
-  return NextResponse.json({ success: true, data });
+  const withSignedMedia = await attachSignedMediaUrl(data);
+  return NextResponse.json({ success: true, data: withSignedMedia });
 }
 
 export async function PATCH(
@@ -150,7 +152,8 @@ export async function PATCH(
     metadata: { changedFields: Object.keys(parsed.data), moderationStatus: moderation.status },
   });
 
-  return NextResponse.json({ success: true, data: updated });
+  const withSignedMedia = await attachSignedMediaUrl(updated);
+  return NextResponse.json({ success: true, data: withSignedMedia });
 }
 
 export async function DELETE(

@@ -6,6 +6,7 @@ import { getEmployerByAuthUserId, requireEmployerOperationalStatus } from "@/lib
 import { advertisementActionSchema } from "@/features/advertisements/schemas";
 import { moderateAdvertisementContent } from "@/lib/server/advertisements/moderation";
 import {
+  attachSignedMediaUrl,
   AdvertisementMediaIntegrityError,
   getEmployerAdvertisementByIdForAuthUser,
   logAdvertisementAudit,
@@ -135,5 +136,6 @@ export async function POST(
     metadata: { moderationStatus: moderation.status, employerId: employer.id },
   });
 
-  return NextResponse.json({ success: true, data: updated });
+  const withSignedMedia = await attachSignedMediaUrl(updated);
+  return NextResponse.json({ success: true, data: withSignedMedia });
 }

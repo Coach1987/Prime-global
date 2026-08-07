@@ -10,6 +10,8 @@ import { createAuditLog } from "@/lib/server/security/audit";
 import { AD_ADMIN_ROLES } from "@/lib/server/advertisements/constants";
 import { moderateAdvertisementContent } from "@/lib/server/advertisements/moderation";
 import {
+  attachSignedMediaUrls,
+  attachSignedMediaUrl,
   AdvertisementMediaIntegrityError,
   createAdvertisement,
   listAdminAdvertisements,
@@ -40,7 +42,8 @@ export async function GET(request: Request) {
   }
 
   const data = await listAdminAdvertisements(parsedFilter.data.status);
-  return NextResponse.json({ success: true, data });
+  const withSignedMedia = await attachSignedMediaUrls(data);
+  return NextResponse.json({ success: true, data: withSignedMedia });
 }
 
 export async function POST(request: Request) {
@@ -120,5 +123,6 @@ export async function POST(request: Request) {
     metadata: { moderationStatus: moderation.status },
   });
 
-  return NextResponse.json({ success: true, data: created }, { status: 201 });
+  const withSignedMedia = await attachSignedMediaUrl(created);
+  return NextResponse.json({ success: true, data: withSignedMedia }, { status: 201 });
 }

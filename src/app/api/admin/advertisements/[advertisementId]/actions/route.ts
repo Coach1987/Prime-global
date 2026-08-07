@@ -8,6 +8,7 @@ import { createAuditLog } from "@/lib/server/security/audit";
 import { AD_ADMIN_ROLES } from "@/lib/server/advertisements/constants";
 import { moderateAdvertisementContent } from "@/lib/server/advertisements/moderation";
 import {
+  attachSignedMediaUrl,
   AdvertisementMediaIntegrityError,
   getAdminAdvertisementById,
   logAdvertisementAudit,
@@ -218,5 +219,6 @@ export async function POST(
     metadata: { fromStatus: existing.status, toStatus },
   });
 
-  return NextResponse.json({ success: true, data: updated });
+  const withSignedMedia = await attachSignedMediaUrl(updated);
+  return NextResponse.json({ success: true, data: withSignedMedia });
 }
