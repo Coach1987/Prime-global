@@ -115,6 +115,7 @@ export function SponsoredAdvertisementsCarousel({ locale, items }: SponsoredAdve
                   key={active.id}
                   src={active.mediaUrl}
                   className="h-full w-full object-cover"
+                  controls
                   autoPlay
                   muted
                   loop
@@ -134,7 +135,7 @@ export function SponsoredAdvertisementsCarousel({ locale, items }: SponsoredAdve
                 />
               )}
 
-              <div className="absolute inset-0 bg-gradient-to-r from-black/45 via-black/15 to-transparent" />
+              <div className="pointer-events-none absolute inset-0 bg-gradient-to-r from-black/45 via-black/15 to-transparent" />
               <div className="absolute start-4 top-4 rounded-full border border-amber-200/30 bg-[#3b2814]/70 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-amber-100">
                 {t("badge")}
               </div>
