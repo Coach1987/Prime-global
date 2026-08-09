@@ -49,6 +49,7 @@ export default async function HomePage({
         dangerouslySetInnerHTML={{ __html: JSON.stringify(websiteJsonLd) }}
       />
       <Hero />
+      <SponsoredAdvertisementsSection locale={locale} />
       <WhyUsSection />
       <ServicesSection />
       <IndustriesSection />
@@ -58,7 +59,6 @@ export default async function HomePage({
       <PartnersSection />
       <EnterpriseCtaSection />
       <ContactSection />
-      <SponsoredAdvertisementsSection locale={locale} />
     </main>
   );
 }
