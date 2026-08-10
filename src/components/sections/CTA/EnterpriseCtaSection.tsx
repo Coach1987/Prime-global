@@ -13,16 +13,16 @@ export function EnterpriseCtaSection() {
       <div className="mx-auto max-w-[1280px] px-5 md:px-10">
         <div className="rounded-[32px] border border-blue-300/20 bg-[linear-gradient(135deg,rgba(255,255,255,0.07),rgba(255,255,255,0.02))] p-8 shadow-[0_30px_80px_rgba(0,0,0,0.24)] backdrop-blur-2xl sm:p-10 lg:p-12">
           <div className="max-w-3xl">
-            <p className="text-[12px] font-semibold uppercase tracking-[0.24em] text-blue-300">{t("eyebrow")}</p>
-            <h2 className="mt-4 font-heading text-[30px] leading-tight text-text-primary sm:text-[38px]">
+            <p data-home-reveal="eyebrow" className="text-[12px] font-semibold uppercase tracking-[0.24em] text-blue-300">{t("eyebrow")}</p>
+            <h2 data-home-reveal="heading" className="mt-4 font-heading text-[30px] leading-tight text-text-primary sm:text-[38px]">
               {t("title")}
             </h2>
-            <p className="mt-4 max-w-2xl text-[15px] leading-8 text-text-secondary sm:text-base">
+            <p data-home-reveal="body" className="mt-4 max-w-2xl text-[15px] leading-8 text-text-secondary sm:text-base">
               {t("description")}
             </p>
           </div>
 
-          <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+          <div data-home-reveal="supporting" className="mt-8 flex flex-col gap-3 sm:flex-row">
             <Link
               href="/contact"
               className="inline-flex items-center justify-center rounded-[10px] border border-blue-100/45 bg-gradient-to-br from-[#2a85eb] via-[#4fa8ff] to-[#1d66c8] px-7 py-[14px] text-[14px] font-semibold text-white shadow-[0_14px_34px_rgba(67,149,246,0.3)] transition-all duration-300 hover:-translate-y-[2px]"

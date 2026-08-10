@@ -11,6 +11,8 @@ import { PartnersSection } from "@/components/sections/Partners/PartnersSection"
 import { EnterpriseCtaSection } from "@/components/sections/CTA/EnterpriseCtaSection";
 import { ContactSection } from "@/components/sections/Contact";
 import { SponsoredAdvertisementsSection } from "@/components/sections/Advertisements";
+import { HomepageJourney } from "@/components/sections/HomepageJourney";
+import { CinematicBackground } from "@/components/sections/CinematicBackground";
 import { isLocale } from "@/lib/constants/locales";
 import { buildLocalizedAlternates, buildWebsiteJsonLd } from "@/lib/seo/public";
 
@@ -43,22 +45,73 @@ export default async function HomePage({
   const websiteJsonLd = buildWebsiteJsonLd(isLocale(locale) ? locale : "en", true);
 
   return (
-    <main>
+    <main data-home-journey>
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(websiteJsonLd) }}
       />
+      <HomepageJourney />
       <Hero />
-      <SponsoredAdvertisementsSection locale={locale} />
-      <WhyUsSection />
-      <ServicesSection />
-      <IndustriesSection />
-      <ProcessSection />
-      <StatsSection />
-      <TestimonialsSection />
-      <PartnersSection />
-      <EnterpriseCtaSection />
-      <ContactSection />
+      <div id="sponsored-advertisements" data-home-section data-home-pattern="a" data-cinematic-section data-home-scene="tunisia" className="relative isolate overflow-hidden">
+        <CinematicBackground
+          src="/images/cinematic/tunisia-orbital-night.webp"
+          position="object-[58%_50%]"
+          priority
+          overlayClassName="bg-[linear-gradient(180deg,rgba(3,9,20,0.58)_0%,rgba(3,10,22,0.72)_45%,rgba(3,8,18,0.9)_100%)]"
+        />
+        <span data-home-bridge aria-hidden="true" className="pointer-events-none absolute inset-x-[14%] top-0 z-20 h-px origin-center bg-gradient-to-r from-transparent via-blue-200/45 to-transparent" />
+        <SponsoredAdvertisementsSection locale={locale} />
+      </div>
+      <div data-home-section data-home-pattern="a" data-home-directional-exit data-cinematic-section data-home-scene="dubai" className="relative isolate overflow-hidden">
+        <CinematicBackground src="/images/cinematic/dubai-night.webp" position="object-[50%_48%]" />
+        <span data-home-bridge aria-hidden="true" className="pointer-events-none absolute inset-x-[14%] top-0 z-20 h-px origin-center bg-gradient-to-r from-transparent via-blue-300/40 to-transparent" />
+        <WhyUsSection />
+      </div>
+      <div data-home-section data-home-pattern="b" data-home-directional-exit data-cinematic-section data-home-scene="doha" className="relative isolate overflow-hidden">
+        <CinematicBackground src="/images/cinematic/doha-night.webp" position="object-[52%_50%]" />
+        <span data-home-bridge aria-hidden="true" className="pointer-events-none absolute inset-x-[14%] top-0 z-20 h-px origin-center bg-gradient-to-r from-transparent via-blue-300/40 to-transparent" />
+        <ServicesSection />
+      </div>
+      <div data-home-section data-home-pattern="c" data-home-directional-exit data-cinematic-section data-home-scene="kuwait" className="relative isolate overflow-hidden">
+        <CinematicBackground src="/images/cinematic/kuwait-night.webp" position="object-[54%_50%]" />
+        <span data-home-bridge aria-hidden="true" className="pointer-events-none absolute inset-x-[14%] top-0 z-20 h-px origin-center bg-gradient-to-r from-transparent via-blue-300/40 to-transparent" />
+        <IndustriesSection />
+      </div>
+      <div data-home-section data-home-pattern="d" data-home-directional-exit data-cinematic-section data-home-scene="bahrain" className="relative isolate overflow-hidden">
+        <CinematicBackground src="/images/cinematic/bahrain-night.webp" position="object-[52%_50%]" />
+        <span data-home-bridge aria-hidden="true" className="pointer-events-none absolute inset-x-[14%] top-0 z-20 h-px origin-center bg-gradient-to-r from-transparent via-blue-300/40 to-transparent" />
+        <ProcessSection />
+      </div>
+      <div data-home-section data-home-pattern="a" data-home-directional-exit data-cinematic-section data-home-scene="saudi" className="relative isolate overflow-hidden">
+        <CinematicBackground
+          src="/images/cinematic/saudi-orbital-night.webp"
+          position="object-[50%_46%]"
+          overlayClassName="bg-[linear-gradient(180deg,rgba(2,7,17,0.68)_0%,rgba(3,10,22,0.78)_48%,rgba(3,8,18,0.9)_100%)] md:bg-[linear-gradient(180deg,rgba(2,7,17,0.5)_0%,rgba(3,10,22,0.58)_44%,rgba(3,8,18,0.72)_100%)]"
+        />
+        <span data-home-bridge aria-hidden="true" className="pointer-events-none absolute inset-x-[14%] top-0 z-20 h-px origin-center bg-gradient-to-r from-transparent via-blue-300/40 to-transparent" />
+        <StatsSection />
+      </div>
+      <div data-home-section data-home-pattern="b" className="relative">
+        <span data-home-bridge aria-hidden="true" className="pointer-events-none absolute inset-x-[14%] top-0 z-20 h-px origin-center bg-gradient-to-r from-transparent via-blue-300/40 to-transparent" />
+        <TestimonialsSection />
+      </div>
+      <div data-home-section data-home-pattern="c" className="relative">
+        <span data-home-bridge aria-hidden="true" className="pointer-events-none absolute inset-x-[14%] top-0 z-20 h-px origin-center bg-gradient-to-r from-transparent via-blue-300/40 to-transparent" />
+        <PartnersSection />
+      </div>
+      <div data-home-section data-home-pattern="d" className="relative">
+        <span data-home-bridge aria-hidden="true" className="pointer-events-none absolute inset-x-[14%] top-0 z-20 h-px origin-center bg-gradient-to-r from-transparent via-blue-300/40 to-transparent" />
+        <EnterpriseCtaSection />
+      </div>
+      <div data-home-section data-home-pattern="c" data-home-directional-exit data-cinematic-section data-home-scene="cairo" className="relative isolate overflow-hidden">
+        <CinematicBackground
+          src="/images/cinematic/cairo-night.webp"
+          position="object-[55%_50%]"
+          overlayClassName="bg-[linear-gradient(180deg,rgba(2,7,17,0.7)_0%,rgba(3,10,22,0.78)_46%,rgba(3,8,18,0.9)_100%)] md:bg-[linear-gradient(180deg,rgba(2,7,17,0.54)_0%,rgba(3,10,22,0.62)_44%,rgba(3,8,18,0.76)_100%)]"
+        />
+        <span data-home-bridge aria-hidden="true" className="pointer-events-none absolute inset-x-[14%] top-0 z-20 h-px origin-center bg-gradient-to-r from-transparent via-blue-300/40 to-transparent" />
+        <ContactSection />
+      </div>
     </main>
   );
 }

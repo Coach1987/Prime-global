@@ -243,18 +243,24 @@ export function SponsoredAdvertisementsCarousel({ locale, items }: SponsoredAdve
   return (
     <section
       ref={sectionRef}
+      data-sponsored-handoff
       aria-label={t("sectionLabel")}
-      className="relative overflow-hidden bg-[#040913] pb-20 pt-8 md:pb-28 md:pt-14"
+      className="relative z-10 overflow-hidden bg-transparent pb-20 pt-8 md:pb-28 md:pt-14"
       onMouseEnter={() => setIsInteractionPaused(true)}
       onMouseLeave={() => setIsInteractionPaused(false)}
       onFocusCapture={() => setIsInteractionPaused(true)}
       onBlurCapture={() => setIsInteractionPaused(false)}
     >
-      <div aria-hidden="true" className="absolute inset-0 -z-10 bg-[radial-gradient(circle_at_10%_10%,rgba(120,188,255,0.2),transparent_35%),radial-gradient(circle_at_90%_85%,rgba(255,177,111,0.18),transparent_32%)]" />
+      <div
+        data-sponsored-handoff-veil
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-x-0 top-0 z-0 h-44 bg-[linear-gradient(180deg,rgba(151,195,235,0.13)_0%,rgba(48,105,166,0.06)_34%,rgba(4,9,19,0)_100%)]"
+      />
+      <div aria-hidden="true" className="pointer-events-none absolute inset-0 z-0 bg-[radial-gradient(circle_at_10%_10%,rgba(120,188,255,0.16),transparent_35%),radial-gradient(circle_at_90%_85%,rgba(255,177,111,0.1),transparent_32%)]" />
 
-      <div className="mx-auto max-w-[1380px] px-4 sm:px-6 md:px-8">
+      <div data-sponsored-handoff-content className="relative z-10 mx-auto max-w-[1380px] px-4 sm:px-6 md:px-8 will-change-transform">
         <div className="mb-6 flex items-center justify-between gap-3 md:mb-8">
-          <p className="text-xs uppercase tracking-[0.16em] text-blue-100/70">{t("headline")}</p>
+          <p data-home-reveal="eyebrow" className="text-xs uppercase tracking-[0.16em] text-blue-100/70">{t("headline")}</p>
           <div className="flex items-center gap-2">
             <button
               type="button"
@@ -283,7 +289,7 @@ export function SponsoredAdvertisementsCarousel({ locale, items }: SponsoredAdve
           </div>
         </div>
 
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+        <div data-home-stagger className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
           {visibleItems.map((advertisement, cardIndex) => {
             const target = resolveAdvertisementTarget(advertisement.targetUrl);
 

@@ -3,53 +3,6 @@
 import { useEffect, useRef } from "react";
 import Image from "next/image";
 
-const ORBIT_LAYERS = [
-  {
-    id: "outer",
-    rx: 45,
-    ry: 16,
-    tilt: -13,
-    duration: 56,
-    dash: "0.32 14.8",
-    baseStroke: "rgba(160, 196, 255, 0.2)",
-    particleStroke: "rgba(227, 240, 255, 0.86)",
-    glowStroke: "rgba(127, 172, 242, 0.28)",
-  },
-  {
-    id: "mid",
-    rx: 40.5,
-    ry: 14,
-    tilt: 7,
-    duration: 48,
-    dash: "0.3 13",
-    baseStroke: "rgba(151, 190, 255, 0.2)",
-    particleStroke: "rgba(226, 239, 255, 0.84)",
-    glowStroke: "rgba(128, 179, 255, 0.31)",
-  },
-  {
-    id: "inner",
-    rx: 36,
-    ry: 12,
-    tilt: -4,
-    duration: 42,
-    dash: "0.27 11.8",
-    baseStroke: "rgba(149, 186, 245, 0.19)",
-    particleStroke: "rgba(218, 233, 255, 0.82)",
-    glowStroke: "rgba(119, 162, 235, 0.27)",
-  },
-  {
-    id: "core",
-    rx: 32,
-    ry: 10.8,
-    tilt: 11,
-    duration: 38,
-    dash: "0.24 10.6",
-    baseStroke: "rgba(144, 180, 238, 0.16)",
-    particleStroke: "rgba(209, 227, 252, 0.76)",
-    glowStroke: "rgba(109, 148, 218, 0.24)",
-  },
-] as const;
-
 export function HeroLogoLockup() {
   const lockupRef = useRef<HTMLDivElement>(null);
   const depthRef = useRef<HTMLDivElement>(null);
@@ -71,6 +24,7 @@ export function HeroLogoLockup() {
     let currentY = 0;
     let targetX = 0;
     let targetY = 0;
+    let isVisible = true;
 
     const applyDepth = () => {
       currentX += (targetX - currentX) * 0.1;
@@ -114,7 +68,7 @@ export function HeroLogoLockup() {
     };
 
     const runMobileFloat = (time: number) => {
-      if (reduceMotion.matches || desktopPointer.matches) {
+      if (reduceMotion.matches || desktopPointer.matches || !isVisible) {
         return;
       }
 
@@ -136,15 +90,24 @@ export function HeroLogoLockup() {
       resetDepth();
       stopMobileFloat();
 
-      if (!reduceMotion.matches && !desktopPointer.matches) {
+      if (isVisible && !reduceMotion.matches && !desktopPointer.matches) {
         floatFrame = window.requestAnimationFrame(runMobileFloat);
       }
     };
+
+    const visibilityObserver = new IntersectionObserver(
+      ([entry]) => {
+        isVisible = entry?.isIntersecting ?? false;
+        syncMotionMode();
+      },
+      { rootMargin: "10% 0px" }
+    );
 
     lockupEl.addEventListener("pointermove", onPointerMove);
     lockupEl.addEventListener("pointerleave", resetDepth);
     reduceMotion.addEventListener("change", syncMotionMode);
     desktopPointer.addEventListener("change", syncMotionMode);
+    visibilityObserver.observe(lockupEl);
 
     syncMotionMode();
 
@@ -153,6 +116,7 @@ export function HeroLogoLockup() {
       lockupEl.removeEventListener("pointerleave", resetDepth);
       reduceMotion.removeEventListener("change", syncMotionMode);
       desktopPointer.removeEventListener("change", syncMotionMode);
+      visibilityObserver.disconnect();
 
       stopMobileFloat();
 
@@ -163,7 +127,7 @@ export function HeroLogoLockup() {
   }, []);
 
   return (
-    <div className="relative mx-auto -mt-3 flex w-full items-center justify-center px-0 sm:-mt-4 md:mt-0">
+    <div data-hero-lockup className="relative mx-auto -mt-3 flex w-full items-center justify-center px-0 will-change-transform sm:-mt-4 md:mt-0">
       <div ref={lockupRef} className="relative aspect-[1536/1024] w-[min(78vw,646px)] max-w-[760px] sm:w-[min(72vw,595px)] md:w-[min(74vw,610px)] lg:w-[min(48vw,760px)]">
         <div ref={depthRef} className="hero-depth-shell relative h-full w-full">
           <div
@@ -178,84 +142,6 @@ export function HeroLogoLockup() {
 
           <div
             aria-hidden="true"
-            className="pointer-events-none absolute left-1/2 top-[25.8%] z-[9] h-[27%] w-[50%] -translate-x-1/2 -translate-y-1/2 rounded-[50%] bg-[radial-gradient(ellipse_at_center,rgba(2,9,19,0.08)_0%,rgba(2,9,19,0.16)_50%,rgba(2,9,19,0.22)_75%,rgba(2,9,19,0)_100%)] md:top-[28.8%] md:h-[29%]"
-          />
-
-          <div
-            aria-hidden="true"
-            className="pointer-events-none absolute left-1/2 top-[24.6%] z-10 h-[31%] w-[52%] -translate-x-1/2 -translate-y-1/2 sm:h-[32%] sm:w-[56%] md:top-[28%] md:h-[34%] md:w-[60%]"
-          >
-            <svg viewBox="0 0 100 100" className="h-full w-full">
-              {ORBIT_LAYERS.map((layer, index) => (
-                <g key={layer.id} transform={`rotate(${layer.tilt} 50 50)`}>
-                  <ellipse
-                    className="hero-orbit-track"
-                    cx="50"
-                    cy="50"
-                    rx={layer.rx}
-                    ry={layer.ry}
-                    fill="none"
-                    stroke={layer.baseStroke}
-                    strokeWidth="0.22"
-                  />
-
-                  <ellipse
-                    className="hero-orbit-particles"
-                    style={{
-                      animationDuration: `${layer.duration}s`,
-                      animationDelay: `${-index * 6.4}s`,
-                    }}
-                    cx="50"
-                    cy="50"
-                    rx={layer.rx}
-                    ry={layer.ry}
-                    fill="none"
-                    stroke={layer.particleStroke}
-                    strokeWidth="0.86"
-                    strokeLinecap="round"
-                    strokeDasharray={layer.dash}
-                  />
-
-                  <ellipse
-                    className="hero-orbit-glow"
-                    style={{
-                      animationDuration: `${layer.duration * 1.3}s`,
-                      animationDelay: `${-index * 4.3}s`,
-                    }}
-                    cx="50"
-                    cy="50"
-                    rx={layer.rx}
-                    ry={layer.ry}
-                    fill="none"
-                    stroke={layer.glowStroke}
-                    strokeWidth="1.2"
-                    strokeLinecap="round"
-                    strokeDasharray={layer.dash}
-                  />
-
-                  <ellipse
-                    className="hero-orbit-spark"
-                    style={{
-                      animationDuration: `${layer.duration * 2.15}s`,
-                      animationDelay: `${-index * 3.8}s`,
-                    }}
-                    cx="50"
-                    cy="50"
-                    rx={layer.rx}
-                    ry={layer.ry}
-                    fill="none"
-                    stroke="rgba(239, 247, 255, 0.72)"
-                    strokeWidth="1.35"
-                    strokeLinecap="round"
-                    strokeDasharray="0.22 28.5"
-                  />
-                </g>
-              ))}
-            </svg>
-          </div>
-
-          <div
-            aria-hidden="true"
             className="pointer-events-none absolute left-1/2 top-[24.5%] z-[11] h-[30%] w-[30%] -translate-x-1/2 -translate-y-1/2 rounded-full bg-blue-400/10 blur-3xl md:top-[28.5%] md:h-[33%] md:w-[33%]"
           />
 
@@ -265,13 +151,8 @@ export function HeroLogoLockup() {
             fill
             priority
             sizes="(min-width: 1280px) 760px, (min-width: 1024px) 48vw, (min-width: 768px) 84vw, (min-width: 640px) 72vw, 78vw"
-            className="relative z-20 select-none object-contain object-center drop-shadow-[0_24px_58px_rgba(2,11,28,0.48)]"
+            className="relative z-20 select-none object-contain object-center"
             draggable={false}
-          />
-
-          <div
-            aria-hidden="true"
-            className="pointer-events-none absolute left-1/2 top-[34%] z-[8] h-[20%] w-[50%] -translate-x-1/2 -translate-y-1/2 rounded-[50%] bg-[radial-gradient(ellipse_at_center,rgba(1,9,24,0.48)_0%,rgba(1,9,24,0.2)_48%,rgba(1,9,24,0)_84%)] blur-2xl md:top-[37%]"
           />
         </div>
       </div>

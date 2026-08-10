@@ -10,20 +10,20 @@ export async function ContactSection() {
   return (
     <section
       id="contact"
-      className="relative isolate overflow-hidden bg-[#020711] py-20 md:py-32 lg:py-40"
+      className="relative z-10 isolate overflow-hidden bg-transparent py-20 md:py-32 lg:py-40"
     >
       {/* Cinematic Background */}
       <div
         aria-hidden="true"
         className="pointer-events-none absolute inset-0 -z-10"
       >
-        <div className="absolute inset-0 bg-[linear-gradient(180deg,#020711_0%,#06111d_45%,#030814_100%)]" />
+        <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(2,7,17,0.28)_0%,rgba(6,17,29,0.14)_45%,rgba(3,8,20,0.34)_100%)]" />
 
-        <div className="absolute inset-0 opacity-[0.03] bg-[linear-gradient(rgba(255,255,255,.08)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,.08)_1px,transparent_1px)] bg-[size:70px_70px]" />
+        <div className="absolute inset-0 opacity-[0.022] bg-[linear-gradient(rgba(255,255,255,.08)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,.08)_1px,transparent_1px)] bg-[size:70px_70px]" />
 
-        <div className="absolute left-[-240px] top-[10%] h-[520px] w-[520px] rounded-full bg-blue-600/10 blur-[170px]" />
+        <div className="absolute left-[-240px] top-[10%] h-[520px] w-[520px] rounded-full bg-blue-600/12 blur-[170px]" />
 
-        <div className="absolute right-[-240px] bottom-0 h-[520px] w-[520px] rounded-full bg-cyan-500/8 blur-[180px]" />
+        <div className="absolute right-[-240px] bottom-0 h-[520px] w-[520px] rounded-full bg-cyan-500/10 blur-[180px]" />
       </div>
 
       <div className="mx-auto max-w-[1380px] px-5 sm:px-6 md:px-8 lg:px-10">
@@ -44,12 +44,12 @@ export async function ContactSection() {
           <span className="h-px flex-1 bg-gradient-to-l from-transparent to-blue-400/30" />
         </div>
 
-        <div className="mt-16 grid gap-8 lg:grid-cols-[430px_1fr]">
+        <div data-home-stagger className="mt-16 grid gap-8 lg:grid-cols-[430px_1fr]">
           <ContactInfoCard />
           <ContactForm />
         </div>
 
-        <div className="mt-10 overflow-hidden rounded-[28px] border border-white/10 shadow-[0_30px_80px_rgba(0,0,0,.35)]">
+        <div data-home-reveal="supporting" className="mt-10 overflow-hidden rounded-[28px] border border-white/10 bg-[linear-gradient(180deg,rgba(8,18,35,0.74),rgba(8,18,35,0.48))] shadow-[0_30px_80px_rgba(0,0,0,.35)] backdrop-blur-[4px]">
           <ContactMap />
         </div>
       </div>

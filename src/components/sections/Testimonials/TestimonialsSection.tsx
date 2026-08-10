@@ -29,7 +29,7 @@ export function TestimonialsSection() {
       <div className="mx-auto max-w-[1280px] px-5 md:px-8">
         <SectionHeading eyebrow={t("eyebrow")} title={t("title")} description={t("description")} />
 
-        <div className="relative mt-14 md:mt-16">
+        <div data-home-reveal="supporting" className="relative mt-14 md:mt-16">
           {/*
             Swiper is a client-only library (it manipulates the DOM
             directly for touch/transform handling) and cannot render

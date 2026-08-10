@@ -1,75 +1,31 @@
 "use client";
 
-import { useEffect, useRef } from "react";
 import { useTranslations } from "next-intl";
-import { gsap } from "@/lib/gsap";
 import { SectionHeading } from "@/components/ui/SectionHeading";
 import { ServiceCard } from "./ServiceCard";
 import { SERVICES } from "@/lib/constants/services";
 
 export function ServicesSection() {
   const t = useTranslations("services");
-  const sectionRef = useRef<HTMLElement>(null);
-  const gridRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const prefersReducedMotion = window.matchMedia(
-      "(prefers-reduced-motion: reduce)"
-    ).matches;
-
-    if (prefersReducedMotion || !gridRef.current) return;
-
-    const cards = gridRef.current.querySelectorAll<HTMLElement>(
-      "[data-service-card]"
-    );
-
-    const ctx = gsap.context(() => {
-      gsap.fromTo(
-        cards,
-        {
-          opacity: 0,
-          y: 48,
-          scale: 0.96,
-        },
-        {
-          opacity: 1,
-          y: 0,
-          scale: 1,
-          duration: 0.85,
-          ease: "power3.out",
-          stagger: 0.12,
-          scrollTrigger: {
-            trigger: gridRef.current,
-            start: "top 82%",
-            once: true,
-          },
-        }
-      );
-    }, sectionRef);
-
-    return () => ctx.revert();
-  }, []);
-
   return (
     <section
-      ref={sectionRef}
       id="services"
-      className="relative isolate overflow-hidden bg-[#030814] py-20 md:py-28 lg:py-36"
+      className="relative z-10 isolate overflow-hidden bg-transparent py-20 md:py-28 lg:py-36"
     >
       {/* Background atmosphere */}
       <div
         aria-hidden="true"
         className="pointer-events-none absolute inset-0 -z-10"
       >
-        <div className="absolute inset-0 bg-[linear-gradient(180deg,#02060d_0%,#06101d_45%,#030814_100%)]" />
+        <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(2,6,13,0.24)_0%,rgba(6,16,29,0.12)_45%,rgba(3,8,20,0.32)_100%)]" />
 
         <div className="absolute left-1/2 top-0 h-px w-[72%] -translate-x-1/2 bg-gradient-to-r from-transparent via-blue-300/25 to-transparent" />
 
-        <div className="absolute -left-48 top-24 h-[460px] w-[460px] rounded-full bg-blue-600/[0.08] blur-[150px]" />
+        <div className="absolute -left-48 top-24 h-[460px] w-[460px] rounded-full bg-blue-600/[0.09] blur-[150px]" />
 
-        <div className="absolute -right-52 bottom-10 h-[520px] w-[520px] rounded-full bg-cyan-400/[0.06] blur-[170px]" />
+        <div className="absolute -right-52 bottom-10 h-[520px] w-[520px] rounded-full bg-cyan-400/[0.07] blur-[170px]" />
 
-        <div className="absolute inset-0 opacity-[0.035] bg-[linear-gradient(rgba(255,255,255,0.09)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.09)_1px,transparent_1px)] bg-[size:72px_72px]" />
+        <div className="absolute inset-0 opacity-[0.025] bg-[linear-gradient(rgba(255,255,255,0.09)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.09)_1px,transparent_1px)] bg-[size:72px_72px]" />
       </div>
 
       <div className="mx-auto w-full max-w-[1380px] px-5 sm:px-6 md:px-10">
@@ -92,7 +48,7 @@ export function ServicesSection() {
         </div>
 
         <div
-          ref={gridRef}
+          data-home-stagger
           className="mt-12 grid grid-cols-1 gap-5 sm:grid-cols-2 md:mt-16 md:gap-6 lg:grid-cols-2"
         >
           {SERVICES.map((service, index) => (

@@ -7,9 +7,9 @@ export function HeroContent() {
   const t = useTranslations("hero");
 
   return (
-    <div className="mx-auto flex w-full max-w-[760px] flex-col items-center text-center">
+    <div data-hero-content className="mx-auto flex w-full max-w-[760px] flex-col items-center text-center will-change-transform">
       <div
-        className="mb-4 inline-flex animate-fade-up items-center gap-2 rounded-full border border-white/12 bg-white/[0.04] px-3.5 py-2 opacity-0 shadow-[0_8px_30px_rgba(3,8,20,0.2)] backdrop-blur-xl sm:mb-5"
+        className="mb-4 inline-flex h-[51px] animate-fade-up items-center gap-2 rounded-full border border-white/12 bg-white/[0.04] px-3.5 py-2 opacity-0 shadow-[0_8px_30px_rgba(3,8,20,0.2)] backdrop-blur-xl sm:mb-5 lg:h-[54px]"
         style={{ animationDelay: "0.1s" }}
       >
         <span aria-hidden="true" className="h-1.5 w-1.5 rounded-full bg-blue-300 shadow-[0_0_8px_rgba(87,164,255,0.75)]" />
@@ -19,7 +19,7 @@ export function HeroContent() {
       </div>
 
       <h1
-        className="animate-fade-up font-heading text-[34px] leading-[1.02] tracking-[-0.025em] text-white opacity-0 sm:text-[44px] md:text-[56px] lg:text-[64px]"
+        className="min-h-[73px] animate-fade-up font-heading text-[34px] leading-[1.02] tracking-[-0.025em] text-white opacity-0 sm:text-[44px] md:text-[56px] lg:min-h-[200px] lg:text-[64px]"
         style={{ animationDelay: "0.2s" }}
       >
         <span className="block">
@@ -33,7 +33,7 @@ export function HeroContent() {
       <div className="mx-auto mt-5 h-px w-16 animate-fade-up bg-gradient-to-r from-transparent via-blue-400/80 to-transparent opacity-0 sm:mt-6 sm:w-20" style={{ animationDelay: "0.26s" }} />
 
       <p
-        className="mx-auto mt-5 max-w-[620px] animate-fade-up px-2 text-[15px] leading-7 text-slate-300/85 opacity-0 sm:mt-6 sm:text-base sm:leading-8"
+        className="mx-auto mt-5 min-h-[84px] max-w-[620px] animate-fade-up px-2 text-[15px] leading-7 text-slate-300/85 opacity-0 sm:mt-6 sm:text-base sm:leading-8 lg:min-h-[96px]"
         style={{ animationDelay: "0.32s" }}
       >
         {t("subtext")}

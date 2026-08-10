@@ -23,7 +23,7 @@ export function StatsSection() {
   const heroStats = useTranslations("hero.stats");
 
   return (
-    <section id="stats" className="relative overflow-hidden bg-[#040914] py-24 md:py-36">
+    <section id="stats" className="relative z-10 overflow-hidden bg-transparent py-24 md:py-36">
       <div aria-hidden="true" className="absolute inset-0 -z-10 bg-[radial-gradient(circle_at_top_right,rgba(86,163,255,0.12),transparent_40%)]" />
 
       <div className="mx-auto max-w-[1380px] px-5 md:px-10">
@@ -35,13 +35,13 @@ export function StatsSection() {
           />
         </div>
 
-        <div className="mt-14 grid gap-5 md:mt-16 md:grid-cols-2 xl:grid-cols-4">
+        <div data-home-stagger className="mt-14 grid gap-5 md:mt-16 md:grid-cols-2 xl:grid-cols-4">
           {STAT_KEYS.map((key) => {
             const { prefix, value, suffix } = parseStat(heroStats(`${key}.value`));
             return (
               <div
                 key={key}
-                className="rounded-[24px] border border-white/10 bg-white/[0.04] p-7 shadow-[0_18px_45px_rgba(0,0,0,0.2)] backdrop-blur-xl"
+                className="rounded-[24px] border border-white/10 bg-[linear-gradient(180deg,rgba(8,18,35,0.72),rgba(8,18,35,0.44))] p-7 shadow-[0_18px_45px_rgba(0,0,0,0.2)] backdrop-blur-[6px]"
               >
                 <div className="font-heading text-4xl text-blue-300 sm:text-5xl">
                   {value === null ? (

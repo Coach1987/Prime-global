@@ -23,7 +23,7 @@ export function ServiceCard({
   return (
     <Link
       href={`/services/${service.slug}`}
-      className="group relative flex h-full flex-col overflow-hidden rounded-[28px] border border-white/10 bg-[linear-gradient(135deg,rgba(255,255,255,0.09),rgba(255,255,255,0.03))] p-7 shadow-[0_24px_70px_rgba(3,8,20,0.35)] backdrop-blur-[18px] transition-all duration-500 hover:-translate-y-2 hover:border-blue-300/35 hover:bg-[linear-gradient(135deg,rgba(255,255,255,0.13),rgba(255,255,255,0.05))] hover:shadow-[0_32px_90px_rgba(11,31,65,0.35)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-300/70 focus-visible:ring-offset-2 focus-visible:ring-offset-[#030814]"
+      className="group relative flex h-full flex-col overflow-hidden rounded-[28px] border border-white/10 bg-[linear-gradient(135deg,rgba(8,18,35,0.78),rgba(8,18,35,0.44))] p-7 shadow-[0_24px_70px_rgba(3,8,20,0.35)] backdrop-blur-[6px] transition-all duration-500 hover:-translate-y-2 hover:border-blue-300/35 hover:bg-[linear-gradient(135deg,rgba(10,24,45,0.84),rgba(10,24,45,0.5))] hover:shadow-[0_32px_90px_rgba(11,31,65,0.35)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-300/70 focus-visible:ring-offset-2 focus-visible:ring-offset-[#030814]"
     >
       <div
         aria-hidden="true"
@@ -31,7 +31,7 @@ export function ServiceCard({
       />
       <div
         aria-hidden="true"
-        className="absolute inset-0 bg-[linear-gradient(125deg,transparent_0%,rgba(255,255,255,0.04)_40%,transparent_80%)] opacity-70 transition-all duration-700 group-hover:translate-x-[8%] group-hover:translate-y-[6%]"
+        className="absolute inset-0 bg-[linear-gradient(125deg,transparent_0%,rgba(255,255,255,0.03)_40%,transparent_80%)] opacity-70 transition-all duration-700 group-hover:translate-x-[8%] group-hover:translate-y-[6%]"
       />
 
       <span className="absolute right-6 top-5 font-heading text-6xl font-bold text-white/[0.05] transition-all duration-500 group-hover:text-blue-300/[0.1]">

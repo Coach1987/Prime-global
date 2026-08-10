@@ -9,6 +9,28 @@ interface SmoothScrollProviderProps {
   children: ReactNode;
 }
 
+const DRAG_THRESHOLD = 8;
+const DRAG_SCROLL_MULTIPLIER = 1.15;
+const INTERACTIVE_SELECTOR = [
+  "a",
+  "button",
+  "input",
+  "textarea",
+  "select",
+  "option",
+  "video",
+  "audio",
+  "iframe",
+  "label",
+  "summary",
+  "[contenteditable='true']",
+  "[role='button']",
+  "[role='link']",
+  "[role='slider']",
+  "[role='switch']",
+  "[tabindex]:not([tabindex='-1'])",
+].join(",");
+
 /**
  * Wraps the app with Lenis smooth scrolling, driven by GSAP's ticker
  * rather than Lenis's own RAF loop (`autoRaf: false`). This keeps
@@ -44,18 +66,135 @@ export function SmoothScrollProvider({ children }: SmoothScrollProviderProps) {
     gsap.ticker.add(update);
     gsap.ticker.lagSmoothing(0);
 
-    const lenis = lenisRef.current?.lenis;
-    if (lenis) {
-      lenis.on("scroll", ScrollTrigger.update);
-      // Expose globally for smoothScrollTo's window.__lenis lookup.
-      (window as unknown as { __lenis?: typeof lenis }).__lenis = lenis;
-    }
+    let initializationFrame = 0;
+    let detachLenis: (() => void) | undefined;
 
-    // Recalculate trigger positions now that Lenis owns scroll behavior.
-    ScrollTrigger.refresh();
+    const initializeLenis = () => {
+      const lenis = lenisRef.current?.lenis;
+      if (!lenis) {
+        initializationFrame = window.requestAnimationFrame(initializeLenis);
+        return;
+      }
+
+      lenis.on("scroll", ScrollTrigger.update);
+      (window as unknown as { __lenis?: typeof lenis }).__lenis = lenis;
+
+      const homepage = document.querySelector<HTMLElement>("[data-home-journey]");
+      const desktopPointer = window.matchMedia("(min-width: 1024px) and (hover: hover) and (pointer: fine)");
+      let pointerId: number | null = null;
+      let startY = 0;
+      let lastY = 0;
+      let dragTarget = 0;
+      let isDragging = false;
+      let suppressClick = false;
+
+      const syncCursor = () => {
+        if (homepage) {
+          homepage.style.cursor = desktopPointer.matches ? "grab" : "";
+        }
+      };
+
+      const resetDrag = () => {
+        pointerId = null;
+        isDragging = false;
+        homepage?.removeAttribute("data-home-dragging");
+        document.documentElement.style.removeProperty("user-select");
+      };
+
+      const onPointerDown = (event: PointerEvent) => {
+        if (
+          !homepage ||
+          !desktopPointer.matches ||
+          event.pointerType !== "mouse" ||
+          !event.isPrimary ||
+          event.button !== 0 ||
+          !(event.target instanceof Element) ||
+          event.target.closest(INTERACTIVE_SELECTOR)
+        ) {
+          return;
+        }
+
+        pointerId = event.pointerId;
+        startY = event.clientY;
+        lastY = event.clientY;
+        dragTarget = lenis.targetScroll;
+      };
+
+      const onPointerMove = (event: PointerEvent) => {
+        if (pointerId !== event.pointerId || !homepage) {
+          return;
+        }
+
+        if (!isDragging) {
+          if (Math.abs(event.clientY - startY) < DRAG_THRESHOLD) {
+            return;
+          }
+          isDragging = true;
+          suppressClick = true;
+          homepage.setAttribute("data-home-dragging", "true");
+          document.documentElement.style.setProperty("user-select", "none");
+        }
+
+        event.preventDefault();
+        const deltaY = event.clientY - lastY;
+        lastY = event.clientY;
+        dragTarget = Math.max(0, Math.min(lenis.limit, dragTarget - deltaY * DRAG_SCROLL_MULTIPLIER));
+        lenis.scrollTo(dragTarget, { lerp: 0.16 });
+      };
+
+      const onPointerEnd = (event: PointerEvent) => {
+        if (pointerId !== event.pointerId) {
+          return;
+        }
+        resetDrag();
+        window.setTimeout(() => {
+          suppressClick = false;
+        }, 0);
+      };
+
+      const onClick = (event: MouseEvent) => {
+        if (!suppressClick) {
+          return;
+        }
+        event.preventDefault();
+        event.stopPropagation();
+      };
+
+      if (homepage) {
+        syncCursor();
+        desktopPointer.addEventListener("change", syncCursor);
+        homepage.addEventListener("pointerdown", onPointerDown);
+        homepage.addEventListener("click", onClick, true);
+        document.addEventListener("pointermove", onPointerMove, { passive: false });
+        document.addEventListener("pointerup", onPointerEnd);
+        document.addEventListener("pointercancel", onPointerEnd);
+        window.addEventListener("blur", resetDrag);
+      }
+
+      ScrollTrigger.refresh();
+
+      detachLenis = () => {
+        lenis.off("scroll", ScrollTrigger.update);
+        resetDrag();
+        if (homepage) {
+          homepage.style.removeProperty("cursor");
+          desktopPointer.removeEventListener("change", syncCursor);
+          homepage.removeEventListener("pointerdown", onPointerDown);
+          homepage.removeEventListener("click", onClick, true);
+        }
+        document.removeEventListener("pointermove", onPointerMove);
+        document.removeEventListener("pointerup", onPointerEnd);
+        document.removeEventListener("pointercancel", onPointerEnd);
+        window.removeEventListener("blur", resetDrag);
+      };
+    };
+
+    initializationFrame = window.requestAnimationFrame(initializeLenis);
 
     return () => {
       gsap.ticker.remove(update);
+      window.cancelAnimationFrame(initializationFrame);
+      detachLenis?.();
       delete (window as unknown as { __lenis?: unknown }).__lenis;
     };
   }, []);

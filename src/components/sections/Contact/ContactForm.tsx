@@ -55,14 +55,14 @@ export function ContactForm() {
 
   const input = (error: boolean) =>
     cn(
-      "w-full rounded-2xl border border-white/10 bg-white/[0.04] px-5 py-4 text-white placeholder:text-slate-500 backdrop-blur-xl transition-all duration-300 focus:outline-none",
+      "w-full rounded-2xl border border-white/10 bg-[rgba(255,255,255,0.04)] px-5 py-4 text-white placeholder:text-slate-500 backdrop-blur-[4px] transition-all duration-300 focus:outline-none",
       error
         ? "border-red-400"
         : "focus:border-blue-300 focus:ring-4 focus:ring-blue-400/10"
     );
 
   return (
-    <div className="relative overflow-hidden rounded-[30px] border border-white/10 bg-gradient-to-b from-white/[0.05] to-white/[0.02] p-8 shadow-[0_24px_70px_rgba(0,0,0,.35)] backdrop-blur-2xl md:p-10">
+    <div className="relative overflow-hidden rounded-[30px] border border-white/10 bg-[linear-gradient(180deg,rgba(8,18,35,0.8),rgba(8,18,35,0.48))] p-8 shadow-[0_24px_70px_rgba(0,0,0,.35)] backdrop-blur-[8px] md:p-10">
 
       <div className="absolute -right-24 -top-24 h-60 w-60 rounded-full bg-blue-500/10 blur-[120px]" />
 

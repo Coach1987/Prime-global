@@ -51,11 +51,9 @@ export function ContactInfoCard() {
       rounded-[30px]
       border
       border-white/10
-      bg-gradient-to-b
-      from-white/[0.05]
-      to-white/[0.02]
+      bg-[linear-gradient(180deg,rgba(8,18,35,0.8),rgba(8,18,35,0.48))]
       p-8
-      backdrop-blur-2xl
+      backdrop-blur-[8px]
       shadow-[0_24px_70px_rgba(0,0,0,.35)]
       md:p-10
     "
@@ -99,7 +97,7 @@ export function ContactInfoCard() {
               rounded-2xl
               border
               border-white/6
-              bg-white/[0.02]
+              bg-white/[0.03]
               p-5
               transition-all
               duration-300

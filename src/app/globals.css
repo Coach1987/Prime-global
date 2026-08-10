@@ -45,72 +45,20 @@
   }
 }
 
-@keyframes heroOrbitFlow {
-  from {
-    stroke-dashoffset: 0;
-  }
-  to {
-    stroke-dashoffset: -120;
-  }
-}
-
-@keyframes heroOrbitGlowFlow {
-  from {
-    stroke-dashoffset: 12;
-  }
-  to {
-    stroke-dashoffset: -108;
-  }
-}
-
-@keyframes heroOrbitSparkFlow {
-  from {
-    stroke-dashoffset: 20;
-  }
-  to {
-    stroke-dashoffset: -180;
-  }
-}
-
 .hero-depth-shell {
   transform: translate3d(var(--hero-depth-x, 0px), var(--hero-depth-y, 0px), 0);
   will-change: transform;
 }
 
-.hero-orbit-track {
-  opacity: 0.72;
-}
-
-.hero-orbit-particles {
-  animation-name: heroOrbitFlow;
-  animation-timing-function: linear;
-  animation-iteration-count: infinite;
-}
-
-.hero-orbit-glow {
-  animation-name: heroOrbitGlowFlow;
-  animation-timing-function: linear;
-  animation-iteration-count: infinite;
-  filter: blur(1px);
-}
-
-.hero-orbit-spark {
-  animation-name: heroOrbitSparkFlow;
-  animation-timing-function: linear;
-  animation-iteration-count: infinite;
-  filter: blur(0.2px);
-}
-
 @media (prefers-reduced-motion: reduce) {
+  [data-hero-root] {
+    min-height: 100svh !important;
+  }
+
   .hero-depth-shell {
     transform: translate3d(0, 0, 0) !important;
   }
 
-  .hero-orbit-particles,
-  .hero-orbit-glow,
-  .hero-orbit-spark {
-    animation: none !important;
-  }
 }
 
 .prime-auth-card {
