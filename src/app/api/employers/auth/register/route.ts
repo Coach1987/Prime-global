@@ -1,15 +1,17 @@
 import { NextResponse } from "next/server";
 import { employerRegistrationSchema } from "@/features/employers/schemas/portal";
-import { createSupabaseAdminClient } from "@/lib/server/supabase";
+import { createSupabaseAdminClient, createSupabasePublicClient } from "@/lib/server/supabase";
 import { createAuditLog } from "@/lib/server/security/audit";
 import { enforceCsrf, enforceRateLimit, getRequestContext, parseJsonBody } from "@/lib/server/http";
 import { evaluateAgencyPolicy } from "@/lib/server/employer-policy";
 import { LEGAL_DOCUMENT_VERSION, persistLegalAcceptances } from "@/lib/server/security/legal-acceptance";
+import { setAuthCookies } from "@/lib/server/security/session-cookies";
 import { buildEmployerProfileCreateRow } from "@/lib/server/employer-portal";
 
 function buildEmployerRegistrationError(input: {
   code: string;
   message: string;
+  messageAr?: string;
   fieldErrors?: Record<string, string>;
   status?: number;
 }) {
@@ -20,14 +22,24 @@ function buildEmployerRegistrationError(input: {
         code: input.code,
         message: input.message,
       },
-      details: input.fieldErrors
+      details: input.fieldErrors || input.messageAr
         ? {
-            fieldErrors: input.fieldErrors,
+            ...(input.fieldErrors ? { fieldErrors: input.fieldErrors } : {}),
+            ...(input.messageAr ? { messageAr: input.messageAr } : {}),
           }
         : undefined,
     },
     { status: input.status ?? 400 }
   );
+}
+
+async function rollbackEmployerRegistration(authUserId: string) {
+  const supabase = createSupabaseAdminClient();
+  await Promise.allSettled([
+    supabase.from("legal_acceptance_events").delete().eq("auth_user_id", authUserId),
+    supabase.from("employers").delete().eq("auth_user_id", authUserId),
+  ]);
+  await supabase.auth.admin.deleteUser(authUserId).catch(() => undefined);
 }
 
 function mapEmployerInsertError(error: { code?: string; message: string }) {
@@ -151,9 +163,9 @@ export async function POST(request: Request) {
     return mapEmployerInsertError(employerError);
   }
 
+  const acceptedAt = new Date().toISOString();
   try {
-    const acceptedAt = new Date().toISOString();
-    const requiredLegalAcceptances = [
+    await persistLegalAcceptances([
       {
         userId: userData.user.id,
         role: "employer",
@@ -172,10 +184,6 @@ export async function POST(request: Request) {
         ipAddress,
         userAgent,
       },
-    ] as const;
-
-    await persistLegalAcceptances([
-      ...requiredLegalAcceptances,
       {
         userId: userData.user.id,
         role: "employer",
@@ -197,79 +205,33 @@ export async function POST(request: Request) {
       ipAddress,
       userAgent,
     });
-  } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : "unknown_error";
+  } catch {
+    await rollbackEmployerRegistration(userData.user.id);
+    return buildEmployerRegistrationError({
+      code: "LEGAL_ACCEPTANCE_PERSIST_FAILED",
+      message: "Registration was not completed because the required agreements could not be recorded. Please try again.",
+      messageAr: "لم يكتمل التسجيل لتعذر حفظ الموافقات القانونية المطلوبة. يرجى المحاولة مرة أخرى.",
+      status: 500,
+    });
+  }
 
-    if (/employer_agreement|document_name|check constraint|constraint/i.test(errorMessage)) {
-      try {
-        const acceptedAt = new Date().toISOString();
-        await persistLegalAcceptances([
-          {
-            userId: userData.user.id,
-            role: "employer",
-            documentName: "terms_of_service",
-            documentVersion: LEGAL_DOCUMENT_VERSION,
-            acceptedAt,
-            ipAddress,
-            userAgent,
-          },
-          {
-            userId: userData.user.id,
-            role: "employer",
-            documentName: "privacy_policy",
-            documentVersion: LEGAL_DOCUMENT_VERSION,
-            acceptedAt,
-            ipAddress,
-            userAgent,
-          },
-        ]);
+  const publicSupabase = createSupabasePublicClient();
+  const { data: sessionData, error: sessionError } = await publicSupabase.auth.signInWithPassword({
+    email: payload.email,
+    password: payload.password,
+  });
 
-        await createAuditLog({
-          actorAuthUserId: userData.user.id,
-          actorRole: "employer",
-          action: "employer.legal_acceptance.persisted_with_fallback",
-          targetType: "employer",
-          targetId: userData.user.id,
-          metadata: {
-            persistedDocuments: ["terms_of_service", "privacy_policy"],
-            employerAgreementAccepted: true,
-            fallbackReason: errorMessage,
-          },
-          ipAddress,
-          userAgent,
-        });
-      } catch {
-        await createAuditLog({
-          actorAuthUserId: userData.user.id,
-          actorRole: "employer",
-          action: "employer.legal_acceptance.persistence_failed",
-          targetType: "employer",
-          targetId: userData.user.id,
-          metadata: {
-            acceptedDocuments: ["terms_of_service", "privacy_policy", "employer_agreement"],
-            failureStage: "fallback",
-            fallbackReason: errorMessage,
-          },
-          ipAddress,
-          userAgent,
-        });
-      }
-    } else {
-      await createAuditLog({
-        actorAuthUserId: userData.user.id,
-        actorRole: "employer",
-        action: "employer.legal_acceptance.persistence_failed",
-        targetType: "employer",
-        targetId: userData.user.id,
-        metadata: {
-          acceptedDocuments: ["terms_of_service", "privacy_policy", "employer_agreement"],
-          failureStage: "primary",
-          failureReason: errorMessage,
-        },
-        ipAddress,
-        userAgent,
-      });
-    }
+  const sessionRole = String(
+    sessionData.user?.app_metadata?.app_role ?? sessionData.user?.user_metadata?.app_role ?? ""
+  );
+  if (sessionError || !sessionData.session || !sessionData.user || sessionRole !== "employer") {
+    await rollbackEmployerRegistration(userData.user.id);
+    return buildEmployerRegistrationError({
+      code: "EMPLOYER_REGISTER_SESSION_FAILED",
+      message: "Registration was not completed because secure sign-in could not be established. Please try again.",
+      messageAr: "لم يكتمل التسجيل لتعذر إنشاء جلسة دخول آمنة. يرجى المحاولة مرة أخرى.",
+      status: 500,
+    });
   }
 
   await createAuditLog({
@@ -283,7 +245,7 @@ export async function POST(request: Request) {
     userAgent,
   });
 
-  return NextResponse.json(
+  const response = NextResponse.json(
     {
       success: true,
       data: {
@@ -295,4 +257,12 @@ export async function POST(request: Request) {
     },
     { status: 201 }
   );
+
+  setAuthCookies(response, {
+    accessToken: sessionData.session.access_token,
+    refreshToken: sessionData.session.refresh_token,
+    expiresAt: sessionData.session.expires_at ?? null,
+  });
+
+  return response;
 }

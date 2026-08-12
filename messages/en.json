@@ -35,6 +35,36 @@
     "closeMenu": "Close menu",
     "language": "Language"
   },
+  "employerPendingApproval": {
+    "eyebrow": "Employer onboarding",
+    "title": "Your company account has been created",
+    "intro": "Your company is not fully approved yet. Review the saved company information and submit the required registration documents for verification.",
+    "statusLabel": "Current verification status",
+    "statuses": {
+      "pending": "Pending submission or review",
+      "documentsSubmitted": "Documents submitted",
+      "adminReview": "Prime Global review in progress",
+      "rejected": "Changes required",
+      "suspended": "Account suspended"
+    },
+    "nextTitle": "Your next action",
+    "nextBody": "Open Company Profile to review the information captured during registration, upload verification documents, and submit the company for review.",
+    "reviewBody": "Prime Global reviews the submitted company information and documents. Hiring capabilities, candidate data, jobs, interviews, and advertisements activate only after approval.",
+    "profileCta": "Review company profile and documents",
+    "contactCta": "Contact Prime Global"
+  },
+  "employerCompanyProfile": {
+    "registrationDataNotice": "The company information entered during registration is already loaded below. Review it, update only what has changed, then save before submitting verification documents."
+  },
+  "employerLanding": {
+    "eyebrow": "Employer Portal",
+    "title": "Recruit with confidence on Prime Global",
+    "description": "Create your company account, submit verification documents, and activate hiring capabilities after Prime Global approval.",
+    "register": "Register company",
+    "login": "Sign in",
+    "dashboard": "Open dashboard",
+    "support": "Request hiring support"
+  },
   "hero": {
     "eyebrow": "Tunisian Company · Global Standards",
     "headlineLine1": "Tunisian",

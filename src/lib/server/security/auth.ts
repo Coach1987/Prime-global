@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createSupabasePublicClient } from "@/lib/server/supabase";
+import { enforceEmployerApiAccess } from "@/lib/server/security/employer-access";
 import { readAuthCookies } from "@/lib/server/security/session-cookies";
 
 export type AppRole =
@@ -60,6 +61,11 @@ export async function requireAuth(request: Request): Promise<AuthContext | NextR
   if (!error && data.user) {
     const role = normalizeRole(data.user.app_metadata?.app_role ?? data.user.user_metadata?.app_role);
 
+    if (role === "employer") {
+      const accessError = await enforceEmployerApiAccess(request, data.user.id);
+      if (accessError) return accessError;
+    }
+
     return {
       userId: data.user.id,
       email: data.user.email ?? "",
@@ -81,6 +87,11 @@ export async function requireAuth(request: Request): Promise<AuthContext | NextR
   }
 
   const role = normalizeRole(refreshed.user.app_metadata?.app_role ?? refreshed.user.user_metadata?.app_role);
+
+  if (role === "employer") {
+    const accessError = await enforceEmployerApiAccess(request, refreshed.user.id);
+    if (accessError) return accessError;
+  }
 
   return {
     userId: refreshed.user.id,

@@ -132,14 +132,16 @@ async function finalizeAuthStateForNavigation() {
     cache: "no-store",
   }).catch(() => null);
 
-  if (!response) return;
+  if (!response) return null;
   const payload = await readJsonResponse<{ success?: boolean; data?: { role?: string; displayName?: string | null } }>(response);
-  if (!payload?.success) return;
+  if (!payload?.success) return null;
 
   emitAuthSessionChanged({
     role: typeof payload.data?.role === "string" ? payload.data.role : null,
     displayName: payload.data?.displayName ?? null,
   });
+
+  return typeof payload.data?.role === "string" ? payload.data.role : null;
 }
 
 async function ensureCsrfToken(currentToken: string) {
@@ -887,16 +889,22 @@ function EmployerRegisterForm({
     setFieldErrors({});
 
     if (form.password !== confirmPassword) {
-      setError(isArabic ? "كلمتا المرور غير متطابقتين." : "Passwords do not match.");
+      const mismatchMessage = isArabic ? "كلمتا المرور غير متطابقتين." : "Passwords do not match.";
+      setFieldErrors({ confirmPassword: mismatchMessage });
+      setError(mismatchMessage);
       return;
     }
 
     if (!acceptTerms || !acceptEmployerAgreement || !acceptPrivacyPolicy) {
-      setError(
-        isArabic
-          ? "يجب الموافقة على شروط الاستخدام واتفاقية صاحب العمل وسياسة الخصوصية."
-          : "You must accept the Terms of Service, Employer Agreement, and Privacy Policy."
-      );
+      const legalMessage = isArabic
+        ? "يجب الموافقة على شروط الاستخدام واتفاقية صاحب العمل وسياسة الخصوصية."
+        : "You must accept the Terms of Service, Employer Agreement, and Privacy Policy.";
+      setFieldErrors({
+        ...(!acceptTerms ? { acceptTerms: legalMessage } : {}),
+        ...(!acceptEmployerAgreement ? { acceptEmployerAgreement: legalMessage } : {}),
+        ...(!acceptPrivacyPolicy ? { acceptPrivacyPolicy: legalMessage } : {}),
+      });
+      setError(legalMessage);
       return;
     }
 
@@ -925,7 +933,15 @@ function EmployerRegisterForm({
         return;
       }
 
-      await finalizeAuthStateForNavigation();
+      const authenticatedRole = await finalizeAuthStateForNavigation();
+      if (authenticatedRole !== "employer") {
+        setError(
+          isArabic
+            ? "تم إنشاء جلسة الدخول، لكن تعذر التحقق منها. يرجى المحاولة مرة أخرى."
+            : "Secure sign-in could not be verified. Please try again."
+        );
+        return;
+      }
 
       router.push("/employer/pending-approval");
     } catch {
@@ -951,12 +967,21 @@ function EmployerRegisterForm({
         ["hrContact", isArabic ? "الشخص المسؤول" : "Contact Person", "text"],
         ["phoneNumber", isArabic ? "رقم الهاتف" : "Phone Number", "text"],
         ["industry", isArabic ? "القطاع" : "Industry", "text"],
-      ].map(([key, label, type]) => (
-        <PrimeLabel key={key}>
+      ].map(([key, label, type]) => {
+        const inputId = `employer-register-${key}`;
+        const errorId = `${inputId}-error`;
+        const hasError = Boolean(fieldErrors[key]);
+
+        return (
+        <PrimeLabel key={key} htmlFor={inputId}>
           <span className="mb-2 block">{label}</span>
           {key === "password" ? (
             <PrimePasswordInput
+              id={inputId}
+              name={key}
               required
+              aria-invalid={hasError}
+              aria-describedby={hasError ? errorId : undefined}
               value={String(form[key as keyof EmployerRegisterState] ?? "")}
               onChange={(event) => setForm((prev) => ({ ...prev, [key]: event.target.value }))}
               showPasswordLabel={isArabic ? "إظهار كلمة المرور" : "Show password"}
@@ -964,51 +989,73 @@ function EmployerRegisterForm({
             />
           ) : (
             <PrimeInput
+              id={inputId}
+              name={key}
               required={key !== "website"}
               type={type}
+              aria-invalid={hasError}
+              aria-describedby={hasError ? errorId : undefined}
               value={form[key as keyof EmployerRegisterState]}
               onChange={(event) => setForm((prev) => ({ ...prev, [key]: event.target.value }))}
             />
           )}
-          {fieldErrors[key] ? <p className="mt-1 text-xs text-red-300">{fieldErrors[key]}</p> : null}
+          {fieldErrors[key] ? <p id={errorId} className="mt-1 text-xs text-red-300">{fieldErrors[key]}</p> : null}
         </PrimeLabel>
-      ))}
+        );
+      })}
 
-      <PrimeLabel>
+      <PrimeLabel htmlFor="employer-register-confirmPassword">
         <span className="mb-2 block">{isArabic ? "تأكيد كلمة المرور" : "Confirm Password"}</span>
         <PrimePasswordInput
+          id="employer-register-confirmPassword"
+          name="confirmPassword"
           required
+          aria-invalid={Boolean(fieldErrors.confirmPassword)}
+          aria-describedby={fieldErrors.confirmPassword ? "employer-register-confirmPassword-error" : undefined}
           value={confirmPassword}
           onChange={(event) => setConfirmPassword(event.target.value)}
           showPasswordLabel={isArabic ? "إظهار كلمة المرور" : "Show password"}
           hidePasswordLabel={isArabic ? "إخفاء كلمة المرور" : "Hide password"}
         />
+        {fieldErrors.confirmPassword ? <p id="employer-register-confirmPassword-error" className="mt-1 text-xs text-red-300">{fieldErrors.confirmPassword}</p> : null}
       </PrimeLabel>
 
-      <PrimeLabel>
+      <PrimeLabel htmlFor="employer-register-companySize">
         <span className="mb-2 block">{isArabic ? "حجم الشركة" : "Company Size"}</span>
-        <PrimeSelect value={form.companySize} onChange={(event) => setForm((prev) => ({ ...prev, companySize: event.target.value }))}>
+        <PrimeSelect
+          id="employer-register-companySize"
+          name="companySize"
+          aria-invalid={Boolean(fieldErrors.companySize)}
+          aria-describedby={fieldErrors.companySize ? "employer-register-companySize-error" : undefined}
+          value={form.companySize}
+          onChange={(event) => setForm((prev) => ({ ...prev, companySize: event.target.value }))}
+        >
           {companySizes.map((size) => (
             <option key={size} value={size}>
               {size}
             </option>
           ))}
         </PrimeSelect>
+        {fieldErrors.companySize ? <p id="employer-register-companySize-error" className="mt-1 text-xs text-red-300">{fieldErrors.companySize}</p> : null}
       </PrimeLabel>
 
-      <PrimeLabel className="md:col-span-2">
+      <PrimeLabel htmlFor="employer-register-companyDescription" className="md:col-span-2">
         <span className="mb-2 block">{isArabic ? "وصف الشركة" : "Company Description"}</span>
         <PrimeTextarea
+          id="employer-register-companyDescription"
+          name="companyDescription"
           required
           rows={5}
+          aria-invalid={Boolean(fieldErrors.companyDescription)}
+          aria-describedby={fieldErrors.companyDescription ? "employer-register-companyDescription-error" : undefined}
           value={form.companyDescription}
           onChange={(event) => setForm((prev) => ({ ...prev, companyDescription: event.target.value }))}
         />
-        {fieldErrors.companyDescription ? <p className="mt-1 text-xs text-red-300">{fieldErrors.companyDescription}</p> : null}
+        {fieldErrors.companyDescription ? <p id="employer-register-companyDescription-error" className="mt-1 text-xs text-red-300">{fieldErrors.companyDescription}</p> : null}
       </PrimeLabel>
 
-      <label className="md:col-span-2 flex min-h-12 items-start gap-3 rounded-2xl border border-blue-200/20 bg-[#071428]/75 px-4 py-3 text-sm text-text-secondary">
-        <PrimeCheckbox type="checkbox" checked={acceptTerms} onChange={(event) => setAcceptTerms(event.target.checked)} />
+      <label htmlFor="employer-register-acceptTerms" className="md:col-span-2 flex min-h-12 items-start gap-3 rounded-2xl border border-blue-200/20 bg-[#071428]/75 px-4 py-3 text-sm text-text-secondary">
+        <PrimeCheckbox id="employer-register-acceptTerms" name="acceptTerms" type="checkbox" aria-invalid={Boolean(fieldErrors.acceptTerms)} aria-describedby={fieldErrors.acceptTerms ? "employer-register-error" : undefined} checked={acceptTerms} onChange={(event) => setAcceptTerms(event.target.checked)} />
         <span>
           {isArabic ? "أوافق على " : "I agree to the "}
           <Link
@@ -1020,9 +1067,13 @@ function EmployerRegisterForm({
         </span>
       </label>
 
-      <label className="md:col-span-2 flex min-h-12 items-start gap-3 rounded-2xl border border-blue-200/20 bg-[#071428]/75 px-4 py-3 text-sm text-text-secondary">
+      <label htmlFor="employer-register-acceptEmployerAgreement" className="md:col-span-2 flex min-h-12 items-start gap-3 rounded-2xl border border-blue-200/20 bg-[#071428]/75 px-4 py-3 text-sm text-text-secondary">
         <PrimeCheckbox
+          id="employer-register-acceptEmployerAgreement"
+          name="acceptEmployerAgreement"
           type="checkbox"
+          aria-invalid={Boolean(fieldErrors.acceptEmployerAgreement)}
+          aria-describedby={fieldErrors.acceptEmployerAgreement ? "employer-register-error" : undefined}
           checked={acceptEmployerAgreement}
           onChange={(event) => setAcceptEmployerAgreement(event.target.checked)}
         />
@@ -1037,9 +1088,13 @@ function EmployerRegisterForm({
         </span>
       </label>
 
-      <label className="md:col-span-2 flex min-h-12 items-start gap-3 rounded-2xl border border-blue-200/20 bg-[#071428]/75 px-4 py-3 text-sm text-text-secondary">
+      <label htmlFor="employer-register-acceptPrivacyPolicy" className="md:col-span-2 flex min-h-12 items-start gap-3 rounded-2xl border border-blue-200/20 bg-[#071428]/75 px-4 py-3 text-sm text-text-secondary">
         <PrimeCheckbox
+          id="employer-register-acceptPrivacyPolicy"
+          name="acceptPrivacyPolicy"
           type="checkbox"
+          aria-invalid={Boolean(fieldErrors.acceptPrivacyPolicy)}
+          aria-describedby={fieldErrors.acceptPrivacyPolicy ? "employer-register-error" : undefined}
           checked={acceptPrivacyPolicy}
           onChange={(event) => setAcceptPrivacyPolicy(event.target.checked)}
         />
@@ -1054,7 +1109,7 @@ function EmployerRegisterForm({
         </span>
       </label>
 
-      {error ? <p className="text-sm text-red-300 md:col-span-2">{error}</p> : null}
+      {error ? <p id="employer-register-error" role="alert" className="text-sm text-red-300 md:col-span-2">{error}</p> : null}
 
       <div className="md:col-span-2">
         <PrimeButton type="submit" disabled={loading || !csrfToken}>

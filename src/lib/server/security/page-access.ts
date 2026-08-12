@@ -2,6 +2,11 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { getDashboardHref } from "@/lib/auth/routing";
 import { createSupabasePublicClient } from "@/lib/server/supabase";
+import { getEmployerByAuthUserId } from "@/lib/server/employers";
+import {
+  normalizeEmployerAccountStatus,
+  type EmployerAccountStatus,
+} from "@/lib/server/security/employer-access";
 import { ACCESS_TOKEN_COOKIE } from "@/lib/server/security/session-cookies";
 import type { AppRole } from "@/lib/server/security/auth";
 
@@ -30,7 +35,7 @@ export function isStaffRole(role: AppRole | null | undefined) {
   return Boolean(role && STAFF_ROLES.has(role));
 }
 
-export async function readServerSessionRole(): Promise<AppRole | null> {
+export async function readServerSession(): Promise<{ userId: string; role: AppRole } | null> {
   const cookieStore = await cookies();
   const accessToken = cookieStore.get(ACCESS_TOKEN_COOKIE)?.value?.trim();
 
@@ -40,7 +45,14 @@ export async function readServerSessionRole(): Promise<AppRole | null> {
   const { data, error } = await supabase.auth.getUser(accessToken);
   if (error || !data.user) return null;
 
-  return normalizeRole(data.user.app_metadata?.app_role ?? data.user.user_metadata?.app_role);
+  return {
+    userId: data.user.id,
+    role: normalizeRole(data.user.app_metadata?.app_role ?? data.user.user_metadata?.app_role),
+  };
+}
+
+export async function readServerSessionRole(): Promise<AppRole | null> {
+  return (await readServerSession())?.role ?? null;
 }
 
 export async function requirePageRole({
@@ -63,4 +75,41 @@ export async function requirePageRole({
   }
 
   return role;
+}
+
+export async function requireEmployerPageAccess({
+  locale,
+  allowedAccountStatuses,
+}: {
+  locale: string;
+  allowedAccountStatuses: EmployerAccountStatus[];
+}) {
+  await requirePageRole({
+    locale,
+    allowedRoles: ["employer"],
+    unauthenticatedRedirect: `/${locale}/auth?mode=signin&audience=employer`,
+  });
+
+  const cookieStore = await cookies();
+  const accessToken = cookieStore.get(ACCESS_TOKEN_COOKIE)?.value?.trim();
+  if (!accessToken) {
+    redirect(`/${locale}/auth?mode=signin&audience=employer`);
+  }
+
+  const supabase = createSupabasePublicClient();
+  const { data, error } = await supabase.auth.getUser(accessToken);
+  if (error || !data.user) {
+    redirect(`/${locale}/auth?mode=signin&audience=employer`);
+  }
+
+  const employer = await getEmployerByAuthUserId(data.user.id);
+  const accountStatus = normalizeEmployerAccountStatus(
+    employer?.verification_status as string | null | undefined
+  );
+
+  if (!accountStatus || !allowedAccountStatuses.includes(accountStatus)) {
+    redirect(`/${locale}/employer/pending-approval`);
+  }
+
+  return accountStatus;
 }

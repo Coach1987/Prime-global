@@ -1,7 +1,7 @@
 "use client";
 
 import { FormEvent, useEffect, useState } from "react";
-import { useLocale } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import {
   employerInput,
   employerPageShell,
@@ -46,6 +46,7 @@ const EMPTY_PROFILE: EmployerProfile = {
 
 export default function EmployerCompanyProfilePage() {
   const locale = useLocale();
+  const t = useTranslations("employerCompanyProfile");
   const isArabic = locale === "ar";
   const [loading, setLoading] = useState(true);
   const [csrfToken, setCsrfToken] = useState("");
@@ -198,6 +199,7 @@ export default function EmployerCompanyProfilePage() {
             ? (isArabic ? "أكمل ملف الشركة للبدء." : "Complete your company profile to begin.")
             : `${isArabic ? "حالة التحقق" : "Verification status"}: ${statusLabel(profile?.verification_status ?? "pending")}`}
         </p>
+        {!requiresOnboarding ? <p className="mt-3 text-sm leading-6 text-text-secondary">{t("registrationDataNotice")}</p> : null}
         {message ? <p className="mt-3 text-sm text-emerald-200">{message}</p> : null}
 
         <form onSubmit={onSubmit} className="mt-8 grid gap-4 md:grid-cols-2">

@@ -1,5 +1,11 @@
 import { createSupabaseAdminClient } from "@/lib/server/supabase";
 import { forbiddenResponse } from "@/lib/server/security/auth";
+import {
+  normalizeEmployerAccountStatus,
+  type EmployerAccountStatus,
+} from "@/lib/server/security/employer-access";
+
+export { normalizeEmployerAccountStatus } from "@/lib/server/security/employer-access";
 
 export const EMPLOYER_VERIFICATION_STATUSES = [
   "pending",
@@ -11,7 +17,7 @@ export const EMPLOYER_VERIFICATION_STATUSES = [
 ] as const;
 
 export type EmployerVerificationStatus = (typeof EMPLOYER_VERIFICATION_STATUSES)[number];
-export type EmployerAccountStatus = "pending_review" | "approved" | "rejected" | "suspended";
+export type { EmployerAccountStatus };
 
 export async function getEmployerByAuthUserId(authUserId: string) {
   const supabase = createSupabaseAdminClient();
@@ -26,28 +32,6 @@ export async function getEmployerByAuthUserId(authUserId: string) {
   }
 
   return data;
-}
-
-export function normalizeEmployerAccountStatus(
-  verificationStatus: string | null | undefined
-): EmployerAccountStatus | null {
-  if (verificationStatus === "verified") {
-    return "approved";
-  }
-
-  if (verificationStatus === "rejected") {
-    return "rejected";
-  }
-
-  if (verificationStatus === "suspended") {
-    return "suspended";
-  }
-
-  if (verificationStatus === "pending" || verificationStatus === "documents_submitted" || verificationStatus === "admin_review") {
-    return "pending_review";
-  }
-
-  return null;
 }
 
 export function isEmployerApproved(verificationStatus: string | null | undefined) {

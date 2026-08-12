@@ -1,6 +1,6 @@
 import Link from "next/link";
 import type { Metadata } from "next";
-import { setRequestLocale } from "next-intl/server";
+import { getTranslations, setRequestLocale } from "next-intl/server";
 import { buildBreadcrumbListJsonLd, buildLocalizedAlternates } from "@/lib/seo/public";
 
 export async function generateMetadata({
@@ -28,6 +28,7 @@ export default async function EmployersLandingPage({
 }) {
   const { locale } = await params;
   setRequestLocale(locale);
+  const t = await getTranslations({ locale, namespace: "employerLanding" });
   const breadcrumbJsonLd = buildBreadcrumbListJsonLd([
     { name: locale === "ar" ? "الرئيسية" : "Home", path: `/${locale}` },
     { name: locale === "ar" ? "أصحاب العمل" : "Employers", path: `/${locale}/employers` },
@@ -41,13 +42,12 @@ export default async function EmployersLandingPage({
       />
       <div className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(60%_35%_at_50%_10%,rgba(86,163,255,0.2),rgba(10,14,20,0))]" />
       <section className="rounded-3xl border border-gold/20 bg-bg-secondary/70 p-8 shadow-[0_18px_80px_rgba(0,0,0,0.45)] backdrop-blur-xl md:p-12">
-        <p className="text-xs font-semibold uppercase tracking-[0.24em] text-gold">Employer Portal</p>
+        <p className="text-xs font-semibold uppercase tracking-[0.24em] text-gold">{t("eyebrow")}</p>
         <h1 className="mt-4 font-heading text-4xl leading-tight text-text-primary md:text-5xl">
-          Recruit With Confidence On Prime Global
+          {t("title")}
         </h1>
         <p className="mt-6 max-w-3xl text-base text-text-secondary md:text-lg">
-          Create your company profile, upload verification documents, and publish premium job listings once approved by
-          our admin team.
+          {t("description")}
         </p>
 
         <div className="mt-10 flex flex-wrap gap-4">
@@ -55,25 +55,25 @@ export default async function EmployersLandingPage({
             href={`/${locale}/employers/register`}
             className="rounded-full border border-blue-100/45 bg-gradient-to-r from-[#2a85eb] via-[#4fa8ff] to-[#1d66c8] px-7 py-3 text-sm font-semibold text-white shadow-[0_14px_34px_rgba(67,149,246,0.3)] transition hover:-translate-y-0.5"
           >
-            Register Company
+            {t("register")}
           </Link>
           <Link
             href={`/${locale}/employers/login`}
             className="rounded-full border border-gold/50 px-7 py-3 text-sm font-semibold text-gold transition hover:border-gold hover:bg-gold/10"
           >
-            Login
+            {t("login")}
           </Link>
           <Link
             href={`/${locale}/employers/dashboard`}
             className="rounded-full border border-text-secondary/30 px-7 py-3 text-sm font-semibold text-text-secondary transition hover:border-gold/50 hover:text-gold"
           >
-            Open Dashboard
+            {t("dashboard")}
           </Link>
           <Link
             href={`/${locale}/partners/request`}
             className="rounded-full border border-gold/30 px-7 py-3 text-sm font-semibold text-gold transition hover:bg-gold/10"
           >
-            Request Hiring Support
+            {t("support")}
           </Link>
         </div>
       </section>

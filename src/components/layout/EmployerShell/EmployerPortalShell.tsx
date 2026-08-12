@@ -114,6 +114,10 @@ export function EmployerPortalShell({ locale, children }: EmployerPortalShellPro
     () => getVerificationLabel(locale, verificationStatus),
     [locale, verificationStatus]
   );
+  const isApproved = verificationStatus === "verified";
+  const availableNavItems = isApproved
+    ? NAV_ITEMS
+    : NAV_ITEMS.filter((item) => item.href === "/employers/company-profile");
 
   const publicWebsiteLabel = isArabic ? "عرض الموقع العام" : "View public website";
   const logoutLabel = isArabic ? "تسجيل الخروج" : "Logout";
@@ -148,7 +152,7 @@ export function EmployerPortalShell({ locale, children }: EmployerPortalShellPro
       <header className="fixed inset-x-0 top-0 z-50 border-b border-gold/20 bg-[#06111d]/92 backdrop-blur-2xl">
         <div className="mx-auto flex h-[86px] w-full max-w-[1280px] items-center justify-between gap-3 px-4 sm:px-6 md:px-8">
           <div className="flex min-w-0 items-center gap-3">
-            <Link href="/employers/dashboard" className="relative block h-10 w-36 shrink-0">
+            <Link href={isApproved ? "/employers/dashboard" : "/employer/pending-approval"} className="relative block h-10 w-36 shrink-0">
               <Image
                 src="/images/logo/prime-global-logo-clean.png"
                 alt="Prime Global"
@@ -169,7 +173,7 @@ export function EmployerPortalShell({ locale, children }: EmployerPortalShellPro
           </div>
 
           <div className="hidden items-center gap-2 md:flex">
-            {NAV_ITEMS.map((item) => {
+            {availableNavItems.map((item) => {
               const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
               return (
                 <Link
@@ -217,7 +221,7 @@ export function EmployerPortalShell({ locale, children }: EmployerPortalShellPro
               className={`absolute end-0 top-12 flex w-64 flex-col gap-2 rounded-2xl border border-gold/20 bg-[#081326]/98 p-3 shadow-[0_20px_40px_rgba(0,0,0,0.45)] transition-opacity duration-150 ${menuOpen ? "visible opacity-100" : "pointer-events-none invisible opacity-0"}`}
             >
               <p className="px-2 pb-1 text-[11px] uppercase tracking-[0.14em] text-gold">{verificationLabel}</p>
-              {NAV_ITEMS.map((item) => (
+              {availableNavItems.map((item) => (
                 <Link
                   key={item.href}
                   href={item.href}

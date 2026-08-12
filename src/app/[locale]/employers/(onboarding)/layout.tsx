@@ -1,7 +1,7 @@
-import { requirePageRole } from "@/lib/server/security/page-access";
 import { EmployerPortalShell } from "@/components/layout/EmployerShell/EmployerPortalShell";
+import { requireEmployerPageAccess } from "@/lib/server/security/page-access";
 
-export default async function EmployersLayout({
+export default async function EmployerOnboardingLayout({
   children,
   params,
 }: {
@@ -10,10 +10,9 @@ export default async function EmployersLayout({
 }) {
   const { locale } = await params;
 
-  await requirePageRole({
+  await requireEmployerPageAccess({
     locale,
-    allowedRoles: ["employer"],
-    unauthenticatedRedirect: `/${locale}/auth?mode=signin&audience=employer`,
+    allowedAccountStatuses: ["pending_review", "approved", "rejected"],
   });
 
   return <EmployerPortalShell locale={locale}>{children}</EmployerPortalShell>;
