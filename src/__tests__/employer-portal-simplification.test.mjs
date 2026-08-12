@@ -31,7 +31,7 @@ test("employer account menu has simplified seven-item structure", () => {
 });
 
 test("dashboard does not include inline job creation form or raw load-failure text", () => {
-  const dashboard = readSource("src/app/[locale]/employers/dashboard/page.tsx");
+  const dashboard = readSource("src/app/[locale]/employers/(approved)/dashboard/page.tsx");
 
   assert.doesNotMatch(dashboard, /Failed to load dashboard data/);
   assert.doesNotMatch(dashboard, /createDraftJob/);
@@ -41,13 +41,13 @@ test("dashboard does not include inline job creation form or raw load-failure te
 });
 
 test("company verification route safely redirects to unified company profile", () => {
-  const verificationPage = readSource("src/app/[locale]/employers/verification/page.tsx");
+  const verificationPage = readSource("src/app/[locale]/employers/(onboarding)/verification/page.tsx");
 
   assert.match(verificationPage, /redirect\(`\/\$\{locale\}\/employers\/company-profile`\)/);
 });
 
 test("settings page is dedicated to account and company preferences", () => {
-  const settingsPage = readSource("src/app/[locale]/employers/settings/page.tsx");
+  const settingsPage = readSource("src/app/[locale]/employers/(approved)/settings/page.tsx");
 
   assert.match(settingsPage, /Account Preferences|تفضيلات الحساب/);
   assert.doesNotMatch(settingsPage, /Interview Center|المقابلات/);
