@@ -1,0 +1,3 @@
+grant select
+on table public.company_verification_requests, public.company_verification_documents_v2
+to service_role;
