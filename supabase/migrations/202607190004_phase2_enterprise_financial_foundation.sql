@@ -264,7 +264,7 @@ create table if not exists public.pgems_payments (
 );
 
 alter table public.pgems_refund_notes
-  add constraint if not exists pgems_refund_notes_payment_fk
+  add constraint pgems_refund_notes_payment_fk
   foreign key (payment_id) references public.pgems_payments(id) on delete set null;
 
 create table if not exists public.pgems_payment_refunds (

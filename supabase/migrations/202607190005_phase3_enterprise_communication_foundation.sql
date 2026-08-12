@@ -9,9 +9,11 @@ create table if not exists public.pgems_corporate_mail_identities (
   status text not null check (status in ('active', 'suspended', 'archived')),
   metadata jsonb not null default '{}'::jsonb,
   created_at timestamptz not null default timezone('utc', now()),
-  updated_at timestamptz not null default timezone('utc', now()),
-  unique (organization_id, lower(local_part), lower(domain))
+  updated_at timestamptz not null default timezone('utc', now())
 );
+
+create unique index if not exists pgems_corporate_mail_identities_organization_address_unique
+  on public.pgems_corporate_mail_identities (organization_id, lower(local_part), lower(domain));
 
 create table if not exists public.pgems_mailboxes (
   id uuid primary key default gen_random_uuid(),
@@ -59,7 +61,7 @@ create table if not exists public.pgems_communication_retention_policies (
 );
 
 alter table public.pgems_mailboxes
-  add constraint if not exists pgems_mailboxes_retention_policy_fk
+  add constraint pgems_mailboxes_retention_policy_fk
   foreign key (retention_policy_id) references public.pgems_communication_retention_policies(id) on delete set null;
 
 create table if not exists public.pgems_communication_templates (

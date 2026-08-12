@@ -28,9 +28,11 @@ create table if not exists public.pgems_corporate_email_domains (
   is_primary boolean not null default false,
   is_active boolean not null default true,
   created_at timestamptz not null default timezone('utc', now()),
-  updated_at timestamptz not null default timezone('utc', now()),
-  unique (organization_id, lower(domain))
+  updated_at timestamptz not null default timezone('utc', now())
 );
+
+create unique index if not exists pgems_corporate_email_domains_organization_domain_unique
+  on public.pgems_corporate_email_domains (organization_id, lower(domain));
 
 create unique index if not exists pgems_corporate_email_primary_domain_idx
   on public.pgems_corporate_email_domains (organization_id)
@@ -47,9 +49,11 @@ create table if not exists public.pgems_employee_identities (
   recovery_contact_email text,
   created_at timestamptz not null default timezone('utc', now()),
   updated_at timestamptz not null default timezone('utc', now()),
-  metadata jsonb not null default '{}'::jsonb,
-  unique (organization_id, lower(corporate_email))
+  metadata jsonb not null default '{}'::jsonb
 );
+
+create unique index if not exists pgems_employee_identities_organization_email_unique
+  on public.pgems_employee_identities (organization_id, lower(corporate_email));
 
 create table if not exists public.pgems_governance_controls (
   organization_id uuid primary key references public.pgems_organizations(id) on delete cascade,

@@ -64,9 +64,11 @@ create table if not exists public.pgems_employees (
   is_active boolean not null default true,
   created_at timestamptz not null default timezone('utc', now()),
   updated_at timestamptz not null default timezone('utc', now()),
-  unique (organization_id, employee_number),
-  unique (organization_id, lower(email))
+  unique (organization_id, employee_number)
 );
+
+create unique index if not exists pgems_employees_organization_email_unique
+  on public.pgems_employees (organization_id, lower(email));
 
 create table if not exists public.pgems_roles (
   id uuid primary key default gen_random_uuid(),

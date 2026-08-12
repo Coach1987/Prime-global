@@ -120,9 +120,12 @@ create table if not exists public.pgems_ops_feature_flags (
   rules jsonb not null default '{}'::jsonb,
   metadata jsonb not null default '{}'::jsonb,
   created_at timestamptz not null default timezone('utc', now()),
-  updated_at timestamptz not null default timezone('utc', now()),
-  unique (organization_id, flag_key, scope, coalesce(country_code, ''), coalesce(department_id::text, ''))
+  updated_at timestamptz not null default timezone('utc', now())
 );
+
+create unique index if not exists pgems_ops_feature_flags_scope_unique
+  on public.pgems_ops_feature_flags
+    (organization_id, flag_key, scope, coalesce(country_code, ''), coalesce(department_id::text, ''));
 
 create table if not exists public.pgems_ops_config_profiles (
   id uuid primary key default gen_random_uuid(),
@@ -137,9 +140,12 @@ create table if not exists public.pgems_ops_config_profiles (
   status text not null check (status in ('draft', 'active', 'deprecated', 'archived')),
   metadata jsonb not null default '{}'::jsonb,
   created_at timestamptz not null default timezone('utc', now()),
-  updated_at timestamptz not null default timezone('utc', now()),
-  unique (organization_id, config_code, scope, coalesce(scope_ref, ''), version_number)
+  updated_at timestamptz not null default timezone('utc', now())
 );
+
+create unique index if not exists pgems_ops_config_profiles_scope_version_unique
+  on public.pgems_ops_config_profiles
+    (organization_id, config_code, scope, coalesce(scope_ref, ''), version_number);
 
 create table if not exists public.pgems_ops_backup_policies (
   id uuid primary key default gen_random_uuid(),
