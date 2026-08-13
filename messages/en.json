@@ -65,6 +65,62 @@
     "dashboard": "Open dashboard",
     "support": "Request hiring support"
   },
+  "employerGuidedTour": {
+    "entry": "How to register your company",
+    "demoBadge": "Demo",
+    "progress": "Step {current} of {total}",
+    "chooser": {
+      "title": "See how company registration works",
+      "description": "Follow the real Prime Global journey with guidance, or watch a safe demonstration before you begin.",
+      "interactive": "Interactive Guide",
+      "demo": "Watch Demo",
+      "safety": "The demo never submits the form, creates an account, or stores company information."
+    },
+    "controls": {
+      "next": "Next",
+      "back": "Back",
+      "previous": "Previous",
+      "skip": "Skip",
+      "exit": "Exit",
+      "pause": "Pause",
+      "resume": "Resume",
+      "finish": "Finish",
+      "close": "Close guided tour",
+      "replay": "Replay tour"
+    },
+    "steps": {
+      "account": {
+        "title": "Create Account",
+        "instruction": "Start with your secure employer account. You stay in control and submit only when your information is ready.",
+        "narration": "Begin by opening company registration and creating a secure employer account."
+      },
+      "company": {
+        "title": "Company Details",
+        "instruction": "Add your legal company name and essential business details exactly as they appear on official records.",
+        "narration": "Enter the company identity and contact details Prime Global needs to review your organization."
+      },
+      "verification": {
+        "title": "Verification",
+        "instruction": "Review the agreements, then provide official company documents during onboarding. Nothing is approved automatically.",
+        "narration": "After registration, review your company profile and submit the required verification documents."
+      },
+      "pending": {
+        "title": "Pending Approval",
+        "instruction": "Prime Global reviews your company information and documents. You can safely update onboarding details while you wait.",
+        "narration": "Your account remains pending while Prime Global completes its company review."
+      },
+      "ready": {
+        "title": "Ready to Recruit",
+        "instruction": "After approval, your hiring workspace opens so your team can create jobs and manage recruitment securely.",
+        "narration": "Once approved, your company can begin recruiting through the protected employer workspace."
+      }
+    },
+    "demoStates": {
+      "verification": "Demo preview: official documents are reviewed through the protected company onboarding area.",
+      "pending": "Demo preview: the company status remains Pending Approval until Prime Global completes review.",
+      "ready": "Demo preview: approved companies unlock jobs and recruitment tools."
+    }
+  },
   "hero": {
     "eyebrow": "Tunisian Company · Global Standards",
     "headlineLine1": "Tunisian",

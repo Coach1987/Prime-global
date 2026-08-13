@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useRouter } from "@/i18n/routing";
 import { useLocale } from "next-intl";
+import { EmployerTourLauncher } from "@/features/employers/tour/EmployerTourLauncher";
 import {
   employerPageShell,
   employerPrimaryButton,
@@ -124,7 +125,8 @@ export default function EmployerDashboardPage() {
 
   return (
     <main className={employerPageShell}>
-      <section className={employerSurfaceCard}>
+      <EmployerTourLauncher showEntry={false} />
+      <section className={employerSurfaceCard} data-tour="ready-to-recruit">
         <div className="rounded-2xl border border-gold/20 bg-bg-primary/65 p-6">
           <p className="text-xs uppercase tracking-[0.2em] text-text-tertiary">{isArabic ? "مركز القيادة" : "Command Center"}</p>
           <h1 className="mt-3 font-heading text-4xl text-text-primary">

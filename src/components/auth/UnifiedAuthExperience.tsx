@@ -11,6 +11,7 @@ import { PrimePageTitle } from "@/components/ui/prime/PrimePageTitle";
 import { CountrySelector } from "@/components/ui/CountrySelector";
 import { InternationalPhoneInput } from "@/components/ui/InternationalPhoneInput";
 import { SegmentedTabs } from "@/components/ui/SegmentedTabs";
+import { EmployerTourLauncher } from "@/features/employers/tour/EmployerTourLauncher";
 import { getPostLoginHref, normalizeAuthRole } from "@/lib/auth/routing";
 import { resolveCandidatePostAuthHref, sanitizeLocalizedJobReturnTo } from "@/lib/auth/return-to";
 import { emitAuthSessionChanged } from "@/lib/auth/client-session-sync";
@@ -335,6 +336,7 @@ export function UnifiedAuthExperience() {
           <div className="max-w-3xl">
             <h1 className="font-heading text-3xl text-text-primary md:text-[34px]">{headline}</h1>
             <p className="mt-3 text-sm leading-7 text-text-secondary">{description}</p>
+            {audience === "employer" ? <div className="mt-3"><EmployerTourLauncher /></div> : null}
           </div>
 
           <div className="mt-8">
@@ -973,7 +975,7 @@ function EmployerRegisterForm({
         const hasError = Boolean(fieldErrors[key]);
 
         return (
-        <PrimeLabel key={key} htmlFor={inputId}>
+        <PrimeLabel key={key} htmlFor={inputId} data-tour={key === "companyName" ? "company-name" : undefined}>
           <span className="mb-2 block">{label}</span>
           {key === "password" ? (
             <PrimePasswordInput
@@ -1054,7 +1056,7 @@ function EmployerRegisterForm({
         {fieldErrors.companyDescription ? <p id="employer-register-companyDescription-error" className="mt-1 text-xs text-red-300">{fieldErrors.companyDescription}</p> : null}
       </PrimeLabel>
 
-      <label htmlFor="employer-register-acceptTerms" className="md:col-span-2 flex min-h-12 items-start gap-3 rounded-2xl border border-blue-200/20 bg-[#071428]/75 px-4 py-3 text-sm text-text-secondary">
+      <label data-tour="company-verification" htmlFor="employer-register-acceptTerms" className="md:col-span-2 flex min-h-12 items-start gap-3 rounded-2xl border border-blue-200/20 bg-[#071428]/75 px-4 py-3 text-sm text-text-secondary">
         <PrimeCheckbox id="employer-register-acceptTerms" name="acceptTerms" type="checkbox" aria-invalid={Boolean(fieldErrors.acceptTerms)} aria-describedby={fieldErrors.acceptTerms ? "employer-register-error" : undefined} checked={acceptTerms} onChange={(event) => setAcceptTerms(event.target.checked)} />
         <span>
           {isArabic ? "أوافق على " : "I agree to the "}

@@ -4,6 +4,7 @@ import { getTranslations } from "next-intl/server";
 import { PrimeCard } from "@/components/ui/prime/PrimeCard";
 import { primeButtonClasses } from "@/components/ui/prime/PrimeButton";
 import { PrimePageTitle } from "@/components/ui/prime/PrimePageTitle";
+import { EmployerTourLauncher } from "@/features/employers/tour/EmployerTourLauncher";
 import { getEmployerByAuthUserId } from "@/lib/server/employers";
 import { normalizeEmployerAccountStatus } from "@/lib/server/security/employer-access";
 import { readServerSession } from "@/lib/server/security/page-access";
@@ -36,7 +37,8 @@ export default async function EmployerPendingApprovalPage({
 
   return (
     <main className="mx-auto w-full max-w-[860px] px-4 pb-20 pt-10 sm:px-6 md:px-8">
-      <PrimeCard as="section" className="p-8 md:p-10">
+      <EmployerTourLauncher showEntry={false} />
+      <PrimeCard as="section" className="p-8 md:p-10" data-tour="pending-approval">
         <p className="text-xs font-semibold uppercase tracking-[0.18em] text-gold">{t("eyebrow")}</p>
         <PrimePageTitle className="mt-3">{t("title")}</PrimePageTitle>
         <p className="mt-4 text-sm leading-7 text-text-secondary">{t("intro")}</p>

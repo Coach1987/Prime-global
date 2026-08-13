@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { Metadata } from "next";
 import { getTranslations, setRequestLocale } from "next-intl/server";
+import { EmployerTourLauncher } from "@/features/employers/tour/EmployerTourLauncher";
 import { buildBreadcrumbListJsonLd, buildLocalizedAlternates } from "@/lib/seo/public";
 
 export async function generateMetadata({
@@ -53,6 +54,7 @@ export default async function EmployersLandingPage({
         <div className="mt-10 flex flex-wrap gap-4">
           <Link
             href={`/${locale}/employers/register`}
+            data-tour="employer-create-account"
             className="rounded-full border border-blue-100/45 bg-gradient-to-r from-[#2a85eb] via-[#4fa8ff] to-[#1d66c8] px-7 py-3 text-sm font-semibold text-white shadow-[0_14px_34px_rgba(67,149,246,0.3)] transition hover:-translate-y-0.5"
           >
             {t("register")}
@@ -75,6 +77,7 @@ export default async function EmployersLandingPage({
           >
             {t("support")}
           </Link>
+          <EmployerTourLauncher />
         </div>
       </section>
     </main>
