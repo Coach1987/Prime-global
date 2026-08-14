@@ -1,13 +1,20 @@
 "use client";
 
 import Image from "next/image";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { type FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
 import { PrimeCard } from "@/components/ui/prime/PrimeCard";
 import { primeButtonClasses } from "@/components/ui/prime/PrimeButton";
+import {
+  buildCreatePayload,
+  buildInitialForm,
+  validateSelectedMediaFile,
+  type AdvertisementFormState,
+} from "@/features/advertisements/admin-form-helpers";
 import type { AdvertisementRecord, AdvertisementStatus } from "@/features/advertisements/types";
 
 type AdminAdvertisementItem = AdvertisementRecord;
+type AdminActionKind = "submit_review" | "approve" | "reject" | "hide" | "republish";
 
 const ADMIN_ROLES = new Set(["prime_global_recruiter", "prime_global_admin", "admin", "super_admin"]);
 
@@ -54,6 +61,12 @@ export function AdvertisementsAdminCenter({ locale }: { locale: string }) {
   const [filter, setFilter] = useState<"all" | AdvertisementStatus>("all");
   const [items, setItems] = useState<AdminAdvertisementItem[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [showCreateForm, setShowCreateForm] = useState(false);
+  const [form, setForm] = useState<AdvertisementFormState>(buildInitialForm);
+  const [pendingFile, setPendingFile] = useState<File | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [creating, setCreating] = useState(false);
+  const [uploadFieldError, setUploadFieldError] = useState<string | null>(null);
 
   const readErrorMessage = useCallback(async (response: Response, fallback: string) => {
     try {
@@ -122,7 +135,105 @@ export function AdvertisementsAdminCenter({ locale }: { locale: string }) {
     void bootstrap();
   }, [filter, loadAds, t]);
 
-  async function onAction(action: "approve" | "reject" | "hide" | "republish") {
+  function updateField<Key extends keyof AdvertisementFormState>(key: Key, value: AdvertisementFormState[Key]) {
+    setForm((current) => ({ ...current, [key]: value }));
+  }
+
+  function resetCreateForm() {
+    setForm(buildInitialForm());
+    setPendingFile(null);
+    setUploadFieldError(null);
+  }
+
+  async function onCreateSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    if (!pendingFile) {
+      const missing = t("errors.uploadFailed");
+      setUploadFieldError(missing);
+      setError(missing);
+      return;
+    }
+
+    const selectionValidation = validateSelectedMediaFile(pendingFile, isArabic);
+    if (!selectionValidation.ok) {
+      setUploadFieldError(selectionValidation.message);
+      setError(selectionValidation.message);
+      return;
+    }
+
+    try {
+      setCreating(true);
+      setUploading(true);
+      setError(null);
+      setNotice(null);
+      setUploadFieldError(null);
+
+      const uploadForm = new FormData();
+      uploadForm.set("file", pendingFile);
+      uploadForm.set("locale", locale);
+
+      const uploadResponse = await fetch("/api/admin/advertisements/upload", {
+        method: "POST",
+        credentials: "include",
+        headers: { "x-csrf-token": csrfToken },
+        body: uploadForm,
+      });
+
+      if (!uploadResponse.ok) {
+        throw new Error(await readErrorMessage(uploadResponse, t("errors.uploadFailed")));
+      }
+
+      const uploadPayload = (await uploadResponse.json()) as {
+        data?: { mediaUrl?: string; mediaType?: "image" | "video" };
+      };
+
+      const mediaUrl = uploadPayload.data?.mediaUrl;
+      const mediaType = uploadPayload.data?.mediaType;
+      if (!mediaUrl || !mediaType) {
+        throw new Error(t("errors.uploadFailed"));
+      }
+
+      setUploading(false);
+      setNotice(t("notices.uploaded"));
+
+      const createResponse = await fetch("/api/admin/advertisements", {
+        method: "POST",
+        credentials: "include",
+        headers: {
+          "content-type": "application/json",
+          "x-csrf-token": csrfToken,
+        },
+        body: JSON.stringify({
+          ...buildCreatePayload(form),
+          media_type: mediaType,
+          media_url: mediaUrl,
+        }),
+      });
+
+      if (!createResponse.ok) {
+        throw new Error(await readErrorMessage(createResponse, t("errors.saveFailed")));
+      }
+
+      const createPayload = (await createResponse.json()) as { data?: AdminAdvertisementItem };
+      const created = createPayload.data;
+
+      resetCreateForm();
+      setShowCreateForm(false);
+      await loadAds(filter);
+      if (created) {
+        setSelectedId(created.id);
+      }
+      setNotice(t("notices.saved"));
+    } catch (createError) {
+      setError(createError instanceof Error ? createError.message : t("errors.saveFailed"));
+    } finally {
+      setCreating(false);
+      setUploading(false);
+    }
+  }
+
+  async function onAction(action: AdminActionKind) {
     if (!selectedId) return;
 
     const reason = action === "reject"
@@ -175,12 +286,147 @@ export function AdvertisementsAdminCenter({ locale }: { locale: string }) {
             <h1 className="font-heading text-3xl text-text-primary md:text-4xl">{t("title")}</h1>
             <p className="mt-2 text-sm text-text-secondary">{t("subtitle")}</p>
           </div>
+          {authorized ? (
+            <button
+              type="button"
+              className={primeButtonClasses("secondary")}
+              onClick={() => {
+                resetCreateForm();
+                setShowCreateForm((current) => !current);
+                setNotice(null);
+                setError(null);
+              }}
+            >
+              {showCreateForm ? (isArabic ? "إغلاق" : "Close") : t("newDraft")}
+            </button>
+          ) : null}
         </div>
 
         {loading ? <p className="mt-6 text-sm text-text-secondary">{t("loading")}</p> : null}
         {error ? <p className="mt-4 text-sm text-red-300">{error}</p> : null}
         {notice ? <p className="mt-4 text-sm text-emerald-300">{notice}</p> : null}
         {!authorized && !loading ? <p className="mt-8 text-sm text-text-secondary">{t("errors.unauthorized")}</p> : null}
+
+        {authorized && showCreateForm ? (
+          <section className="mt-8 rounded-2xl border border-blue-200/25 bg-[#071429]/70 p-5">
+            <h2 className="text-lg font-semibold text-text-primary">{t("create")}</h2>
+            <p className="mt-1 text-xs text-text-tertiary">{t("uploadHint")}</p>
+
+            <form className="mt-4 space-y-4" onSubmit={(event) => void onCreateSubmit(event)}>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <label className="text-sm text-text-secondary">
+                  {t("fields.titleEn")}
+                  <input required value={form.title_en} onChange={(event) => updateField("title_en", event.target.value)} className="mt-1.5 w-full rounded-lg border border-white/15 bg-[#08162b] px-3 py-2 text-sm text-text-primary" />
+                </label>
+                <label className="text-sm text-text-secondary">
+                  {t("fields.titleAr")}
+                  <input required dir="rtl" value={form.title_ar} onChange={(event) => updateField("title_ar", event.target.value)} className="mt-1.5 w-full rounded-lg border border-white/15 bg-[#08162b] px-3 py-2 text-sm text-text-primary" />
+                </label>
+              </div>
+
+              <div className="grid gap-4 sm:grid-cols-2">
+                <label className="text-sm text-text-secondary">
+                  {t("fields.descriptionEn")}
+                  <textarea required rows={4} value={form.description_en} onChange={(event) => updateField("description_en", event.target.value)} className="mt-1.5 w-full rounded-lg border border-white/15 bg-[#08162b] px-3 py-2 text-sm text-text-primary" />
+                </label>
+                <label className="text-sm text-text-secondary">
+                  {t("fields.descriptionAr")}
+                  <textarea required dir="rtl" rows={4} value={form.description_ar} onChange={(event) => updateField("description_ar", event.target.value)} className="mt-1.5 w-full rounded-lg border border-white/15 bg-[#08162b] px-3 py-2 text-sm text-text-primary" />
+                </label>
+              </div>
+
+              <div className="grid gap-4 sm:grid-cols-2">
+                <label className="text-sm text-text-secondary">
+                  {t("fields.ctaEn")}
+                  <input required value={form.cta_text_en} onChange={(event) => updateField("cta_text_en", event.target.value)} className="mt-1.5 w-full rounded-lg border border-white/15 bg-[#08162b] px-3 py-2 text-sm text-text-primary" />
+                </label>
+                <label className="text-sm text-text-secondary">
+                  {t("fields.ctaAr")}
+                  <input required dir="rtl" value={form.cta_text_ar} onChange={(event) => updateField("cta_text_ar", event.target.value)} className="mt-1.5 w-full rounded-lg border border-white/15 bg-[#08162b] px-3 py-2 text-sm text-text-primary" />
+                </label>
+              </div>
+
+              <div className="grid gap-4 sm:grid-cols-2">
+                <label className="text-sm text-text-secondary">
+                  {t("fields.altEn")}
+                  <input required value={form.media_alt_en} onChange={(event) => updateField("media_alt_en", event.target.value)} className="mt-1.5 w-full rounded-lg border border-white/15 bg-[#08162b] px-3 py-2 text-sm text-text-primary" />
+                </label>
+                <label className="text-sm text-text-secondary">
+                  {t("fields.altAr")}
+                  <input required dir="rtl" value={form.media_alt_ar} onChange={(event) => updateField("media_alt_ar", event.target.value)} className="mt-1.5 w-full rounded-lg border border-white/15 bg-[#08162b] px-3 py-2 text-sm text-text-primary" />
+                </label>
+              </div>
+
+              <div className="grid gap-4 sm:grid-cols-2">
+                <label className="text-sm text-text-secondary">
+                  {t("fields.targetUrl")}
+                  <input required type="url" value={form.target_url} onChange={(event) => updateField("target_url", event.target.value)} className="mt-1.5 w-full rounded-lg border border-white/15 bg-[#08162b] px-3 py-2 text-sm text-text-primary" />
+                </label>
+                <label className="text-sm text-text-secondary">
+                  {t("fields.priority")}
+                  <input required type="number" min={1} max={10000} value={form.priority} onChange={(event) => updateField("priority", Number(event.target.value || "0"))} className="mt-1.5 w-full rounded-lg border border-white/15 bg-[#08162b] px-3 py-2 text-sm text-text-primary" />
+                </label>
+              </div>
+
+              <div className="grid gap-4 sm:grid-cols-2">
+                <label className="text-sm text-text-secondary">
+                  {t("fields.startsAt")}
+                  <input type="datetime-local" value={form.starts_at} onChange={(event) => updateField("starts_at", event.target.value)} className="mt-1.5 w-full rounded-lg border border-white/15 bg-[#08162b] px-3 py-2 text-sm text-text-primary" />
+                </label>
+                <label className="text-sm text-text-secondary">
+                  {t("fields.endsAt")}
+                  <input type="datetime-local" value={form.ends_at} onChange={(event) => updateField("ends_at", event.target.value)} className="mt-1.5 w-full rounded-lg border border-white/15 bg-[#08162b] px-3 py-2 text-sm text-text-primary" />
+                </label>
+              </div>
+
+              <div className="grid gap-3 rounded-xl border border-white/10 bg-[#050f1f]/70 p-4">
+                <label className="text-sm text-text-secondary">
+                  {uploading ? t("saving") : t("fields.upload")}
+                  <input
+                    type="file"
+                    disabled={uploading || creating}
+                    accept="image/jpeg,image/png,image/webp,video/mp4,video/webm"
+                    onChange={(event) => {
+                      const file = event.target.files?.[0] ?? null;
+                      const selectionValidation = validateSelectedMediaFile(file, isArabic);
+                      if (!selectionValidation.ok) {
+                        setPendingFile(null);
+                        setUploadFieldError(selectionValidation.message);
+                        setError(selectionValidation.message);
+                        return;
+                      }
+
+                      setUploadFieldError(null);
+                      setError(null);
+                      setPendingFile(file);
+                      updateField("media_type", selectionValidation.inferredMediaType);
+                    }}
+                    className={`mt-1.5 block w-full text-sm text-text-secondary file:me-3 file:rounded-full file:border-0 file:bg-blue-200/20 file:px-4 file:py-2 file:text-xs file:font-semibold file:text-blue-100 disabled:opacity-50 ${uploadFieldError ? "rounded-md border border-red-400/70 bg-red-950/20 p-2" : ""}`}
+                  />
+                  {pendingFile ? (
+                    <span className="mt-1 block text-xs text-blue-100/70">
+                      {pendingFile.name} ({form.media_type === "video" ? t("media.video") : t("media.image")})
+                    </span>
+                  ) : null}
+                  {uploadFieldError ? <span className="mt-1 block text-xs text-red-300">{uploadFieldError}</span> : null}
+                </label>
+
+                {pendingFile && form.media_type === "video" ? (
+                  <video src={URL.createObjectURL(pendingFile)} controls preload="metadata" className="mt-2 max-h-64 w-full rounded-lg object-cover" />
+                ) : null}
+                {pendingFile && form.media_type === "image" ? (
+                  <img src={URL.createObjectURL(pendingFile)} alt={form.media_alt_en || t("previewFallback")} className="mt-2 max-h-64 w-full rounded-lg object-cover" />
+                ) : null}
+              </div>
+
+              <div className="flex flex-wrap items-center gap-2">
+                <button type="submit" className={primeButtonClasses("primary")} disabled={creating || uploading}>
+                  {creating ? t("saving") : t("create")}
+                </button>
+              </div>
+            </form>
+          </section>
+        ) : null}
 
         {authorized ? (
           <div className="mt-8 grid gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]">
@@ -258,6 +504,14 @@ export function AdvertisementsAdminCenter({ locale }: { locale: string }) {
                   ) : null}
 
                   <div className="mt-6 flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      className={primeButtonClasses("secondary")}
+                      onClick={() => void onAction("submit_review")}
+                      disabled={acting}
+                    >
+                      {t("actions.submitReview")}
+                    </button>
                     <button
                       type="button"
                       className={primeButtonClasses("secondary")}
