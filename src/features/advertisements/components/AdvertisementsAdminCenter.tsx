@@ -12,6 +12,7 @@ import {
   type AdvertisementFormState,
 } from "@/features/advertisements/admin-form-helpers";
 import type { AdvertisementRecord, AdvertisementStatus } from "@/features/advertisements/types";
+import { normalizeSupabasePublicUrl, uploadToSignedUrl } from "@/features/advertisements/signed-upload";
 
 type AdminAdvertisementItem = AdvertisementRecord;
 type AdminActionKind = "submit_review" | "approve" | "reject" | "hide" | "republish";
@@ -71,9 +72,9 @@ export function AdvertisementsAdminCenter({ locale }: { locale: string }) {
   const readErrorMessage = useCallback(async (response: Response, fallback: string) => {
     try {
       const payload = (await response.json()) as { error?: { message?: string } };
-      return payload.error?.message ?? fallback;
+      return payload.error?.message ?? `${fallback} (HTTP ${response.status})`;
     } catch {
-      return fallback;
+      return `${fallback} (HTTP ${response.status})`;
     }
   }, []);
 
@@ -169,27 +170,76 @@ export function AdvertisementsAdminCenter({ locale }: { locale: string }) {
       setNotice(null);
       setUploadFieldError(null);
 
-      const uploadForm = new FormData();
-      uploadForm.set("file", pendingFile);
-      uploadForm.set("locale", locale);
-
-      const uploadResponse = await fetch("/api/admin/advertisements/upload", {
+      const authorizeResponse = await fetch("/api/admin/advertisements/upload", {
         method: "POST",
         credentials: "include",
-        headers: { "x-csrf-token": csrfToken },
-        body: uploadForm,
+        headers: { "content-type": "application/json", "x-csrf-token": csrfToken },
+        body: JSON.stringify({
+          action: "authorize",
+          locale,
+          fileName: pendingFile.name,
+          mimeType: pendingFile.type,
+          sizeBytes: pendingFile.size,
+        }),
       });
 
-      if (!uploadResponse.ok) {
-        throw new Error(await readErrorMessage(uploadResponse, t("errors.uploadFailed")));
+      if (!authorizeResponse.ok) {
+        throw new Error(await readErrorMessage(authorizeResponse, t("errors.uploadFailed")));
       }
 
-      const uploadPayload = (await uploadResponse.json()) as {
+      const authorizePayload = (await authorizeResponse.json()) as {
+        data?: {
+          mediaUrl?: string;
+          mediaType?: "image" | "video";
+          signedUploadToken?: string;
+          bucket?: string;
+        };
+      };
+
+      const signedUploadToken = authorizePayload.data?.signedUploadToken;
+      const storagePath = authorizePayload.data?.mediaUrl;
+      const authorizedMediaType = authorizePayload.data?.mediaType;
+      const bucket = authorizePayload.data?.bucket;
+
+      if (!signedUploadToken || !storagePath || !authorizedMediaType || !bucket) {
+        throw new Error(t("errors.uploadFailed"));
+      }
+
+      const supabaseUrlRaw = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
+      if (!supabaseUrlRaw.trim()) {
+        throw new Error(t("errors.uploadFailed"));
+      }
+
+      await uploadToSignedUrl({
+        supabaseUrl: normalizeSupabasePublicUrl(supabaseUrlRaw),
+        bucket,
+        storagePath,
+        uploadToken: signedUploadToken,
+        file: pendingFile,
+      });
+
+      const finalizeResponse = await fetch("/api/admin/advertisements/upload", {
+        method: "POST",
+        credentials: "include",
+        headers: { "content-type": "application/json", "x-csrf-token": csrfToken },
+        body: JSON.stringify({
+          action: "finalize",
+          locale,
+          mediaUrl: storagePath,
+          mediaType: authorizedMediaType,
+        }),
+      });
+
+      if (!finalizeResponse.ok) {
+        throw new Error(await readErrorMessage(finalizeResponse, t("errors.uploadFailed")));
+      }
+
+      const finalizePayload = (await finalizeResponse.json()) as {
         data?: { mediaUrl?: string; mediaType?: "image" | "video" };
       };
 
-      const mediaUrl = uploadPayload.data?.mediaUrl;
-      const mediaType = uploadPayload.data?.mediaType;
+      const mediaUrl = finalizePayload.data?.mediaUrl;
+      const mediaType = finalizePayload.data?.mediaType;
       if (!mediaUrl || !mediaType) {
         throw new Error(t("errors.uploadFailed"));
       }

@@ -181,12 +181,18 @@ test("advertisement routes enforce media existence before persisting or activati
     assert.match(routeSource, /AdvertisementMediaIntegrityError/);
   }
 
-  for (const routeSource of [employerUploadRoute, adminUploadRoute]) {
-    // Upload routes trust storage.upload() — no post-upload re-verification loop.
-    assert.doesNotMatch(routeSource, /verifyAdvertisementMediaObjectExists/);
-    assert.doesNotMatch(routeSource, /UPLOAD_NOT_CONFIRMED/);
-    assert.match(routeSource, /supabase\.storage\.from\(ADVERTISEMENT_BUCKET\)\.upload\(/);
-  }
+  // Employer upload route drives its own authorize/finalize signed-upload
+  // flow directly, including its own post-authorize verification.
+  assert.match(employerUploadRoute, /verifyAdvertisementMediaObjectExists/);
+  assert.doesNotMatch(employerUploadRoute, /UPLOAD_NOT_CONFIRMED/);
+
+  // Admin upload route delegates to the shared signed-upload helper instead
+  // of inlining a storage.upload() call, and must never read a raw media
+  // body itself (that reintroduces the Vercel request body size limit bug).
+  assert.doesNotMatch(adminUploadRoute, /request\.formData\(\)/);
+  assert.doesNotMatch(adminUploadRoute, /supabase\.storage\.from\(ADVERTISEMENT_BUCKET\)\.upload\(/);
+  assert.match(adminUploadRoute, /authorizeAdvertisementMediaUpload/);
+  assert.match(adminUploadRoute, /finalizeAdvertisementMediaUpload/);
 
   // Repository uses storage.list() — never .schema("storage") which is not exposed via PostgREST.
   assert.doesNotMatch(repository, /\.schema\("storage"\)/);

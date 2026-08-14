@@ -1,11 +1,11 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import {
+import type {
   AdvertisementRecord,
   PublicAdvertisementItem,
-} from "@/features/advertisements/types";
-import { createSupabaseAdminClient, createSupabasePublicClient } from "@/lib/server/supabase";
-import { ADVERTISEMENT_BUCKET } from "./constants";
-import { isAdvertisementPubliclyVisible, sortAdvertisementsForPublic } from "./public";
+} from "../../../features/advertisements/types.ts";
+import { createSupabaseAdminClient, createSupabasePublicClient } from "../supabase.ts";
+import { ADVERTISEMENT_BUCKET } from "./constants.ts";
+import { isAdvertisementPubliclyVisible, sortAdvertisementsForPublic } from "./public.ts";
 
 export class AdvertisementMediaIntegrityError extends Error {
   code: "INVALID_MEDIA_URL" | "MEDIA_OBJECT_MISSING";

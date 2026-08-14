@@ -11,6 +11,7 @@ import {
   employerSectionCard,
 } from "@/features/employers/ui/portal-theme";
 import type { AdvertisementRecord, AdvertisementStatus } from "@/features/advertisements/types";
+import { normalizeSupabasePublicUrl, uploadToSignedUrl } from "@/features/advertisements/signed-upload";
 
 type EmployerAdvertisementItem = AdvertisementRecord;
 
@@ -199,73 +200,6 @@ export function EmployerAdvertisementsCenter({ locale }: { locale: string }) {
       ok: true as const,
       inferredMediaType: (isVideo ? "video" : "image") as "video" | "image",
     };
-  }
-
-  function normalizeSupabasePublicUrl(value: string) {
-    try {
-      const url = new URL(value.trim());
-      const normalizedPath = url.pathname.replace(/\/+$/, "");
-      if (normalizedPath === "/rest/v1") {
-        url.pathname = "";
-      }
-      return url.toString().replace(/\/+$/, "");
-    } catch {
-      return value.trim().replace(/\/+$/, "").replace(/\/rest\/v1$/i, "");
-    }
-  }
-
-  function toEncodedObjectPath(storagePath: string) {
-    return storagePath
-      .split("/")
-      .filter(Boolean)
-      .map((segment) => encodeURIComponent(segment))
-      .join("/");
-  }
-
-  async function uploadToSignedUrl(input: {
-    supabaseUrl: string;
-    bucket: string;
-    storagePath: string;
-    uploadToken: string;
-    file: File;
-    onProgress: (value: number) => void;
-  }) {
-    const endpoint = `${input.supabaseUrl}/storage/v1/object/upload/sign/${encodeURIComponent(input.bucket)}/${toEncodedObjectPath(input.storagePath)}?token=${encodeURIComponent(input.uploadToken)}`;
-
-    await new Promise<void>((resolve, reject) => {
-      const xhr = new XMLHttpRequest();
-      xhr.open("PUT", endpoint);
-      xhr.setRequestHeader("content-type", input.file.type);
-      xhr.upload.onprogress = (event) => {
-        if (!event.lengthComputable || event.total <= 0) return;
-        const progress = Math.max(0, Math.min(100, Math.round((event.loaded / event.total) * 100)));
-        input.onProgress(progress);
-      };
-      xhr.onerror = () => reject(new Error("Direct upload failed before completion."));
-      xhr.onload = () => {
-        if (xhr.status >= 200 && xhr.status < 300) {
-          resolve();
-          return;
-        }
-
-        let message = "Unable to upload media.";
-        try {
-          const body = JSON.parse(xhr.responseText) as { error?: string | { message?: string } };
-          if (typeof body.error === "string") {
-            message = body.error;
-          } else if (body.error?.message) {
-            message = body.error.message;
-          }
-        } catch {
-          if (xhr.responseText?.trim()) {
-            message = xhr.responseText.trim();
-          }
-        }
-
-        reject(new Error(message));
-      };
-      xhr.send(input.file);
-    });
   }
 
   const loadAds = useCallback(async () => {
