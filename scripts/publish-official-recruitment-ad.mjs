@@ -1,18 +1,28 @@
 // Publishes the Prime Global master recruitment video as an official,
 // first-party advertisement by driving the EXISTING admin advertisement
-// API end to end (upload -> create -> submit_review -> optional approve).
-// It intentionally does not touch Supabase directly: reusing the real API
-// routes means the existing upload validation, storage-object integrity
-// checks, moderation, and audit logging all run exactly as they do for any
-// other advertisement, and no second code path is introduced.
+// API end to end (authorize -> direct-to-storage upload -> finalize ->
+// create -> submit_review -> optional approve). It intentionally does not
+// touch Supabase directly for anything except the signed-URL media PUT:
+// reusing the real API routes means the existing upload validation,
+// storage-object integrity checks, moderation, and audit logging all run
+// exactly as they do for any other advertisement, and no second code path
+// is introduced.
 //
-// Requires a running instance of this app and an authenticated admin
+// The media upload uses the same authorize/finalize signed-upload flow as
+// the browser admin UI: the raw video bytes are PUT directly to Supabase
+// Storage, never sent as this script's own request body to an admin API
+// route, since a Next.js serverless function on Vercel enforces a
+// platform-level request body limit (~4.5MB) well under this app's own
+// 50MB video allowance.
+//
+// Requires a running instance of this app, an authenticated admin
 // session (role: prime_global_admin | prime_global_admin_admin | admin |
-// super_admin).
+// super_admin), and the deployment's public Supabase URL.
 //
 // Usage:
 //   PRIME_GLOBAL_BASE_URL="https://staging.primeglobal.pro" \
 //   PRIME_GLOBAL_ADMIN_COOKIE="sb-access-token=...; sb-refresh-token=..." \
+//   NEXT_PUBLIC_SUPABASE_URL="https://<project>.supabase.co" \
 //   VIDEO_FILE_PATH="/path/to/prime-global-master-ad.mp4" \
 //   node scripts/publish-official-recruitment-ad.mjs [--activate]
 //
@@ -23,6 +33,27 @@
 
 import { readFile } from "node:fs/promises";
 import { basename } from "node:path";
+
+function toEncodedObjectPath(storagePath) {
+  return storagePath
+    .split("/")
+    .filter(Boolean)
+    .map((segment) => encodeURIComponent(segment))
+    .join("/");
+}
+
+function normalizeSupabasePublicUrl(value) {
+  try {
+    const url = new URL(value.trim());
+    const normalizedPath = url.pathname.replace(/\/+$/, "");
+    if (normalizedPath === "/rest/v1") {
+      url.pathname = "";
+    }
+    return url.toString().replace(/\/+$/, "");
+  } catch {
+    return value.trim().replace(/\/+$/, "").replace(/\/rest\/v1$/i, "");
+  }
+}
 
 function readEnv(name, { required = true } = {}) {
   const value = process.env[name]?.trim();
@@ -35,6 +66,7 @@ function readEnv(name, { required = true } = {}) {
 const BASE_URL = readEnv("PRIME_GLOBAL_BASE_URL").replace(/\/$/, "");
 const ADMIN_COOKIE = readEnv("PRIME_GLOBAL_ADMIN_COOKIE");
 const VIDEO_FILE_PATH = readEnv("VIDEO_FILE_PATH");
+const SUPABASE_URL = normalizeSupabasePublicUrl(readEnv("NEXT_PUBLIC_SUPABASE_URL"));
 const SHOULD_ACTIVATE = process.argv.includes("--activate");
 
 const AD_PAYLOAD = {
@@ -82,17 +114,47 @@ async function main() {
   const { csrfToken } = await fetchJson("/api/security/csrf");
 
   const videoBuffer = await readFile(VIDEO_FILE_PATH);
-  const form = new FormData();
-  form.set("mediaType", "video");
-  form.set("file", new Blob([videoBuffer], { type: "video/mp4" }), basename(VIDEO_FILE_PATH));
+  const fileName = basename(VIDEO_FILE_PATH);
+  const mimeType = "video/mp4";
 
-  console.log("Uploading video to the advertisement-media bucket...");
+  console.log("Authorizing direct-to-storage upload...");
+  const authorization = await fetchJson("/api/admin/advertisements/upload", {
+    method: "POST",
+    headers: { "content-type": "application/json", "x-csrf-token": csrfToken },
+    body: JSON.stringify({
+      action: "authorize",
+      locale: "en",
+      fileName,
+      mimeType,
+      sizeBytes: videoBuffer.byteLength,
+    }),
+  });
+
+  console.log(`Uploading video directly to Supabase Storage: ${authorization.mediaUrl}`);
+  const uploadEndpoint = `${SUPABASE_URL}/storage/v1/object/upload/sign/${encodeURIComponent(authorization.bucket)}/${toEncodedObjectPath(authorization.mediaUrl)}?token=${encodeURIComponent(authorization.signedUploadToken)}`;
+  const putResponse = await fetch(uploadEndpoint, {
+    method: "PUT",
+    headers: { "content-type": mimeType },
+    body: videoBuffer,
+  });
+
+  if (!putResponse.ok) {
+    const bodyText = await putResponse.text().catch(() => "");
+    throw new Error(`Direct upload to Supabase Storage failed (${putResponse.status}): ${bodyText || "unknown error"}`);
+  }
+
+  console.log("Finalizing upload...");
   const upload = await fetchJson("/api/admin/advertisements/upload", {
     method: "POST",
-    headers: { "x-csrf-token": csrfToken },
-    body: form,
+    headers: { "content-type": "application/json", "x-csrf-token": csrfToken },
+    body: JSON.stringify({
+      action: "finalize",
+      locale: "en",
+      mediaUrl: authorization.mediaUrl,
+      mediaType: authorization.mediaType,
+    }),
   });
-  console.log(`Uploaded: ${upload.mediaUrl} (${upload.sizeBytes} bytes, ${upload.mimeType})`);
+  console.log(`Finalized: ${upload.mediaUrl} (${authorization.sizeBytes} bytes, ${authorization.mimeType})`);
 
   const siteUrl = new URL(BASE_URL).origin;
   const payload = {
